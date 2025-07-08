@@ -23,27 +23,10 @@ import {
 import { Calendar } from "@/components/ui/calendar";
 import { Label } from "@/components/ui/label";
 import { Calendar as CalendarIcon, Download } from "lucide-react";
-import clientPromise from "@/lib/mongodb";
-import type { Vendor } from "@/lib/types";
-
-async function getVendors(): Promise<Vendor[]> {
-  try {
-    const client = await clientPromise;
-    const db = client.db();
-    const vendorsCollection = db.collection("vendors");
-    const vendors = await vendorsCollection.find({}).toArray();
-    return vendors.map((vendor) => ({
-      ...vendor,
-      id: vendor._id.toString(),
-    })) as unknown as Vendor[];
-  } catch (error) {
-    console.error("Database Error:", error);
-    return [];
-  }
-}
+import { fetchVendors } from "@/lib/data";
 
 export default async function ReportsPage() {
-  const vendors = await getVendors();
+  const vendors = await fetchVendors();
   return (
     <div>
       <PageHeader

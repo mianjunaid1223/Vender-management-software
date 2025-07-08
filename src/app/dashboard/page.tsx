@@ -7,60 +7,63 @@ import {
 } from "@/components/ui/card";
 import { DollarSign, Receipt, Users, CreditCard } from "lucide-react";
 import { SpendingInsights } from "@/components/dashboard/spending-insights";
-import clientPromise from "@/lib/mongodb";
-import type { Invoice, Vendor } from "@/lib/types";
-
-async function getData() {
-    try {
-        const client = await clientPromise;
-        const db = client.db();
-        const invoicesCollection = db.collection("invoices");
-        const vendorsCollection = db.collection("vendors");
-        
-        const invoices = await invoicesCollection.find({}).toArray();
-        const vendors = await vendorsCollection.find({}).toArray();
-
-        const serializedInvoices = invoices.map((invoice) => ({ ...invoice, id: invoice._id.toString() })) as unknown as Invoice[];
-        const serializedVendors = vendors.map((vendor) => ({ ...vendor, id: vendor._id.toString() })) as unknown as Vendor[];
-        
-        return {
-            invoices: serializedInvoices,
-            vendors: serializedVendors
-        }
-    } catch (error) {
-        console.error("Database Error:", error);
-        return { invoices: [], vendors: [] };
-    }
-}
-
+import { fetchCardData, fetchInvoices, fetchVendors } from "@/lib/data";
 
 export default async function DashboardPage() {
-  const { invoices, vendors } = await getData();
+    const { invoices, vendors, cardData } = await (async () => {
+        const invoicesPromise = fetchInvoices();
+        const vendorsPromise = fetchVendors();
+        const cardDataPromise = fetchCardData();
+        const [invoices, vendors, cardData] = await Promise.all([invoicesPromise, vendorsPromise, cardDataPromise]);
+        return { invoices, vendors, cardData };
+    })();
+
+  const { totalSpend, activeVendors, unpaidInvoices, nextPaymentDue } = cardData;
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+    }).format(amount);
+  };
+
+  const getNextPaymentDueText = () => {
+    if (!nextPaymentDue) return "All caught up!";
+    const dueDate = new Date(nextPaymentDue.invoiceDueDate);
+    const today = new Date();
+    today.setHours(0,0,0,0); // Set to start of day for accurate comparison
+    const diffTime = dueDate.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays < 0) return `Overdue by ${Math.abs(diffDays)} days`;
+    if (diffDays === 0) return "Due today";
+    return `Due in ${diffDays} days`;
+  }
 
   const summaryCards = [
     {
-      title: "Total Spend (YTD)",
-      value: "$45,231.89",
+      title: "Total Spend (Paid)",
+      value: formatCurrency(totalSpend),
       icon: <DollarSign className="h-4 w-4 text-muted-foreground" />,
-      change: "+20.1% from last month",
+      change: "All-time paid invoices",
     },
     {
       title: "Active Vendors",
-      value: "+12",
+      value: `+${activeVendors}`,
       icon: <Users className="h-4 w-4 text-muted-foreground" />,
-      change: "+2 from last month",
+      change: "Total vendors in system",
     },
     {
       title: "Unpaid Invoices",
-      value: "19",
+      value: `${unpaidInvoices}`,
       icon: <Receipt className="h-4 w-4 text-muted-foreground" />,
-      change: "5 overdue",
+      change: `${cardData.unpaidInvoices > 0 ? 'Pending payments' : 'All caught up!'}`,
     },
     {
       title: "Next Payment Due",
-      value: "$1,200.00",
+      value: nextPaymentDue ? formatCurrency(nextPaymentDue.invoiceAmount) : "N/A",
       icon: <CreditCard className="h-4 w-4 text-muted-foreground" />,
-      change: "Due in 3 days",
+      change: getNextPaymentDueText(),
     },
   ];
 
