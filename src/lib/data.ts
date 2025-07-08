@@ -8,8 +8,14 @@ const getDb = async () => {
     if (!clientPromise) {
         return null;
     }
-    const client = await clientPromise;
-    return client.db(); 
+    try {
+        const client = await clientPromise;
+        return client.db();
+    } catch (error) {
+        // This will catch the connection error and prevent the app from crashing.
+        // The warning in mongodb.ts is sufficient to inform the user.
+        return null;
+    }
 }
 
 export async function fetchInvoices(): Promise<Invoice[]> {
