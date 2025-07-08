@@ -1,4 +1,4 @@
-import { MongoClient } from 'mongodb'
+import { MongoClient, ServerApiVersion } from 'mongodb'
 
 const MONGODB_URI = process.env.MONGODB_URI;
 
@@ -10,7 +10,14 @@ if (!MONGODB_URI) {
 } else if (MONGODB_URI.includes('<user>') || MONGODB_URI.includes('<password>') || MONGODB_URI.includes('<cluster-url>')) {
   console.warn('WARNING: MONGODB_URI is using placeholder values. Please update your .env file with the actual connection string from MongoDB Atlas. The application will run without database access.');
 } else {
-  const options = {};
+  const options = {
+    serverApi: {
+      version: ServerApiVersion.v1,
+      strict: true,
+      deprecationErrors: true,
+    },
+  };
+  
   if (process.env.NODE_ENV === 'development') {
     let globalWithMongo = global as typeof globalThis & {
       _mongoClientPromise?: Promise<MongoClient>
