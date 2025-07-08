@@ -1,7 +1,7 @@
 'use server';
 
 import clientPromise from '@/lib/mongodb';
-import type { Invoice, Vendor } from '@/lib/types';
+import type { Invoice, Vendor, User } from '@/lib/types';
 import { unstable_noStore as noStore } from 'next/cache';
 
 const getDb = async () => {
@@ -137,12 +137,38 @@ export async function fetchCardData() {
 }
 
 
-export async function getUser() {
-    // In a real app, you'd fetch this from your database or auth provider
+export async function getUser(): Promise<User> {
     noStore();
-    return {
+    const db = await getDb();
+
+    const defaultUser = {
+        id: 'default-user',
         name: 'Alicia Cook',
         email: 'alicia@example.com',
         image: 'https://placehold.co/100x100.png'
     };
+
+    if (!db) {
+        return defaultUser;
+    }
+
+    try {
+        const usersCollection = db.collection('users');
+        const user = await usersCollection.findOne({});
+
+        if (!user) {
+            return defaultUser;
+        }
+
+        return {
+            id: user._id.toString(),
+            name: user.name,
+            email: user.email,
+            image: user.image || 'https://placehold.co/100x100.png',
+        };
+
+    } catch (error) {
+        console.error('Database Error fetching user:', error);
+        return defaultUser;
+    }
 }
