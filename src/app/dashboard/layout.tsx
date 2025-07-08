@@ -1,6 +1,6 @@
 import { type ReactNode } from "react";
 import Link from "next/link";
-import { PanelLeft, Home, Receipt, Users, LineChart, User } from "lucide-react";
+import { PanelLeft } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetTrigger, SheetContent } from "@/components/ui/sheet";
@@ -8,17 +8,12 @@ import { UserNav } from "@/components/user-nav";
 import { Logo } from "@/components/logo";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { getUser } from "@/lib/data";
+import { sidebarNavItems } from "@/config/dashboard";
 
 export default async function DashboardLayout({ children }: { children: ReactNode }) {
     const user = await getUser();
 
-    const navItems = [
-        { href: "/dashboard", label: "Dashboard", icon: Home },
-        { href: "/dashboard/invoices", label: "Invoices", icon: Receipt },
-        { href: "/dashboard/vendors", label: "Vendors", icon: Users },
-        { href: "/dashboard/reports", label: "Reports", icon: LineChart },
-        { href: "/dashboard/profile", label: "Profile", icon: User },
-    ];
+    const navItems = sidebarNavItems;
 
     return (
         <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]">

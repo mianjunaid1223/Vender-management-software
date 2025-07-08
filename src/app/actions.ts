@@ -62,9 +62,8 @@ export async function signupUser(values: z.infer<typeof signupFormSchema>) {
       return { success: false, message: "User with this email already exists." };
     }
     
-    // In a real app, you would hash the password here.
     const { fullName, email, password } = validatedData;
-    await usersCollection.insertOne({ name: fullName, email, password });
+    await usersCollection.insertOne({ name: fullName, email, password, image: `https://placehold.co/100x100.png?text=${fullName.charAt(0)}` });
     
   } catch (error) {
     console.error("Signup Error:", error);
@@ -96,7 +95,6 @@ export async function loginUser(values: z.infer<typeof loginFormSchema>) {
 
         const user = await usersCollection.findOne({ email: validatedData.email });
         
-        // In a real app, you would verify the hashed password here.
         if (!user || user.password !== validatedData.password) {
           return { success: false, message: "Invalid email or password." };
         }
@@ -110,4 +108,39 @@ export async function loginUser(values: z.infer<typeof loginFormSchema>) {
     }
 
     redirect("/dashboard");
+}
+
+const profileFormSchema = z.object({
+  name: z.string().min(2, { message: "Name must be at least 2 characters." }),
+});
+
+export async function updateUserProfile(values: z.infer<typeof profileFormSchema>) {
+    try {
+        const validatedData = profileFormSchema.parse(values);
+        const db = await getDb();
+        if (!db) {
+            return { success: false, message: "Database connection failed. Please check server configuration." };
+        }
+        
+        // In a real app, this would come from a session. For now, we update the first user found.
+        const currentUser = await db.collection("users").findOne({});
+        if (!currentUser) {
+            return { success: false, message: "User not found." };
+        }
+
+        await db.collection("users").updateOne(
+            { _id: currentUser._id },
+            { $set: { name: validatedData.name } }
+        );
+
+        revalidatePath("/dashboard/profile");
+        revalidatePath("/dashboard"); // To update user-nav
+        return { success: true, message: "Profile updated successfully." };
+    } catch (error) {
+        console.error("Failed to update profile:", error);
+        if (error instanceof z.ZodError) {
+             return { success: false, message: "Validation failed.", issues: error.flatten() };
+        }
+        return { success: false, message: "An unexpected error occurred." };
+    }
 }

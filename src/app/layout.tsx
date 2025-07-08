@@ -3,10 +3,11 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { cn } from "@/lib/utils";
 import { ThemeProvider } from "@/components/theme-provider";
+import { siteConfig } from "@/config/site";
 
 export const metadata: Metadata = {
-  title: "VendorVerse",
-  description: "Streamline Your Vendor Management & Invoice Tracking",
+  title: siteConfig.name,
+  description: siteConfig.description,
 };
 
 export default function RootLayout({
