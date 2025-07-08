@@ -10,7 +10,7 @@ export const getDb = async () => {
     }
     try {
         const client = await clientPromise;
-        return client.db();
+        return client.db('vendorverse');
     } catch (error) {
         // This will catch the connection error and prevent the app from crashing.
         // The warning in mongodb.ts is sufficient to inform the user.
