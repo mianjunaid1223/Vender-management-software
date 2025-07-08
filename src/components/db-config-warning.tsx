@@ -3,7 +3,7 @@ import { AlertTriangle } from "lucide-react"
 
 export function DbConfigWarning() {
     return (
-        <Alert variant="destructive" className="mb-6">
+        <Alert variant="destructive">
             <AlertTriangle className="h-4 w-4" />
             <AlertTitle>Database Not Configured</AlertTitle>
             <AlertDescription>
