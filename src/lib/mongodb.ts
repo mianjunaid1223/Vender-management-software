@@ -1,4 +1,4 @@
-import { MongoClient, ServerApiVersion } from 'mongodb'
+import { MongoClient } from 'mongodb'
 
 const MONGODB_URI = process.env.MONGODB_URI;
 
@@ -11,13 +11,7 @@ if (MONGODB_URI.includes('<user>') || MONGODB_URI.includes('<password>') || MONG
 }
 
 
-const options = {
-    serverApi: {
-      version: ServerApiVersion.v1,
-      strict: true,
-      deprecationErrors: true,
-    }
-};
+const options = {};
 
 let client: MongoClient
 let clientPromise: Promise<MongoClient>

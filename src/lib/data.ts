@@ -29,6 +29,9 @@ export async function fetchInvoices() {
 
     } catch (error) {
         console.error('Database Error:', error);
+        if (error instanceof Error) {
+            throw new Error(error.message);
+        }
         throw new Error('Failed to fetch invoices.');
     }
 }
@@ -51,6 +54,9 @@ export async function fetchVendors() {
         })) as unknown as Vendor[];
     } catch (error) {
         console.error('Database Error:', error);
+        if (error instanceof Error) {
+            throw new Error(error.message);
+        }
         throw new Error('Failed to fetch vendors.');
     }
 }
@@ -104,6 +110,9 @@ export async function fetchCardData() {
         };
     } catch (error) {
         console.error('Database Error:', error);
+        if (error instanceof Error) {
+            throw new Error(error.message);
+        }
         throw new Error('Failed to fetch card data.');
     }
 }
