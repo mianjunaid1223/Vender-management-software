@@ -8,8 +8,13 @@ import {
 import { DollarSign, Receipt, Users, CreditCard } from "lucide-react";
 import { SpendingInsights } from "@/components/dashboard/spending-insights";
 import { fetchCardData, fetchInvoices, fetchVendors } from "@/lib/data";
+import clientPromise from "@/lib/mongodb";
+import { DbConfigWarning } from "@/components/db-config-warning";
+
 
 export default async function DashboardPage() {
+    const isDbConfigured = clientPromise !== null;
+
     const { invoices, vendors, cardData } = await (async () => {
         const invoicesPromise = fetchInvoices();
         const vendorsPromise = fetchVendors();
@@ -69,6 +74,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="flex flex-col gap-6">
+      {!isDbConfigured && <DbConfigWarning />}
       <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-4">
         {summaryCards.map((card) => (
           <Card key={card.title}>

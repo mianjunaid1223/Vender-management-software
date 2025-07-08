@@ -5,22 +5,25 @@ import type { Invoice, Vendor } from '@/lib/types';
 import { unstable_noStore as noStore } from 'next/cache';
 
 const getDb = async () => {
+    if (!clientPromise) {
+        return null;
+    }
     const client = await clientPromise;
-    // You can specify a database name here if it's not in the connection string
     return client.db(); 
 }
 
-export async function fetchInvoices() {
+export async function fetchInvoices(): Promise<Invoice[]> {
     noStore();
+    const db = await getDb();
+    if (!db) return [];
+
     try {
-        const db = await getDb();
         const invoices = await db
             .collection('invoices')
             .find({})
             .sort({ invoiceDate: -1 })
             .toArray();
         
-        // Convert ObjectId to string and remove the original _id
         return invoices.map(invoice => ({
             ...invoice,
             id: invoice._id.toString(),
@@ -36,17 +39,18 @@ export async function fetchInvoices() {
     }
 }
 
-export async function fetchVendors() {
+export async function fetchVendors(): Promise<Vendor[]> {
     noStore();
+    const db = await getDb();
+    if (!db) return [];
+    
     try {
-        const db = await getDb();
         const vendors = await db
             .collection('vendors')
             .find({})
             .sort({ name: 1 })
             .toArray();
 
-        // Convert ObjectId to string and remove the original _id
         return vendors.map(vendor => ({
             ...vendor,
             id: vendor._id.toString(),
@@ -63,8 +67,17 @@ export async function fetchVendors() {
 
 export async function fetchCardData() {
     noStore();
+    const db = await getDb();
+    if (!db) {
+        return {
+            totalSpend: 0,
+            activeVendors: 0,
+            unpaidInvoices: 0,
+            nextPaymentDue: null,
+        }
+    }
+
     try {
-        const db = await getDb();
         const invoicesCollection = db.collection('invoices');
         const vendorsCollection = db.collection('vendors');
 
