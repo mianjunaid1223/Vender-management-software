@@ -135,3 +135,14 @@ export async function fetchCardData() {
         throw new Error('Failed to fetch card data.');
     }
 }
+
+
+export async function getUser() {
+    // In a real app, you'd fetch this from your database or auth provider
+    noStore();
+    return {
+        name: 'Alicia Cook',
+        email: 'alicia@example.com',
+        image: 'https://placehold.co/100x100.png'
+    };
+}

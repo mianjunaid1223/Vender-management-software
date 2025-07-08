@@ -1,19 +1,23 @@
 import { type ReactNode } from "react";
 import Link from "next/link";
-import { PanelLeft, Home, Receipt, Users, LineChart } from "lucide-react";
+import { PanelLeft, Home, Receipt, Users, LineChart, User } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetTrigger, SheetContent } from "@/components/ui/sheet";
 import { UserNav } from "@/components/user-nav";
 import { Logo } from "@/components/logo";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { getUser } from "@/lib/data";
 
-export default function DashboardLayout({ children }: { children: ReactNode }) {
+export default async function DashboardLayout({ children }: { children: ReactNode }) {
+    const user = await getUser();
+
     const navItems = [
         { href: "/dashboard", label: "Dashboard", icon: Home },
         { href: "/dashboard/invoices", label: "Invoices", icon: Receipt },
         { href: "/dashboard/vendors", label: "Vendors", icon: Users },
         { href: "/dashboard/reports", label: "Reports", icon: LineChart },
+        { href: "/dashboard/profile", label: "Profile", icon: User },
     ];
 
     return (
@@ -72,7 +76,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                     </Sheet>
                     <div className="w-full flex-1" />
                     <ThemeToggle />
-                    <UserNav />
+                    <UserNav user={user} />
                 </header>
                 <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6">
                     {children}

@@ -11,30 +11,36 @@ import {
 } from "@/components/ui/dropdown-menu"
 import Link from "next/link"
 
-export function UserNav() {
+type User = {
+    name: string;
+    email: string;
+    image: string;
+}
+
+export function UserNav({ user }: { user: User }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-10 w-10 rounded-full">
           <Avatar className="h-10 w-10 border">
-            <AvatarImage src="https://placehold.co/100x100.png" alt="User avatar" data-ai-hint="user avatar" />
-            <AvatarFallback>U</AvatarFallback>
+            <AvatarImage src={user.image} alt="User avatar" data-ai-hint="user avatar" />
+            <AvatarFallback>{user.name?.charAt(0)}</AvatarFallback>
           </Avatar>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56" align="end" forceMount>
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">Admin User</p>
+            <p className="text-sm font-medium leading-none">{user.name}</p>
             <p className="text-xs leading-none text-muted-foreground">
-              admin@vendorverse.com
+              {user.email}
             </p>
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
-          <DropdownMenuItem>
-            Profile
+          <DropdownMenuItem asChild>
+            <Link href="/dashboard/profile">Profile</Link>
           </DropdownMenuItem>
           <DropdownMenuItem>
             Settings
