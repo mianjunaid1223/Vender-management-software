@@ -4,7 +4,7 @@ import clientPromise from '@/lib/mongodb';
 import type { Invoice, Vendor, User } from '@/lib/types';
 import { unstable_noStore as noStore } from 'next/cache';
 
-const getDb = async () => {
+export const getDb = async () => {
     if (!clientPromise) {
         return null;
     }

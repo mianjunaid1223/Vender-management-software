@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import clientPromise from "@/lib/mongodb";
+import { getDb } from "@/lib/data";
 import { Invoice } from "@/lib/types";
 
 const invoiceFormSchema = z.object({
@@ -23,11 +23,10 @@ export async function addInvoice(values: z.infer<typeof invoiceFormSchema>) {
             status: "Unpaid"
         }
 
-        const client = await clientPromise;
-        if (!client) {
-            return { success: false, message: "Database not connected." };
+        const db = await getDb();
+        if (!db) {
+            return { success: false, message: "Database connection failed. Please check server configuration." };
         }
-        const db = client.db();
         await db.collection("invoices").insertOne(newInvoice);
         
         revalidatePath("/dashboard/invoices");
@@ -48,14 +47,14 @@ const signupFormSchema = z.object({
 });
 
 export async function signupUser(values: z.infer<typeof signupFormSchema>) {
+  const db = await getDb();
+  if (!db) {
+      return { success: false, message: "Database connection failed. Please check server configuration." };
+  }
+  
   try {
     const validatedData = signupFormSchema.parse(values);
     
-    const client = await clientPromise;
-    if (!client) {
-      throw new Error("Database not connected.");
-    }
-    const db = client.db();
     const usersCollection = db.collection("users");
 
     const existingUser = await usersCollection.findOne({ email: validatedData.email });
@@ -85,30 +84,30 @@ const loginFormSchema = z.object({
 });
 
 export async function loginUser(values: z.infer<typeof loginFormSchema>) {
-  try {
-    const validatedData = loginFormSchema.parse(values);
+    const db = await getDb();
+    if (!db) {
+        return { success: false, message: "Database connection failed. Please check server configuration." };
+    }
     
-    const client = await clientPromise;
-    if (!client) {
-      throw new Error("Database not connected.");
-    }
-    const db = client.db();
-    const usersCollection = db.collection("users");
+    try {
+        const validatedData = loginFormSchema.parse(values);
+        
+        const usersCollection = db.collection("users");
 
-    const user = await usersCollection.findOne({ email: validatedData.email });
-    
-    // In a real app, you would verify the hashed password here.
-    if (!user || user.password !== validatedData.password) {
-      return { success: false, message: "Invalid email or password." };
+        const user = await usersCollection.findOne({ email: validatedData.email });
+        
+        // In a real app, you would verify the hashed password here.
+        if (!user || user.password !== validatedData.password) {
+          return { success: false, message: "Invalid email or password." };
+        }
+
+    } catch (error) {
+       console.error("Login Error:", error);
+      if (error instanceof z.ZodError) {
+        return { success: false, message: "Validation failed.", issues: error.flatten() };
+      }
+      return { success: false, message: "An unexpected error occurred during login." };
     }
 
-  } catch (error) {
-     console.error("Login Error:", error);
-    if (error instanceof z.ZodError) {
-      return { success: false, message: "Validation failed.", issues: error.flatten() };
-    }
-    return { success: false, message: "An unexpected error occurred during login." };
-  }
-
-  redirect("/dashboard");
+    redirect("/dashboard");
 }
