@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckCircle, Rocket, Zap, BrainCircuit } from "lucide-react";
 import Link from "next/link";
 import { Logo } from "@/components/logo";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export default function Home() {
   const features = [
@@ -33,6 +34,7 @@ export default function Home() {
       <header className="container mx-auto px-4 h-16 flex items-center justify-between">
         <Logo />
         <div className="flex items-center gap-4">
+          <ThemeToggle />
           <Button variant="ghost" asChild>
             <Link href="/login">Login</Link>
           </Button>

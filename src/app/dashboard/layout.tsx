@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetTrigger, SheetContent } from "@/components/ui/sheet";
 import { UserNav } from "@/components/user-nav";
 import { Logo } from "@/components/logo";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
     const navItems = [
@@ -70,6 +71,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                         </SheetContent>
                     </Sheet>
                     <div className="w-full flex-1" />
+                    <ThemeToggle />
                     <UserNav />
                 </header>
                 <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6">
