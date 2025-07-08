@@ -29,6 +29,7 @@ import {
   extractInvoiceData,
   type ExtractInvoiceDataOutput,
 } from "@/ai/flows/extract-invoice-data";
+import { addInvoice } from "@/app/actions";
 
 const formSchema = z.object({
   vendorName: z.string().min(1, "Vendor name is required."),
@@ -51,6 +52,7 @@ export function UploadInvoiceDialog() {
   const [open, setOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [isExtracting, setIsExtracting] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -109,19 +111,36 @@ export function UploadInvoiceDialog() {
     }
   };
   
-  const onSubmit = (values: z.infer<typeof formSchema>) => {
-    console.log("Submitting new invoice:", values);
-    toast({
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    setIsSubmitting(true);
+    const result = await addInvoice(values);
+    setIsSubmitting(false);
+
+    if (result.success) {
+      toast({
         title: "Invoice Submitted",
-        description: `${values.invoiceNumber} from ${values.vendorName} has been added.`,
-    })
-    setFile(null);
-    form.reset();
-    setOpen(false);
+        description: `Invoice ${values.invoiceNumber} has been added.`,
+      });
+      setOpen(false);
+      form.reset();
+      setFile(null);
+    } else {
+      toast({
+        variant: "destructive",
+        title: "Error Submitting Invoice",
+        description: result.message,
+      });
+    }
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={(isOpen) => {
+        setOpen(isOpen);
+        if (!isOpen) {
+            form.reset();
+            setFile(null);
+        }
+    }}>
       <DialogTrigger asChild>
         <Button>
           <PlusCircle className="mr-2 h-4 w-4" />
@@ -138,14 +157,14 @@ export function UploadInvoiceDialog() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
           <div className="flex flex-col items-center justify-center gap-4 p-6 border-2 border-dashed rounded-lg">
             <Upload className="h-10 w-10 text-muted-foreground" />
-            <Input id="invoice-file" type="file" onChange={handleFileChange} className="w-full" />
+            <Input id="invoice-file" type="file" onChange={handleFileChange} className="w-full" disabled={isExtracting || isSubmitting} />
             {file && (
               <div className="flex items-center gap-2 text-sm text-muted-foreground mt-2">
                 <FileText className="h-4 w-4" />
                 <span>{file.name}</span>
               </div>
             )}
-            <Button onClick={handleExtractData} disabled={!file || isExtracting} className="w-full mt-4">
+            <Button onClick={handleExtractData} disabled={!file || isExtracting || isSubmitting} className="w-full mt-4">
               {isExtracting ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
@@ -155,14 +174,14 @@ export function UploadInvoiceDialog() {
             </Button>
           </div>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <form id="invoice-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <FormField
                 control={form.control}
                 name="vendorName"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Vendor Name</FormLabel>
-                    <FormControl><Input {...field} /></FormControl>
+                    <FormControl><Input {...field} disabled={isSubmitting} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -173,7 +192,7 @@ export function UploadInvoiceDialog() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Invoice Number</FormLabel>
-                    <FormControl><Input {...field} /></FormControl>
+                    <FormControl><Input {...field} disabled={isSubmitting} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -184,7 +203,7 @@ export function UploadInvoiceDialog() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Amount</FormLabel>
-                    <FormControl><Input type="number" step="0.01" {...field} /></FormControl>
+                    <FormControl><Input type="number" step="0.01" {...field} disabled={isSubmitting} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -195,7 +214,7 @@ export function UploadInvoiceDialog() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Invoice Date</FormLabel>
-                    <FormControl><Input type="date" {...field} /></FormControl>
+                    <FormControl><Input type="date" {...field} disabled={isSubmitting} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -206,7 +225,7 @@ export function UploadInvoiceDialog() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Due Date</FormLabel>
-                    <FormControl><Input type="date" {...field} /></FormControl>
+                    <FormControl><Input type="date" {...field} disabled={isSubmitting} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -215,7 +234,10 @@ export function UploadInvoiceDialog() {
           </Form>
         </div>
         <DialogFooter>
-          <Button type="submit" onClick={form.handleSubmit(onSubmit)}>Save Invoice</Button>
+          <Button type="submit" form="invoice-form" disabled={isSubmitting}>
+            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Save Invoice
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

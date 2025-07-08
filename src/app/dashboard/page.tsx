@@ -7,8 +7,36 @@ import {
 } from "@/components/ui/card";
 import { DollarSign, Receipt, Users, CreditCard } from "lucide-react";
 import { SpendingInsights } from "@/components/dashboard/spending-insights";
+import clientPromise from "@/lib/mongodb";
+import type { Invoice, Vendor } from "@/lib/types";
 
-export default function DashboardPage() {
+async function getData() {
+    try {
+        const client = await clientPromise;
+        const db = client.db();
+        const invoicesCollection = db.collection("invoices");
+        const vendorsCollection = db.collection("vendors");
+        
+        const invoices = await invoicesCollection.find({}).toArray();
+        const vendors = await vendorsCollection.find({}).toArray();
+
+        const serializedInvoices = invoices.map((invoice) => ({ ...invoice, id: invoice._id.toString() })) as unknown as Invoice[];
+        const serializedVendors = vendors.map((vendor) => ({ ...vendor, id: vendor._id.toString() })) as unknown as Vendor[];
+        
+        return {
+            invoices: serializedInvoices,
+            vendors: serializedVendors
+        }
+    } catch (error) {
+        console.error("Database Error:", error);
+        return { invoices: [], vendors: [] };
+    }
+}
+
+
+export default async function DashboardPage() {
+  const { invoices, vendors } = await getData();
+
   const summaryCards = [
     {
       title: "Total Spend (YTD)",
@@ -53,7 +81,7 @@ export default function DashboardPage() {
         ))}
       </div>
       <div>
-        <SpendingInsights />
+        <SpendingInsights invoices={invoices} vendors={vendors} />
       </div>
     </div>
   );

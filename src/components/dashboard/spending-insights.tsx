@@ -2,14 +2,14 @@
 
 import { useState } from "react";
 import { summarizeSpendingTrends } from "@/ai/flows/summarize-spending-trends";
-import { MOCK_INVOICES, MOCK_VENDORS } from "@/lib/mock-data";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Lightbulb, Loader2 } from "lucide-react";
+import type { Invoice, Vendor } from "@/lib/types";
 
-export function SpendingInsights() {
+export function SpendingInsights({ invoices, vendors }: { invoices: Invoice[], vendors: Vendor[] }) {
   const [query, setQuery] = useState("");
   const [summary, setSummary] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -25,8 +25,8 @@ export function SpendingInsights() {
     try {
       const result = await summarizeSpendingTrends({
         query: query,
-        invoiceData: JSON.stringify(MOCK_INVOICES),
-        vendorPaymentHistory: JSON.stringify(MOCK_VENDORS) // Using vendors as payment history placeholder
+        invoiceData: JSON.stringify(invoices),
+        vendorPaymentHistory: JSON.stringify(vendors)
       });
       setSummary(result.summary);
     } catch (error) {

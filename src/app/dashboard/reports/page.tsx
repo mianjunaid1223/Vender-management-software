@@ -23,9 +23,27 @@ import {
 import { Calendar } from "@/components/ui/calendar";
 import { Label } from "@/components/ui/label";
 import { Calendar as CalendarIcon, Download } from "lucide-react";
-import { MOCK_VENDORS } from "@/lib/mock-data";
+import clientPromise from "@/lib/mongodb";
+import type { Vendor } from "@/lib/types";
 
-export default function ReportsPage() {
+async function getVendors(): Promise<Vendor[]> {
+  try {
+    const client = await clientPromise;
+    const db = client.db();
+    const vendorsCollection = db.collection("vendors");
+    const vendors = await vendorsCollection.find({}).toArray();
+    return vendors.map((vendor) => ({
+      ...vendor,
+      id: vendor._id.toString(),
+    })) as unknown as Vendor[];
+  } catch (error) {
+    console.error("Database Error:", error);
+    return [];
+  }
+}
+
+export default async function ReportsPage() {
+  const vendors = await getVendors();
   return (
     <div>
       <PageHeader
@@ -49,7 +67,7 @@ export default function ReportsPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Vendors</SelectItem>
-                  {MOCK_VENDORS.map((vendor) => (
+                  {vendors.map((vendor) => (
                     <SelectItem key={vendor.id} value={vendor.id}>
                       {vendor.name}
                     </SelectItem>
