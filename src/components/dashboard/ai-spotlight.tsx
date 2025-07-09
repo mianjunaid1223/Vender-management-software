@@ -150,17 +150,9 @@ export function AISpotlight({
                     </div>
                   )}
                   {response && !isLoading && (
-                    <div>
-                      <div className="flex items-center gap-2 mb-2">
-                         <Wand2 className="h-5 w-5 text-apple-ai-purple shrink-0" />
-                         <h3 className="font-semibold text-apple-ai-pink">
-                           Assistant Response
-                         </h3>
-                      </div>
-                      <p className="text-sm text-foreground/90">
-                        {response}
-                      </p>
-                    </div>
+                    <p className="text-sm text-foreground/90">
+                      {response}
+                    </p>
                   )}
                 </div>
               </div>
