@@ -5,6 +5,7 @@ import {
   Dialog,
   DialogContent,
   DialogTrigger,
+  DialogOverlay,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +14,7 @@ import { Loader2, Search, Wand2, CornerDownLeft } from "lucide-react";
 import type { Invoice, Vendor, User } from "@/lib/types";
 import { getAIAssistantResponse } from "@/ai/flows/ai-assistant-flow";
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 
 export function AISpotlight({
   user,
@@ -70,31 +72,38 @@ export function AISpotlight({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button
-          variant="outline"
-          className="relative w-full max-w-sm justify-start text-sm text-muted-foreground"
-        >
-          <Search className="h-4 w-4 mr-2" />
-          <span>Ask AI...</span>
-          <kbd className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
-            <span className="text-xs">⌘</span>K
-          </kbd>
-        </Button>
+        <div className="relative group">
+          <div className="absolute -inset-0.5 bg-gradient-to-r from-apple-ai-pink to-apple-ai-blue rounded-lg blur-sm opacity-50 group-hover:opacity-75 transition duration-200"></div>
+          <Button
+            variant="outline"
+            className="relative w-full max-w-sm justify-start text-sm text-muted-foreground"
+          >
+            <Search className="h-4 w-4 mr-2" />
+            <span>Ask AI...</span>
+            <kbd className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
+              <span className="text-xs">⌘</span>K
+            </kbd>
+          </Button>
+        </div>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-2xl p-0 gap-0 overflow-hidden">
+      <DialogContent className="sm:max-w-2xl p-0 gap-0 overflow-hidden border-none bg-background/80 backdrop-blur-2xl shadow-2xl">
+        <div className={cn(
+          "absolute inset-0 -z-10 rounded-xl bg-gradient-to-r from-apple-ai-purple via-apple-ai-pink to-apple-ai-blue bg-[200%_auto] blur-2xl opacity-30",
+          isLoading && "animate-gradient-shift"
+        )}></div>
         <form onSubmit={handleSubmit}>
           <div className="relative">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
             <Input
               placeholder="Ask about your vendors, invoices, or spending..."
-              className="h-14 pl-12 text-base border-0 focus-visible:ring-0 shadow-none"
+              className="h-14 pl-12 text-base border-0 focus-visible:ring-0 shadow-none bg-transparent"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
             <Button
               type="submit"
               size="icon"
-              className="absolute right-4 top-1/2 -translate-y-1/2"
+              className="absolute right-4 top-1/2 -translate-y-1/2 bg-transparent hover:bg-white/10"
               disabled={isLoading || !query}
             >
               {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CornerDownLeft className="h-4 w-4" />}
@@ -103,21 +112,21 @@ export function AISpotlight({
           </div>
         </form>
         {(isLoading || response) && (
-          <div className="p-6 pt-0 border-t">
+          <div className="p-6 pt-0 border-t border-white/10">
             {isLoading && (
               <div className="space-y-3 pt-6">
-                <Skeleton className="h-5 w-32" />
+                <Skeleton className="h-5 w-32 bg-white/20" />
                 <div className="space-y-2 rounded-md">
-                  <Skeleton className="h-4 w-full" />
-                  <Skeleton className="h-4 w-full" />
-                  <Skeleton className="h-4 w-[85%]" />
+                  <Skeleton className="h-4 w-full bg-white/20" />
+                  <Skeleton className="h-4 w-full bg-white/20" />
+                  <Skeleton className="h-4 w-[85%] bg-white/20" />
                 </div>
               </div>
             )}
             {response && !isLoading && (
               <div className="animate-fade-in pt-6">
-                <h3 className="font-semibold mb-2 flex items-center gap-2 text-primary">
-                  <Wand2 className="h-5 w-5" />
+                <h3 className="font-semibold mb-2 flex items-center gap-2 text-transparent bg-clip-text bg-gradient-to-r from-apple-ai-pink to-apple-ai-blue">
+                  <Wand2 className="h-5 w-5 text-apple-ai-purple" />
                   Assistant Response
                 </h3>
                 <div className="prose prose-sm max-w-none text-sm text-foreground/80">

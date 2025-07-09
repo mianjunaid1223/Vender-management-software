@@ -63,6 +63,9 @@ const config: Config = {
           '4': 'hsl(var(--chart-4))',
           '5': 'hsl(var(--chart-5))',
         },
+        'apple-ai-purple': '#5856d6',
+        'apple-ai-pink': '#ff2d55',
+        'apple-ai-blue': '#007aff',
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -90,8 +93,8 @@ const config: Config = {
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
-        "fade-in": "fade-in 0.3s ease-in",
-        "gradient-shift": "gradient-shift 3s ease infinite",
+        "fade-in": "fade-in 0.3s ease-in-out",
+        "gradient-shift": "gradient-shift 4s ease infinite",
       },
     },
   },
