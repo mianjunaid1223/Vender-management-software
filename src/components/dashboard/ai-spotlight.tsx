@@ -66,7 +66,6 @@ export function AISpotlight({
       });
       setResponse(result.response);
     } catch (error) {
-      console.error("Error getting AI assistant response:", error);
       toast({
         variant: "destructive",
         title: "Error",
@@ -91,14 +90,23 @@ export function AISpotlight({
           </button>
         </div>
       </DialogTrigger>
-      <DialogContent hideCloseButton className="sm:max-w-2xl p-0 gap-0 overflow-hidden border-none bg-transparent shadow-2xl">
+      <DialogContent
+        hideCloseButton
+        className="sm:max-w-2xl p-0 gap-0 border-none bg-transparent shadow-none overflow-visible"
+      >
         <DialogTitle className="sr-only">AI Spotlight</DialogTitle>
-        <div className="fixed inset-0 -z-20 bg-gradient-to-br from-apple-ai-purple/10 via-transparent to-apple-ai-blue/10" />
-        <div className={cn(
-          "absolute inset-0 -z-10 rounded-xl bg-gradient-to-r from-apple-ai-purple via-apple-ai-pink to-apple-ai-blue bg-[200%_auto] blur-3xl opacity-50",
-          isLoading && "animate-gradient-shift"
-        )} />
-        <div className="relative rounded-lg overflow-hidden bg-background/80 backdrop-blur-2xl">
+        <div className="relative">
+          <div
+            className={cn(
+              'absolute -top-[5%] -left-[5%] h-[110%] w-[110%] -z-10 rounded-2xl',
+              'bg-gradient-to-br from-apple-ai-blue via-apple-ai-purple to-apple-ai-pink',
+              '[background-size:200%_200%]',
+              'blur-3xl opacity-70 dark:opacity-50 transition-opacity',
+              isLoading && 'animate-gradient-shift'
+            )}
+          />
+
+          <div className="relative rounded-lg overflow-hidden bg-background/80 backdrop-blur-2xl border border-white/10">
             <form onSubmit={handleSubmit}>
               <div className="relative">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
@@ -107,6 +115,7 @@ export function AISpotlight({
                   className="h-14 pl-12 text-base border-0 focus-visible:ring-0 shadow-none bg-transparent"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
+                  disabled={isLoading}
                 />
                 <Button
                   type="submit"
@@ -114,13 +123,17 @@ export function AISpotlight({
                   className="absolute right-4 top-1/2 -translate-y-1/2 bg-transparent hover:bg-white/10"
                   disabled={isLoading || !query}
                 >
-                  {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CornerDownLeft className="h-4 w-4" />}
+                  {isLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <CornerDownLeft className="h-4 w-4" />
+                  )}
                   <span className="sr-only">Submit</span>
                 </Button>
               </div>
             </form>
             {(isLoading || response) && (
-              <div className="p-6 pt-0 border-t border-white/10 animate-fade-in">
+              <div className="p-6 pt-0 border-t border-white/10 min-h-[150px] animate-fade-in">
                 {isLoading && (
                   <div className="space-y-3 pt-6">
                     <Skeleton className="h-5 w-32 bg-white/20" />
@@ -144,6 +157,7 @@ export function AISpotlight({
                 )}
               </div>
             )}
+          </div>
         </div>
       </DialogContent>
     </Dialog>
