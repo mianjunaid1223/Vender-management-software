@@ -106,7 +106,7 @@ export function AISpotlight({
             )}
           />
 
-          <div className="relative rounded-lg overflow-hidden bg-background/80 backdrop-blur-2xl">
+          <div className="relative rounded-lg overflow-hidden bg-background">
             <form onSubmit={handleSubmit}>
               <div className="relative">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
@@ -120,7 +120,7 @@ export function AISpotlight({
                 <Button
                   type="submit"
                   size="icon"
-                  className="absolute right-4 top-1/2 -translate-y-1/2 bg-transparent hover:bg-white/10"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 bg-transparent text-muted-foreground hover:text-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
                   disabled={isLoading || !query}
                 >
                   {isLoading ? (
@@ -137,7 +137,7 @@ export function AISpotlight({
               (isLoading || response) ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
             )}>
               <div className="overflow-hidden">
-                <div className="border-t border-border/20" />
+                <div className="border-t border-border" />
                 <div className="p-6 min-h-[150px]">
                   {isLoading && (
                     <div className="space-y-3">
@@ -151,13 +151,15 @@ export function AISpotlight({
                   )}
                   {response && !isLoading && (
                     <div>
-                      <h3 className="font-semibold mb-2 flex items-center gap-2 text-transparent bg-clip-text bg-gradient-to-r from-apple-ai-pink to-apple-ai-blue">
-                        <Wand2 className="h-5 w-5 text-apple-ai-purple" />
-                        Assistant Response
-                      </h3>
-                      <div className="prose prose-sm max-w-none text-sm text-foreground/80">
-                        <p>{response}</p>
+                      <div className="flex items-center gap-2 mb-2">
+                         <Wand2 className="h-5 w-5 text-apple-ai-purple shrink-0" />
+                         <h3 className="font-semibold text-apple-ai-pink">
+                           Assistant Response
+                         </h3>
                       </div>
+                      <p className="text-sm text-foreground/90">
+                        {response}
+                      </p>
                     </div>
                   )}
                 </div>
