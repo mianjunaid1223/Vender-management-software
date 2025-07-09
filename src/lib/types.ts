@@ -1,4 +1,3 @@
-import { type ExtractInvoiceDataOutput } from '@/ai/flows/extract-invoice-data';
 
 export type Vendor = {
   id: string;
@@ -8,8 +7,13 @@ export type Vendor = {
   service: string;
 };
 
-export interface Invoice extends ExtractInvoiceDataOutput {
+export type Invoice = {
   id: string;
+  vendorName: string;
+  invoiceAmount: number;
+  invoiceDueDate: string;
+  invoiceNumber: string;
+  invoiceDate: string;
   status: 'Paid' | 'Unpaid' | 'Overdue';
 }
 

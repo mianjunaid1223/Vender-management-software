@@ -21,11 +21,12 @@ const ExtractInvoiceDataInputSchema = z.object({
 export type ExtractInvoiceDataInput = z.infer<typeof ExtractInvoiceDataInputSchema>;
 
 const ExtractInvoiceDataOutputSchema = z.object({
-  vendorName: z.string().describe('The name of the vendor.'),
-  invoiceAmount: z.number().describe('The total amount due on the invoice.'),
-  invoiceDueDate: z.string().describe('The due date of the invoice (ISO format).'),
-  invoiceNumber: z.string().describe('The invoice number.'),
-  invoiceDate: z.string().describe('The issue date of the invoice (ISO format).'),
+  isInvoice: z.boolean().describe('Set to true if the document is an invoice, false otherwise.'),
+  vendorName: z.string().optional().describe('The name of the vendor.'),
+  invoiceAmount: z.number().optional().describe('The total amount due on the invoice.'),
+  invoiceDueDate: z.string().optional().describe('The due date of the invoice in YYYY-MM-DD format.'),
+  invoiceNumber: z.string().optional().describe('The invoice number.'),
+  invoiceDate: z.string().optional().describe('The issue date of the invoice in YYYY-MM-DD format.'),
 });
 export type ExtractInvoiceDataOutput = z.infer<typeof ExtractInvoiceDataOutputSchema>;
 
@@ -37,11 +38,13 @@ const prompt = ai.definePrompt({
   name: 'extractInvoiceDataPrompt',
   input: {schema: ExtractInvoiceDataInputSchema},
   output: {schema: ExtractInvoiceDataOutputSchema},
-  prompt: `You are an expert financial assistant specializing in extracting data from invoices.
+  prompt: `You are an expert financial assistant. Your first task is to determine if the provided document is an invoice.
 
-You will use the invoice information to extract key details such as vendor name, invoice amount, due date, invoice number, and invoice date.
+If the document appears to be an invoice, set 'isInvoice' to true and extract the vendor name, invoice amount, due date, invoice number, and invoice date. Ensure dates are in YYYY-MM-DD format.
 
-Invoice: {{media url=invoiceDataUri}}`,
+If the document does not appear to be an invoice, set 'isInvoice' to false and do not provide any other fields.
+
+Document: {{media url=invoiceDataUri}}`,
 });
 
 const extractInvoiceDataFlow = ai.defineFlow(

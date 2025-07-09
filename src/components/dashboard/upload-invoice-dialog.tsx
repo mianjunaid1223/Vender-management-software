@@ -90,15 +90,25 @@ export function UploadInvoiceDialog() {
         invoiceDataUri: dataUri,
       });
 
-      form.reset({
-        ...extractedData,
-        invoiceDueDate: extractedData.invoiceDueDate.split('T')[0],
-        invoiceDate: extractedData.invoiceDate.split('T')[0],
-      });
-      toast({
-        title: "Data Extracted Successfully",
-        description: "Please review the extracted information below.",
-      });
+      if (!extractedData.isInvoice) {
+        toast({
+          variant: "destructive",
+          title: "Not an Invoice",
+          description: "The uploaded file does not appear to be an invoice. Please try a different file.",
+        });
+      } else {
+        form.reset({
+          vendorName: extractedData.vendorName || "",
+          invoiceAmount: extractedData.invoiceAmount || 0,
+          invoiceDueDate: extractedData.invoiceDueDate || "",
+          invoiceNumber: extractedData.invoiceNumber || "",
+          invoiceDate: extractedData.invoiceDate || "",
+        });
+        toast({
+          title: "Data Extracted Successfully",
+          description: "Please review the extracted information below.",
+        });
+      }
     } catch (error) {
       console.error("Failed to extract invoice data:", error);
       toast({
