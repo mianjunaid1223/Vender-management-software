@@ -50,7 +50,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
                     <Logo />
                 </div>
                 
-                <div className="flex flex-1 justify-center px-4">
+                <div className="flex flex-1 justify-center">
                     <div className="w-full max-w-sm">
                         <AISpotlight user={user} invoices={invoices} vendors={vendors} />
                     </div>
