@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Lightbulb, Loader2 } from "lucide-react";
 import type { Invoice, Vendor } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 
 export function SpendingInsights({ invoices, vendors }: { invoices: Invoice[], vendors: Vendor[] }) {
   const [query, setQuery] = useState("");
@@ -43,8 +44,14 @@ export function SpendingInsights({ invoices, vendors }: { invoices: Invoice[], v
   };
 
   return (
-    <div className="relative rounded-lg bg-gradient-to-r from-indigo-600 to-cyan-500 p-px shadow-[0_7px_20px_4px_#4f46e520]">
-      <Card className="rounded-[calc(var(--radius)-1px)] border-0 h-full">
+    <div className="relative">
+      <div
+        className={cn(
+          "absolute -inset-0.5 rounded-lg bg-gradient-to-[135deg] from-indigo-600 via-cyan-500 to-amber-500 opacity-50 blur-lg transition-opacity duration-300",
+          isLoading && "animate-gradient-shift bg-[length:200%_auto] opacity-75"
+        )}
+      ></div>
+      <Card className="relative h-full border-0 hover:shadow-sm hover:translate-y-0">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 bg-gradient-to-r from-indigo-500 to-cyan-500 bg-clip-text text-transparent">
             <Lightbulb className="h-6 w-6 text-indigo-500" />
