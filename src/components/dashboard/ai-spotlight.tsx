@@ -106,7 +106,7 @@ export function AISpotlight({
             )}
           />
 
-          <div className="relative rounded-lg overflow-hidden bg-background/80 backdrop-blur-2xl border border-white/10">
+          <div className="relative rounded-lg overflow-hidden bg-background/80 backdrop-blur-2xl">
             <form onSubmit={handleSubmit}>
               <div className="relative">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
@@ -132,31 +132,37 @@ export function AISpotlight({
                 </Button>
               </div>
             </form>
-            {(isLoading || response) && (
-              <div className="p-6 pt-0 border-t border-white/10 min-h-[150px] animate-fade-in">
-                {isLoading && (
-                  <div className="space-y-3 pt-6">
-                    <Skeleton className="h-5 w-32 bg-white/20" />
-                    <div className="space-y-2 rounded-md">
-                      <Skeleton className="h-4 w-full bg-white/20" />
-                      <Skeleton className="h-4 w-full bg-white/20" />
-                      <Skeleton className="h-4 w-[85%] bg-white/20" />
+            <div className={cn(
+              "grid transition-[grid-template-rows] duration-300 ease-in-out",
+              (isLoading || response) ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+            )}>
+              <div className="overflow-hidden">
+                <div className="border-t border-border/20" />
+                <div className="p-6 min-h-[150px]">
+                  {isLoading && (
+                    <div className="space-y-3">
+                      <Skeleton className="h-5 w-32 bg-muted" />
+                      <div className="space-y-2 rounded-md">
+                        <Skeleton className="h-4 w-full bg-muted" />
+                        <Skeleton className="h-4 w-full bg-muted" />
+                        <Skeleton className="h-4 w-[85%] bg-muted" />
+                      </div>
                     </div>
-                  </div>
-                )}
-                {response && !isLoading && (
-                  <div className="pt-6">
-                    <h3 className="font-semibold mb-2 flex items-center gap-2 text-transparent bg-clip-text bg-gradient-to-r from-apple-ai-pink to-apple-ai-blue">
-                      <Wand2 className="h-5 w-5 text-apple-ai-purple" />
-                      Assistant Response
-                    </h3>
-                    <div className="prose prose-sm max-w-none text-sm text-foreground/80">
-                      <p>{response}</p>
+                  )}
+                  {response && !isLoading && (
+                    <div>
+                      <h3 className="font-semibold mb-2 flex items-center gap-2 text-transparent bg-clip-text bg-gradient-to-r from-apple-ai-pink to-apple-ai-blue">
+                        <Wand2 className="h-5 w-5 text-apple-ai-purple" />
+                        Assistant Response
+                      </h3>
+                      <div className="prose prose-sm max-w-none text-sm text-foreground/80">
+                        <p>{response}</p>
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
-            )}
+            </div>
           </div>
         </div>
       </DialogContent>
