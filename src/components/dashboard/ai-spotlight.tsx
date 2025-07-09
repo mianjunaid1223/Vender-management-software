@@ -90,57 +90,59 @@ export function AISpotlight({
           </button>
         </div>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-2xl p-0 gap-0 overflow-hidden border-none bg-background/80 backdrop-blur-2xl shadow-2xl">
-        <div className="fixed inset-0 -z-20 bg-gradient-to-br from-apple-ai-purple/10 via-transparent to-apple-ai-blue/10"></div>
+      <DialogContent hideCloseButton className="sm:max-w-2xl p-0 gap-0 overflow-hidden border-none bg-transparent shadow-2xl">
+        <div className="fixed inset-0 -z-20 bg-gradient-to-br from-apple-ai-purple/10 via-transparent to-apple-ai-blue/10" />
         <div className={cn(
-          "absolute inset-0 -z-10 rounded-xl bg-gradient-to-r from-apple-ai-purple via-apple-ai-pink to-apple-ai-blue bg-[200%_auto] blur-3xl opacity-40",
+          "absolute inset-0 -z-10 rounded-xl bg-gradient-to-r from-apple-ai-purple via-apple-ai-pink to-apple-ai-blue bg-[200%_auto] blur-3xl opacity-50",
           isLoading && "animate-gradient-shift"
-        )}></div>
-        <form onSubmit={handleSubmit}>
-          <div className="relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-            <Input
-              placeholder="Ask about your vendors, invoices, or spending..."
-              className="h-14 pl-12 text-base border-0 focus-visible:ring-0 shadow-none bg-transparent"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-            />
-            <Button
-              type="submit"
-              size="icon"
-              className="absolute right-4 top-1/2 -translate-y-1/2 bg-transparent hover:bg-white/10"
-              disabled={isLoading || !query}
-            >
-              {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CornerDownLeft className="h-4 w-4" />}
-              <span className="sr-only">Submit</span>
-            </Button>
-          </div>
-        </form>
-        {(isLoading || response) && (
-          <div className="p-6 pt-0 border-t border-white/10">
-            {isLoading && (
-              <div className="space-y-3 pt-6">
-                <Skeleton className="h-5 w-32 bg-white/20" />
-                <div className="space-y-2 rounded-md">
-                  <Skeleton className="h-4 w-full bg-white/20" />
-                  <Skeleton className="h-4 w-full bg-white/20" />
-                  <Skeleton className="h-4 w-[85%] bg-white/20" />
-                </div>
+        )} />
+        <div className="relative rounded-lg overflow-hidden bg-background/80 backdrop-blur-2xl">
+            <form onSubmit={handleSubmit}>
+              <div className="relative">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                <Input
+                  placeholder="Ask about your vendors, invoices, or spending..."
+                  className="h-14 pl-12 text-base border-0 focus-visible:ring-0 shadow-none bg-transparent"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                />
+                <Button
+                  type="submit"
+                  size="icon"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 bg-transparent hover:bg-white/10"
+                  disabled={isLoading || !query}
+                >
+                  {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CornerDownLeft className="h-4 w-4" />}
+                  <span className="sr-only">Submit</span>
+                </Button>
+              </div>
+            </form>
+            {(isLoading || response) && (
+              <div className="p-6 pt-0 border-t border-white/10 animate-fade-in">
+                {isLoading && (
+                  <div className="space-y-3 pt-6">
+                    <Skeleton className="h-5 w-32 bg-white/20" />
+                    <div className="space-y-2 rounded-md">
+                      <Skeleton className="h-4 w-full bg-white/20" />
+                      <Skeleton className="h-4 w-full bg-white/20" />
+                      <Skeleton className="h-4 w-[85%] bg-white/20" />
+                    </div>
+                  </div>
+                )}
+                {response && !isLoading && (
+                  <div className="pt-6">
+                    <h3 className="font-semibold mb-2 flex items-center gap-2 text-transparent bg-clip-text bg-gradient-to-r from-apple-ai-pink to-apple-ai-blue">
+                      <Wand2 className="h-5 w-5 text-apple-ai-purple" />
+                      Assistant Response
+                    </h3>
+                    <div className="prose prose-sm max-w-none text-sm text-foreground/80">
+                      <p>{response}</p>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
-            {response && !isLoading && (
-              <div className="animate-fade-in pt-6">
-                <h3 className="font-semibold mb-2 flex items-center gap-2 text-transparent bg-clip-text bg-gradient-to-r from-apple-ai-pink to-apple-ai-blue">
-                  <Wand2 className="h-5 w-5 text-apple-ai-purple" />
-                  Assistant Response
-                </h3>
-                <div className="prose prose-sm max-w-none text-sm text-foreground/80">
-                  <p>{response}</p>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
+        </div>
       </DialogContent>
     </Dialog>
   );
