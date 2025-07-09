@@ -3,21 +3,16 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { sidebarNavItems } from "@/config/dashboard";
 import type { LucideIcon } from "lucide-react";
 
-type NavItem = {
-    href: string;
-    label: string;
-    icon: LucideIcon;
-};
-
 type DashboardNavProps = {
-    items: NavItem[];
     isMobile?: boolean;
 };
 
-export function DashboardNav({ items, isMobile = false }: DashboardNavProps) {
+export function DashboardNav({ isMobile = false }: DashboardNavProps) {
     const pathname = usePathname();
+    const items = sidebarNavItems;
 
     if (isMobile) {
         return (

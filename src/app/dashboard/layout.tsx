@@ -7,7 +7,6 @@ import { UserNav } from "@/components/user-nav";
 import { Logo } from "@/components/logo";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { getUser } from "@/lib/data";
-import { sidebarNavItems } from "@/config/dashboard";
 import { DashboardNav } from "@/components/dashboard-nav";
 
 export default async function DashboardLayout({ children }: { children: ReactNode }) {
@@ -21,7 +20,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
                         <Logo />
                     </div>
                     <div className="flex-1">
-                        <DashboardNav items={sidebarNavItems} />
+                        <DashboardNav />
                     </div>
                 </div>
             </div>
@@ -42,7 +41,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
                              <div className="flex h-14 items-center border-b px-4">
                                   <Logo />
                              </div>
-                            <DashboardNav items={sidebarNavItems} isMobile />
+                            <DashboardNav isMobile />
                         </SheetContent>
                     </Sheet>
                     <div className="w-full flex-1" />
