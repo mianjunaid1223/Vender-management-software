@@ -76,12 +76,12 @@ export function ProfileForm({ user }: { user: User }) {
               <Avatar className="h-20 w-20 border">
                 <AvatarImage
                   src={user.image}
-                  alt="User avatar"
+                  alt={user.name}
                   data-ai-hint="user avatar"
                 />
                 <AvatarFallback>{user.name?.charAt(0)}</AvatarFallback>
               </Avatar>
-              <Button variant="outline" type="button">
+              <Button variant="outline" type="button" disabled>
                 Change Photo
               </Button>
               <p className="text-sm text-muted-foreground">

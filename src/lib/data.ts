@@ -12,8 +12,7 @@ export const getDb = async () => {
         const client = await clientPromise;
         return client.db('vendorverse');
     } catch (error) {
-        // This will catch the connection error and prevent the app from crashing.
-        // The warning in mongodb.ts is sufficient to inform the user.
+        console.error('Database connection failed:', error);
         return null;
     }
 }
@@ -154,10 +153,13 @@ export async function getUser(): Promise<User> {
 
     try {
         const usersCollection = db.collection('users');
+        // In a real app, you'd find a user based on session/token
         const user = await usersCollection.findOne({});
 
         if (!user) {
-            return defaultUser;
+            // Seed a user if none exists for demonstration
+            await usersCollection.insertOne(defaultUser);
+            return { ...defaultUser, id: defaultUser.id };
         }
 
         return {
@@ -169,6 +171,7 @@ export async function getUser(): Promise<User> {
 
     } catch (error) {
         console.error('Database Error fetching user:', error);
+        // Return default user on error to allow UI to render
         return defaultUser;
     }
 }

@@ -1,4 +1,3 @@
-// Summarize spending trends based on user queries.
 'use server';
 /**
  * @fileOverview An AI agent that summarizes spending trends based on invoice data and user queries.

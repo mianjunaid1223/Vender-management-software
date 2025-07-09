@@ -10,12 +10,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import Link from "next/link"
-
-type User = {
-    name: string;
-    email: string;
-    image: string;
-}
+import type { User } from "@/lib/types"
 
 export function UserNav({ user }: { user: User }) {
   return (
@@ -23,7 +18,7 @@ export function UserNav({ user }: { user: User }) {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-10 w-10 rounded-full">
           <Avatar className="h-10 w-10 border">
-            <AvatarImage src={user.image} alt="User avatar" data-ai-hint="user avatar" />
+            <AvatarImage src={user.image} alt={user.name} data-ai-hint="user avatar" />
             <AvatarFallback>{user.name?.charAt(0)}</AvatarFallback>
           </Avatar>
         </Button>

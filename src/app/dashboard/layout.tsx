@@ -1,7 +1,7 @@
 import { type ReactNode } from "react";
 import Link from "next/link";
 import { PanelLeft } from "lucide-react";
-
+import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetTrigger, SheetContent } from "@/components/ui/sheet";
 import { UserNav } from "@/components/user-nav";
@@ -9,11 +9,10 @@ import { Logo } from "@/components/logo";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { getUser } from "@/lib/data";
 import { sidebarNavItems } from "@/config/dashboard";
+import { DashboardNav } from "@/components/dashboard-nav";
 
 export default async function DashboardLayout({ children }: { children: ReactNode }) {
     const user = await getUser();
-
-    const navItems = sidebarNavItems;
 
     return (
         <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]">
@@ -23,18 +22,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
                         <Logo />
                     </div>
                     <div className="flex-1">
-                        <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
-                            {navItems.map(({ href, label, icon: Icon }) => (
-                                <Link
-                                    key={href}
-                                    href={href}
-                                    className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
-                                >
-                                    <Icon className="h-4 w-4" />
-                                    {label}
-                                </Link>
-                            ))}
-                        </nav>
+                        <DashboardNav items={sidebarNavItems} />
                     </div>
                 </div>
             </div>
@@ -55,18 +43,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
                              <div className="flex h-14 items-center border-b px-4">
                                   <Logo />
                              </div>
-                            <nav className="grid gap-2 p-4 text-base font-medium">
-                                {navItems.map(({ href, label, icon: Icon }) => (
-                                    <Link
-                                        key={href}
-                                        href={href}
-                                        className="flex items-center gap-4 rounded-lg px-3 py-2 text-muted-foreground hover:text-primary"
-                                    >
-                                        <Icon className="h-5 w-5" />
-                                        {label}
-                                    </Link>
-                                ))}
-                            </nav>
+                            <DashboardNav items={sidebarNavItems} isMobile />
                         </SheetContent>
                     </Sheet>
                     <div className="w-full flex-1" />

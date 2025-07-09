@@ -44,31 +44,33 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="container mx-auto px-4 py-20 sm:py-24">
-          <h2 className="text-3xl md:text-4xl font-bold text-center mb-12 font-headline">
-            Core Features
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {features.map((feature, index) => (
-              <Card key={index}>
-                <CardHeader className="flex flex-row items-center gap-4">
-                  <div className="bg-primary/10 text-primary p-3 rounded-full">
-                    <feature.icon className="h-6 w-6" />
-                  </div>
-                  <CardTitle>{feature.title}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground">{feature.description}</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+        <section className="bg-muted/50 py-20 sm:py-24">
+            <div className="container mx-auto px-4">
+            <h2 className="text-3xl md:text-4xl font-bold text-center mb-12 font-headline">
+                Core Features
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                {features.map((feature, index) => (
+                <Card key={index} className="bg-card">
+                    <CardHeader className="flex flex-row items-center gap-4">
+                    <div className="bg-primary/10 text-primary p-3 rounded-full">
+                        <feature.icon className="h-6 w-6" />
+                    </div>
+                    <CardTitle>{feature.title}</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                    <p className="text-muted-foreground">{feature.description}</p>
+                    </CardContent>
+                </Card>
+                ))}
+            </div>
+            </div>
         </section>
       </main>
 
       <footer className="container mx-auto px-4 py-6 border-t">
         <div className="flex flex-col sm:flex-row justify-between items-center">
-          <Logo />
+          <Logo isLanding />
           <p className="text-sm text-muted-foreground mt-4 sm:mt-0">
             © {new Date().getFullYear()} {siteConfig.name}. All rights reserved.
           </p>

@@ -16,6 +16,13 @@ export default async function DashboardPage() {
     const isDbConfigured = clientPromise !== null;
 
     const { invoices, vendors, cardData } = await (async () => {
+        if (!isDbConfigured) {
+          return { 
+            invoices: [], 
+            vendors: [], 
+            cardData: { totalSpend: 0, activeVendors: 0, unpaidInvoices: 0, nextPaymentDue: null } 
+          };
+        }
         const invoicesPromise = fetchInvoices();
         const vendorsPromise = fetchVendors();
         const cardDataPromise = fetchCardData();
@@ -36,7 +43,7 @@ export default async function DashboardPage() {
     if (!nextPaymentDue) return "All caught up!";
     const dueDate = new Date(nextPaymentDue.invoiceDueDate);
     const today = new Date();
-    today.setHours(0,0,0,0); // Set to start of day for accurate comparison
+    today.setHours(0,0,0,0);
     const diffTime = dueDate.getTime() - today.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 

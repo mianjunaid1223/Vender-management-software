@@ -62,6 +62,7 @@ export async function signupUser(values: z.infer<typeof signupFormSchema>) {
       return { success: false, message: "User with this email already exists." };
     }
     
+    // In a real app, you would hash the password
     const { fullName, email, password } = validatedData;
     await usersCollection.insertOne({ name: fullName, email, password, image: `https://placehold.co/100x100.png?text=${fullName.charAt(0)}` });
     
@@ -95,6 +96,7 @@ export async function loginUser(values: z.infer<typeof loginFormSchema>) {
 
         const user = await usersCollection.findOne({ email: validatedData.email });
         
+        // In a real app, you would compare hashed passwords
         if (!user || user.password !== validatedData.password) {
           return { success: false, message: "Invalid email or password." };
         }

@@ -13,7 +13,7 @@ export default function AuthLayout({
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-muted/40 p-4">
        <div className="absolute top-4 left-4">
-         <Logo />
+         <Logo isLanding />
        </div>
        <div className="absolute top-4 right-4">
         <ThemeToggle />
