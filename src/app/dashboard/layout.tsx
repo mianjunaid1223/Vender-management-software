@@ -17,7 +17,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
 
     return (
         <div className="min-h-screen w-full bg-muted/40">
-            <aside className="fixed top-14 left-0 bottom-0 z-10 hidden w-[220px] flex-col border-r bg-background sm:top-[60px] md:flex lg:w-[280px]">
+            <aside className="fixed top-14 left-0 z-10 hidden h-[calc(100vh-3.5rem)] w-[220px] flex-col border-r bg-background md:flex lg:w-[280px] sm:top-[60px] sm:h-[calc(100vh-3.75rem)]">
                 <nav className="flex-1 overflow-auto py-2">
                     <DashboardNav />
                 </nav>
@@ -39,9 +39,9 @@ export default async function DashboardLayout({ children }: { children: ReactNod
                             <div className="flex h-14 items-center border-b px-4">
                                <Logo />
                             </div>
-                            <div className="flex-grow overflow-auto">
+                            <nav className="flex-grow overflow-auto">
                                 <DashboardNav isMobile />
-                            </div>
+                            </nav>
                             <div className="mt-auto border-t p-4">
                                 <ThemeToggle asDropUp={true} />
                             </div>
@@ -50,7 +50,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
                     <Logo />
                 </div>
                 
-                <div className="flex flex-1 justify-center">
+                <div className="flex flex-1 justify-center px-4 md:px-8">
                     <div className="w-full max-w-sm">
                         <AISpotlight user={user} invoices={invoices} vendors={vendors} />
                     </div>
