@@ -2,7 +2,7 @@ import { type ReactNode } from "react";
 import { PanelLeft } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetTrigger, SheetContent } from "@/components/ui/sheet";
+import { Sheet, SheetTrigger, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { UserNav } from "@/components/user-nav";
 import { Logo } from "@/components/logo";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -36,6 +36,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
                             </Button>
                         </SheetTrigger>
                         <SheetContent side="left" className="flex flex-col p-0 sm:max-w-xs">
+                            <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
                             <div className="flex h-14 items-center border-b px-4">
                                <Logo />
                             </div>
