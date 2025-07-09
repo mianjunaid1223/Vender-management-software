@@ -81,7 +81,7 @@ export function AISpotlight({
       <DialogTrigger asChild>
         <div className="relative group">
           <div className="absolute -inset-0.5 bg-gradient-to-r from-apple-ai-pink to-apple-ai-blue rounded-lg blur-lg opacity-40 group-hover:opacity-60 transition duration-300"></div>
-          <button className="relative w-full max-w-sm flex items-center justify-start text-sm h-10 px-4 py-2 text-muted-foreground bg-zinc-900/80 rounded-md border border-transparent">
+          <button className="relative w-full max-w-sm flex items-center justify-start text-sm h-10 px-4 py-2 text-muted-foreground bg-background rounded-md border">
             <Search className="h-4 w-4 mr-2" />
             <span>Ask AI...</span>
             <kbd className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
@@ -112,7 +112,7 @@ export function AISpotlight({
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <Input
                   placeholder="Ask about your vendors, invoices, or spending..."
-                  className="h-14 pl-12 text-base border-0 shadow-none bg-transparent"
+                  className="h-14 pl-12 text-base border-0 shadow-none bg-transparent focus-visible:ring-0"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   disabled={isLoading}
