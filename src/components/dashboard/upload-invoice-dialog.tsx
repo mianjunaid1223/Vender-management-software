@@ -30,6 +30,7 @@ import {
   type ExtractInvoiceDataOutput,
 } from "@/ai/flows/extract-invoice-data";
 import { addInvoice } from "@/app/actions";
+import { cn } from "@/lib/utils";
 
 const formSchema = z.object({
   vendorName: z.string().min(1, "Vendor name is required."),
@@ -165,7 +166,10 @@ export function UploadInvoiceDialog() {
           </DialogDescription>
         </DialogHeader>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
-          <div className="flex flex-col items-center justify-center gap-4 p-6 border-2 border-dashed rounded-lg">
+          <div className={cn(
+              "flex flex-col items-center justify-center gap-4 p-6 border-2 border-dashed rounded-lg transition-colors",
+              isExtracting && "border-primary/50 bg-primary/10 animate-subtle-pulse"
+          )}>
             <Upload className="h-10 w-10 text-muted-foreground" />
             <Input id="invoice-file" type="file" onChange={handleFileChange} className="w-full" disabled={isExtracting || isSubmitting} />
             {file && (

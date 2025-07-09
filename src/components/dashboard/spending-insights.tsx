@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Lightbulb, Loader2 } from "lucide-react";
 import type { Invoice, Vendor } from "@/lib/types";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export function SpendingInsights({ invoices, vendors }: { invoices: Invoice[], vendors: Vendor[] }) {
   const [query, setQuery] = useState("");
@@ -69,14 +70,26 @@ export function SpendingInsights({ invoices, vendors }: { invoices: Invoice[], v
           </Button>
         </CardFooter>
       </form>
-      {summary && (
-        <div className="p-6 pt-0">
-            <h3 className="font-semibold mb-2">Analysis Result:</h3>
-            <div className="prose prose-sm max-w-none rounded-md border bg-muted/50 p-4 text-sm">
-                <p>{summary}</p>
+      <div className="p-6 pt-0">
+        {isLoading && (
+            <div className="space-y-3">
+            <Skeleton className="h-5 w-32" />
+            <div className="space-y-2 rounded-md border p-4">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-[85%]" />
             </div>
-        </div>
-      )}
+            </div>
+        )}
+        {summary && !isLoading && (
+            <div className="animate-fade-in-up">
+                <h3 className="font-semibold mb-2 bg-clip-text text-transparent bg-gradient-to-r from-primary to-foreground/70">Analysis Result:</h3>
+                <div className="prose prose-sm max-w-none rounded-md border bg-muted/50 p-4 text-sm">
+                    <p>{summary}</p>
+                </div>
+            </div>
+        )}
+      </div>
     </Card>
   );
 }
