@@ -94,9 +94,8 @@ export function AISpotlight({
         hideCloseButton
         className="sm:max-w-2xl p-0 gap-0 border-none bg-transparent shadow-none overflow-visible"
       >
-        <DialogTitle className="sr-only">AI Spotlight</DialogTitle>
         <div className="relative">
-          <div
+           <div
             className={cn(
               'absolute -top-[5%] -left-[5%] h-[110%] w-[110%] -z-10 rounded-2xl',
               'bg-gradient-to-br from-apple-ai-blue via-apple-ai-purple to-apple-ai-pink',
@@ -106,13 +105,14 @@ export function AISpotlight({
             )}
           />
 
-          <div className="relative rounded-lg overflow-hidden bg-background">
+          <div className="relative rounded-lg overflow-hidden bg-background border border-border/20 shadow-2xl">
+            <DialogTitle className="sr-only">AI Spotlight</DialogTitle>
             <form onSubmit={handleSubmit}>
               <div className="relative">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <Input
                   placeholder="Ask about your vendors, invoices, or spending..."
-                  className="h-14 pl-12 text-base border-0 focus-visible:ring-0 shadow-none bg-transparent"
+                  className="h-14 pl-12 text-base border-0 shadow-none bg-transparent"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   disabled={isLoading}
@@ -133,11 +133,10 @@ export function AISpotlight({
               </div>
             </form>
             <div className={cn(
-              "grid transition-[grid-template-rows] duration-300 ease-in-out",
-              (isLoading || response) ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+              "grid transition-all duration-300 ease-in-out",
+              (isLoading || response) ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
             )}>
               <div className="overflow-hidden">
-                <div className="border-t border-border" />
                 <div className="p-6 min-h-[150px]">
                   {isLoading && (
                     <div className="space-y-3">
