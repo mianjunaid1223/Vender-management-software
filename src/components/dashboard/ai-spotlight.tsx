@@ -5,7 +5,6 @@ import {
   Dialog,
   DialogContent,
   DialogTrigger,
-  DialogOverlay,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,6 +40,14 @@ export function AISpotlight({
     document.addEventListener("keydown", down);
     return () => document.removeEventListener("keydown", down);
   }, []);
+  
+  const handleOpenChange = (isOpen: boolean) => {
+    setOpen(isOpen);
+    if (!isOpen) {
+      setQuery("");
+      setResponse("");
+    }
+  }
 
   const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -70,25 +77,23 @@ export function AISpotlight({
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <div className="relative group">
-          <div className="absolute -inset-0.5 bg-gradient-to-r from-apple-ai-pink to-apple-ai-blue rounded-lg blur-sm opacity-50 group-hover:opacity-75 transition duration-200"></div>
-          <Button
-            variant="outline"
-            className="relative w-full max-w-sm justify-start text-sm text-muted-foreground"
-          >
+          <div className="absolute -inset-0.5 bg-gradient-to-r from-apple-ai-pink to-apple-ai-blue rounded-lg blur-lg opacity-40 group-hover:opacity-60 transition duration-300"></div>
+          <button className="relative w-full max-w-sm flex items-center justify-start text-sm h-10 px-4 py-2 text-muted-foreground bg-zinc-900/80 rounded-md border border-transparent">
             <Search className="h-4 w-4 mr-2" />
             <span>Ask AI...</span>
             <kbd className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
               <span className="text-xs">⌘</span>K
             </kbd>
-          </Button>
+          </button>
         </div>
       </DialogTrigger>
       <DialogContent className="sm:max-w-2xl p-0 gap-0 overflow-hidden border-none bg-background/80 backdrop-blur-2xl shadow-2xl">
+        <div className="fixed inset-0 -z-20 bg-gradient-to-br from-apple-ai-purple/10 via-transparent to-apple-ai-blue/10"></div>
         <div className={cn(
-          "absolute inset-0 -z-10 rounded-xl bg-gradient-to-r from-apple-ai-purple via-apple-ai-pink to-apple-ai-blue bg-[200%_auto] blur-2xl opacity-30",
+          "absolute inset-0 -z-10 rounded-xl bg-gradient-to-r from-apple-ai-purple via-apple-ai-pink to-apple-ai-blue bg-[200%_auto] blur-3xl opacity-40",
           isLoading && "animate-gradient-shift"
         )}></div>
         <form onSubmit={handleSubmit}>
