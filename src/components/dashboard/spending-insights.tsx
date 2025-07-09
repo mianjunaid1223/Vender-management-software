@@ -43,53 +43,54 @@ export function SpendingInsights({ invoices, vendors }: { invoices: Invoice[], v
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Lightbulb className="h-6 w-6 text-primary" />
-          AI Spending Insights
-        </CardTitle>
-        <CardDescription>
-          Ask questions about your spending trends and get AI-powered answers. 
-          Try: 'Show unpaid invoices from last month' or 'Which vendor do I spend the most with?'.
-        </CardDescription>
-      </CardHeader>
-      <form onSubmit={handleSubmit}>
-        <CardContent>
-          <Textarea
-            placeholder="e.g., 'Summarize my spending for July 2024'"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            disabled={isLoading}
-          />
-        </CardContent>
-        <CardFooter className="border-t px-6 py-4">
-          <Button type="submit" disabled={isLoading || !query}>
-            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Generate Insights
-          </Button>
-        </CardFooter>
-      </form>
-      <div className="p-6 pt-0">
-        {isLoading && (
-            <div className="space-y-3">
-            <Skeleton className="h-5 w-32" />
-            <div className="space-y-2 rounded-md border p-4">
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-[85%]" />
-            </div>
-            </div>
-        )}
-        {summary && !isLoading && (
-            <div className="animate-fade-in-up">
-                <h3 className="font-semibold mb-2 bg-clip-text text-transparent bg-gradient-to-r from-primary to-foreground/70">Analysis Result:</h3>
-                <div className="prose prose-sm max-w-none rounded-md border bg-muted/50 p-4 text-sm">
-                    <p>{summary}</p>
-                </div>
-            </div>
-        )}
-      </div>
-    </Card>
+    <div className="relative rounded-lg bg-gradient-to-r from-indigo-600 to-cyan-500 p-px shadow-[0_7px_20px_4px_#4f46e520]">
+      <Card className="rounded-[calc(var(--radius)-1px)] border-0 h-full">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 bg-gradient-to-r from-indigo-500 to-cyan-500 bg-clip-text text-transparent">
+            <Lightbulb className="h-6 w-6 text-indigo-500" />
+            AI Spending Insights
+          </CardTitle>
+          <CardDescription>
+            Ask questions about your spending trends and get AI-powered answers.
+          </CardDescription>
+        </CardHeader>
+        <form onSubmit={handleSubmit}>
+          <CardContent>
+            <Textarea
+              placeholder="e.g., 'Summarize my spending for July 2024'"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              disabled={isLoading}
+            />
+          </CardContent>
+          <CardFooter>
+            <Button type="submit" disabled={isLoading || !query} className="w-full bg-gradient-to-r from-indigo-600 to-cyan-600 text-white hover:opacity-90 transition-opacity">
+              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Generate Insights
+            </Button>
+          </CardFooter>
+        </form>
+        <div className="p-6 pt-0">
+          {isLoading && (
+              <div className="space-y-3">
+              <Skeleton className="h-5 w-32" />
+              <div className="space-y-2 rounded-md border p-4">
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-[85%]" />
+              </div>
+              </div>
+          )}
+          {summary && !isLoading && (
+              <div className="animate-fade-in">
+                  <h3 className="font-semibold mb-2 bg-clip-text text-transparent bg-gradient-to-r from-primary to-foreground/70">Analysis Result:</h3>
+                  <div className="prose prose-sm max-w-none rounded-md border bg-muted/50 p-4 text-sm">
+                      <p>{summary}</p>
+                  </div>
+              </div>
+          )}
+        </div>
+      </Card>
+    </div>
   );
 }

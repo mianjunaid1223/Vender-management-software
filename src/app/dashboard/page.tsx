@@ -10,7 +10,7 @@ import { SpendingInsights } from "@/components/dashboard/spending-insights";
 import { fetchCardData, fetchInvoices, fetchVendors } from "@/lib/data";
 import clientPromise from "@/lib/mongodb";
 import { DbConfigWarning } from "@/components/db-config-warning";
-
+import { RecentInvoices } from "@/components/dashboard/recent-invoices";
 
 export default async function DashboardPage() {
     const isDbConfigured = clientPromise !== null;
@@ -57,47 +57,52 @@ export default async function DashboardPage() {
       title: "Total Spend (Paid)",
       value: formatCurrency(totalSpend),
       icon: <DollarSign className="h-4 w-4 text-muted-foreground" />,
-      change: "All-time paid invoices",
+      description: "All-time paid invoices",
     },
     {
       title: "Active Vendors",
       value: `+${activeVendors}`,
       icon: <Users className="h-4 w-4 text-muted-foreground" />,
-      change: "Total vendors in system",
+      description: "Total vendors in system",
     },
     {
       title: "Unpaid Invoices",
       value: `${unpaidInvoices}`,
       icon: <Receipt className="h-4 w-4 text-muted-foreground" />,
-      change: `${cardData.unpaidInvoices > 0 ? 'Pending payments' : 'All caught up!'}`,
+      description: `${cardData.unpaidInvoices > 0 ? 'Pending payments' : 'All caught up!'}`,
     },
     {
       title: "Next Payment Due",
       value: nextPaymentDue ? formatCurrency(nextPaymentDue.invoiceAmount) : "N/A",
       icon: <CreditCard className="h-4 w-4 text-muted-foreground" />,
-      change: getNextPaymentDueText(),
+      description: getNextPaymentDueText(),
     },
   ];
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6 animate-fade-in">
       {!isDbConfigured && <DbConfigWarning />}
-      <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-4">
-        {summaryCards.map((card) => (
-          <Card key={card.title}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">{card.title}</CardTitle>
-              {card.icon}
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{card.value}</div>
-              <p className="text-xs text-muted-foreground">{card.change}</p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-      <div>
-        <SpendingInsights invoices={invoices} vendors={vendors} />
+      <div className="grid gap-6 lg:grid-cols-3">
+        <div className="lg:col-span-2 space-y-6">
+            <div className="grid gap-6 md:grid-cols-2">
+                {summaryCards.map((card) => (
+                <Card key={card.title}>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">{card.title}</CardTitle>
+                    {card.icon}
+                    </CardHeader>
+                    <CardContent>
+                    <div className="text-2xl font-bold">{card.value}</div>
+                    <p className="text-xs text-muted-foreground">{card.description}</p>
+                    </CardContent>
+                </Card>
+                ))}
+            </div>
+            <RecentInvoices data={invoices} />
+        </div>
+        <div className="lg:col-span-1">
+            <SpendingInsights invoices={invoices} vendors={vendors} />
+        </div>
       </div>
     </div>
   );
