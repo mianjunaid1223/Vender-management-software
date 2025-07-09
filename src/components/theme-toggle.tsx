@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -15,7 +16,35 @@ import { cn } from "@/lib/utils"
 
 export function ThemeToggle({ asDropUp = false }: { asDropUp?: boolean }) {
   const { setTheme, theme } = useTheme()
+  const [mounted, setMounted] = React.useState(false)
+
+  // useEffect only runs on the client, so now we can safely show the UI
+  React.useEffect(() => {
+    setMounted(true)
+  }, [])
+
   const currentThemeText = theme ? theme.charAt(0).toUpperCase() + theme.slice(1) : "System";
+
+  if (!mounted) {
+    // To prevent hydration mismatch, render a placeholder on the server
+    // and initial client render.
+    if (asDropUp) {
+      return (
+        <Button variant="outline" className="w-full justify-between" disabled>
+          <div className="flex items-center gap-2">
+            <Sun className="h-[1.2rem] w-[1.2rem]" />
+            <span>Theme</span>
+          </div>
+        </Button>
+      );
+    }
+    return (
+      <Button variant="outline" size="icon" disabled>
+        <Sun className="h-[1.2rem] w-[1.2rem]" />
+        <span className="sr-only">Toggle theme</span>
+      </Button>
+    );
+  }
 
   return (
     <DropdownMenu>
