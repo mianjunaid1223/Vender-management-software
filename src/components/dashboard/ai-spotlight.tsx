@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import {
   Dialog,
   DialogContent,
+  DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -91,6 +92,7 @@ export function AISpotlight({
         </div>
       </DialogTrigger>
       <DialogContent hideCloseButton className="sm:max-w-2xl p-0 gap-0 overflow-hidden border-none bg-transparent shadow-2xl">
+        <DialogTitle className="sr-only">AI Spotlight</DialogTitle>
         <div className="fixed inset-0 -z-20 bg-gradient-to-br from-apple-ai-purple/10 via-transparent to-apple-ai-blue/10" />
         <div className={cn(
           "absolute inset-0 -z-10 rounded-xl bg-gradient-to-r from-apple-ai-purple via-apple-ai-pink to-apple-ai-blue bg-[200%_auto] blur-3xl opacity-50",
