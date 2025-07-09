@@ -1,7 +1,6 @@
 import { type ReactNode } from "react";
 import Link from "next/link";
 import { PanelLeft } from "lucide-react";
-import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetTrigger, SheetContent } from "@/components/ui/sheet";
 import { UserNav } from "@/components/user-nav";
