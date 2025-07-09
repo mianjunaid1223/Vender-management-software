@@ -2,4 +2,4 @@ import { config } from 'dotenv';
 config();
 
 import '@/ai/flows/extract-invoice-data';
-import '@/ai/flows/summarize-spending-trends';
+import '@/ai/flows/ai-assistant-flow';

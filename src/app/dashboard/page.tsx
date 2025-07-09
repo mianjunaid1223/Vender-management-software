@@ -6,8 +6,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { DollarSign, Receipt, Users, CreditCard } from "lucide-react";
-import { SpendingInsights } from "@/components/dashboard/spending-insights";
-import { fetchCardData, fetchInvoices, fetchVendors } from "@/lib/data";
+import { fetchCardData, fetchInvoices } from "@/lib/data";
 import clientPromise from "@/lib/mongodb";
 import { DbConfigWarning } from "@/components/db-config-warning";
 import { RecentInvoices } from "@/components/dashboard/recent-invoices";
@@ -15,19 +14,17 @@ import { RecentInvoices } from "@/components/dashboard/recent-invoices";
 export default async function DashboardPage() {
     const isDbConfigured = clientPromise !== null;
 
-    const { invoices, vendors, cardData } = await (async () => {
+    const { invoices, cardData } = await (async () => {
         if (!isDbConfigured) {
           return { 
             invoices: [], 
-            vendors: [], 
             cardData: { totalSpend: 0, activeVendors: 0, unpaidInvoices: 0, nextPaymentDue: null } 
           };
         }
         const invoicesPromise = fetchInvoices();
-        const vendorsPromise = fetchVendors();
         const cardDataPromise = fetchCardData();
-        const [invoices, vendors, cardData] = await Promise.all([invoicesPromise, vendorsPromise, cardDataPromise]);
-        return { invoices, vendors, cardData };
+        const [invoices, cardData] = await Promise.all([invoicesPromise, cardDataPromise]);
+        return { invoices, cardData };
     })();
 
   const { totalSpend, activeVendors, unpaidInvoices, nextPaymentDue } = cardData;
@@ -82,27 +79,22 @@ export default async function DashboardPage() {
   return (
     <div className="flex flex-col gap-6 animate-fade-in">
       {!isDbConfigured && <DbConfigWarning />}
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2 space-y-6">
-            <div className="grid gap-6 md:grid-cols-2">
-                {summaryCards.map((card) => (
-                <Card key={card.title}>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">{card.title}</CardTitle>
-                    {card.icon}
-                    </CardHeader>
-                    <CardContent>
-                    <div className="text-2xl font-bold">{card.value}</div>
-                    <p className="text-xs text-muted-foreground">{card.description}</p>
-                    </CardContent>
-                </Card>
-                ))}
-            </div>
-            <RecentInvoices data={invoices} />
+      <div className="grid gap-6">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+            {summaryCards.map((card) => (
+            <Card key={card.title}>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">{card.title}</CardTitle>
+                {card.icon}
+                </CardHeader>
+                <CardContent>
+                <div className="text-2xl font-bold">{card.value}</div>
+                <p className="text-xs text-muted-foreground">{card.description}</p>
+                </CardContent>
+            </Card>
+            ))}
         </div>
-        <div className="lg:col-span-1">
-            <SpendingInsights invoices={invoices} vendors={vendors} />
-        </div>
+        <RecentInvoices data={invoices} />
       </div>
     </div>
   );

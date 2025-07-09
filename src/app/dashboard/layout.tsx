@@ -1,16 +1,20 @@
 import { type ReactNode } from "react";
 import Link from "next/link";
-import { PanelLeft } from "lucide-react";
+import { PanelLeft, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetTrigger, SheetContent } from "@/components/ui/sheet";
 import { UserNav } from "@/components/user-nav";
 import { Logo } from "@/components/logo";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { getUser } from "@/lib/data";
+import { getUser, fetchInvoices, fetchVendors } from "@/lib/data";
 import { DashboardNav } from "@/components/dashboard-nav";
+import { AISpotlight } from "@/components/dashboard/ai-spotlight";
+import { Input } from "@/components/ui/input";
 
 export default async function DashboardLayout({ children }: { children: ReactNode }) {
     const user = await getUser();
+    const invoices = await fetchInvoices();
+    const vendors = await fetchVendors();
 
     return (
         <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]">
@@ -44,7 +48,9 @@ export default async function DashboardLayout({ children }: { children: ReactNod
                             <DashboardNav isMobile />
                         </SheetContent>
                     </Sheet>
-                    <div className="w-full flex-1" />
+                    <div className="w-full flex-1">
+                       <AISpotlight user={user} invoices={invoices} vendors={vendors} />
+                    </div>
                     <ThemeToggle />
                     <UserNav user={user} />
                 </header>
