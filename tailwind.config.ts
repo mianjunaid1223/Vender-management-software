@@ -82,14 +82,6 @@ const config: Config = {
           '0%': { opacity: '0' },
           '100%': { opacity: '1' },
         },
-        "fade-in-up": {
-          '0%': { opacity: '0', transform: 'translateY(10px)' },
-          '100%': { opacity: '1', transform: 'translateY(0)' },
-        },
-        "subtle-pulse": {
-            '0%, 100%': { opacity: '1' },
-            '50%': { opacity: '0.8' },
-        },
         "gradient-shift": {
           '0%, 100%': { 'background-position': '0% 50%' },
           '50%': { 'background-position': '100% 50%' },
@@ -99,8 +91,6 @@ const config: Config = {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         "fade-in": "fade-in 0.3s ease-in",
-        "fade-in-up": "fade-in-up 0.5s ease-out forwards",
-        "subtle-pulse": "subtle-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
         "gradient-shift": "gradient-shift 3s ease infinite",
       },
     },

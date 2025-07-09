@@ -47,15 +47,17 @@ export function SpendingInsights({ invoices, vendors }: { invoices: Invoice[], v
     <div className="relative">
       <div
         className={cn(
-          "absolute -inset-0.5 rounded-lg bg-gradient-to-[135deg] from-indigo-600 via-cyan-500 to-amber-500 opacity-50 blur-lg transition-opacity duration-300",
+          "absolute -inset-0.5 rounded-lg bg-gradient-to-br from-pink-500 via-red-500 to-yellow-500 opacity-50 blur-lg transition-opacity duration-300",
           isLoading && "animate-gradient-shift bg-[length:200%_auto] opacity-75"
         )}
       ></div>
       <Card className="relative h-full border-0 hover:shadow-sm hover:translate-y-0">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 bg-gradient-to-r from-indigo-500 to-cyan-500 bg-clip-text text-transparent">
-            <Lightbulb className="h-6 w-6 text-indigo-500" />
-            AI Spending Insights
+          <CardTitle className="flex items-center gap-2">
+            <Lightbulb className="h-6 w-6 text-yellow-500" />
+            <span className="bg-gradient-to-r from-red-500 to-orange-500 bg-clip-text text-transparent">
+              AI Spending Insights
+            </span>
           </CardTitle>
           <CardDescription>
             Ask questions about your spending trends and get AI-powered answers.
@@ -71,7 +73,7 @@ export function SpendingInsights({ invoices, vendors }: { invoices: Invoice[], v
             />
           </CardContent>
           <CardFooter>
-            <Button type="submit" disabled={isLoading || !query} className="w-full bg-gradient-to-r from-indigo-600 to-cyan-600 text-white hover:opacity-90 transition-opacity">
+            <Button type="submit" disabled={isLoading || !query} className="w-full bg-gradient-to-r from-red-600 to-orange-500 text-white hover:opacity-90 transition-opacity">
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Generate Insights
             </Button>
