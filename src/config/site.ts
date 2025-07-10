@@ -1,28 +1,48 @@
-import { Zap, BrainCircuit, CheckCircle, Rocket } from "lucide-react";
+import { Shield, TrendingUp, Users, FileText, AlertTriangle, Bot, Settings, Workflow } from "lucide-react";
 
 export const siteConfig = {
     name: "VendorVerse",
-    description: "Streamline Your Vendor Management & Invoice Tracking",
+    description: "Complete Vendor Management & Risk Intelligence Platform",
     features: [
         {
-          icon: Zap,
-          title: "Vendor Management",
-          description: "Clean dashboard to manage vendors: add, edit, delete vendor profiles.",
+          icon: Users,
+          title: "Centralized Vendor Database",
+          description: "Comprehensive vendor profiles with performance history, compliance documents, and risk assessments.",
         },
         {
-          icon: BrainCircuit,
-          title: "AI Invoice Data Extraction",
-          description: "Automatically extract key data from uploaded invoices using AI.",
+          icon: Workflow,
+          title: "Automated Onboarding",
+          description: "Streamlined vendor registration with automated compliance checks and validation workflows.",
         },
         {
-          icon: CheckCircle,
-          title: "Invoice Tracking",
-          description: "Upload and track invoices with key details like amount, due date, and status.",
+          icon: TrendingUp,
+          title: "Performance Analytics",
+          description: "Real-time KPI tracking for delivery, quality, and financial performance with actionable insights.",
         },
         {
-          icon: Rocket,
-          title: "AI Spending Insights",
-          description: "AI-driven insights on spending trends and vendor performance.",
+          icon: FileText,
+          title: "Contract & Compliance Management",
+          description: "Automated contract lifecycle management with renewal alerts and compliance monitoring.",
+        },
+        {
+          icon: AlertTriangle,
+          title: "Risk Intelligence",
+          description: "Advanced risk flagging and assessment with proactive alerts for compliance and performance issues.",
+        },
+        {
+          icon: Shield,
+          title: "Audit & Security",
+          description: "Tamper-proof audit trails and secure document management for regulatory compliance.",
+        },
+        {
+          icon: Bot,
+          title: "AI-Powered Insights",
+          description: "Context-aware AI assistant providing intelligent recommendations and automated communications.",
+        },
+        {
+          icon: Settings,
+          title: "Business Context Integration",
+          description: "Customizable workflows and settings that adapt to your industry and business priorities.",
         },
     ]
 }
