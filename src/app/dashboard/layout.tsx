@@ -16,7 +16,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
     const vendors = await fetchVendors();
 
     return (
-        <div className="min-h-screen w-full bg-muted/40">
+        <div className="min-h-screen w-full bg-muted/40" suppressHydrationWarning>
             <aside className="fixed top-14 left-0 z-10 hidden h-[calc(100vh-3.5rem)] w-[220px] flex-col border-r bg-background md:flex lg:w-[280px] sm:top-[60px] sm:h-[calc(100vh-3.75rem)]">
                 <nav className="flex-1 overflow-auto py-2">
                     <DashboardNav />

@@ -29,11 +29,13 @@ export async function fetchInvoices(): Promise<Invoice[]> {
             .sort({ invoiceDate: -1 })
             .toArray();
         
-        return invoices.map(invoice => ({
-            ...invoice,
-            id: invoice._id.toString(),
-            _id: undefined,
-        })) as unknown as Invoice[];
+        return invoices.map(invoice => {
+            const { _id, ...rest } = invoice;
+            return {
+                ...rest,
+                id: _id.toString(),
+            };
+        }) as Invoice[];
 
     } catch (error) {
         console.error('Database Error:', error);
@@ -56,11 +58,13 @@ export async function fetchVendors(): Promise<Vendor[]> {
             .sort({ name: 1 })
             .toArray();
 
-        return vendors.map(vendor => ({
-            ...vendor,
-            id: vendor._id.toString(),
-            _id: undefined,
-        })) as unknown as Vendor[];
+        return vendors.map(vendor => {
+            const { _id, ...rest } = vendor;
+            return {
+                ...rest,
+                id: _id.toString(),
+            };
+        }) as Vendor[];
     } catch (error) {
         console.error('Database Error:', error);
         if (error instanceof Error) {
@@ -112,11 +116,12 @@ export async function fetchCardData() {
         const unpaidInvoices = data[2];
         let nextPaymentDue = data[3][0] || null;
 
+        let nextPaymentDueFormatted = null;
         if (nextPaymentDue) {
-            nextPaymentDue = {
-                ...nextPaymentDue,
-                id: nextPaymentDue._id.toString(),
-                _id: undefined,
+            const { _id, ...rest } = nextPaymentDue;
+            nextPaymentDueFormatted = {
+                ...rest,
+                id: _id.toString(),
             };
         }
 
@@ -124,7 +129,7 @@ export async function fetchCardData() {
             totalSpend,
             activeVendors,
             unpaidInvoices,
-            nextPaymentDue,
+            nextPaymentDue: nextPaymentDueFormatted,
         };
     } catch (error) {
         console.error('Database Error:', error);
@@ -167,7 +172,7 @@ export async function getUser(): Promise<User> {
             name: user.name,
             email: user.email,
             image: user.image || 'https://placehold.co/100x100.png',
-        };
+        } as User;
 
     } catch (error) {
         console.error('Database Error fetching user:', error);
