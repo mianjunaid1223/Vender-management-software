@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -69,7 +69,11 @@ export function InvoiceDialog({
         paymentTerms: 'Net 30',
         paymentMethod: 'Bank Transfer',
         taxes: 0,
+        taxRate: 0,
+        taxType: 'percentage',
         discounts: 0,
+        discountRate: 0,
+        discountType: 'percentage',
         subtotal: 0,
         totalAmount: 0,
         seller: {
@@ -135,12 +139,53 @@ export function InvoiceDialog({
 
   const calculateTotals = () => {
     const subtotal = items.reduce((sum, item) => sum + item.total, 0);
-    const taxes = formData.taxes || 0;
-    const discounts = formData.discounts || 0;
-    const totalAmount = subtotal + taxes - discounts;
     
-    return { subtotal, totalAmount };
+    // Calculate tax amount
+    let taxAmount = 0;
+    if (formData.taxType === 'percentage' && formData.taxRate) {
+      taxAmount = (subtotal * formData.taxRate) / 100;
+    } else {
+      taxAmount = formData.taxes || 0;
+    }
+    
+    // Calculate discount amount
+    let discountAmount = 0;
+    if (formData.discountType === 'percentage' && formData.discountRate) {
+      discountAmount = (subtotal * formData.discountRate) / 100;
+    } else {
+      discountAmount = formData.discounts || 0;
+    }
+    
+    const totalAmount = subtotal + taxAmount - discountAmount;
+    
+    return { subtotal, totalAmount, taxAmount, discountAmount };
   };
+
+  // Use useMemo to calculate totals and update formData when dependencies change
+  const totals = useMemo(() => {
+    const calculated = calculateTotals();
+    
+    // Update formData with calculated amounts (only if values have changed)
+    setFormData(prev => {
+      if (
+        prev.subtotal !== calculated.subtotal ||
+        prev.taxes !== calculated.taxAmount ||
+        prev.discounts !== calculated.discountAmount ||
+        prev.totalAmount !== calculated.totalAmount
+      ) {
+        return {
+          ...prev,
+          subtotal: calculated.subtotal,
+          taxes: calculated.taxAmount,
+          discounts: calculated.discountAmount,
+          totalAmount: calculated.totalAmount
+        };
+      }
+      return prev;
+    });
+    
+    return calculated;
+  }, [items, formData.taxType, formData.taxRate, formData.taxes, formData.discountType, formData.discountRate, formData.discounts]);
 
   const handleVendorSelect = (vendorId: string) => {
     const vendor = vendors.find(v => v.id === vendorId);
@@ -204,15 +249,13 @@ export function InvoiceDialog({
   };
 
   const handleSubmit = () => {
-    const { subtotal, totalAmount } = calculateTotals();
-    
     const invoiceData: Partial<Invoice> = {
       ...formData,
       items,
       customFields,
-      subtotal,
-      totalAmount,
-      invoiceAmount: totalAmount, // For backward compatibility
+      subtotal: totals.subtotal,
+      totalAmount: totals.totalAmount,
+      invoiceAmount: totals.totalAmount, // For backward compatibility
       updatedAt: new Date().toISOString(),
       createdAt: invoice?.createdAt || new Date().toISOString(),
       createdBy: invoice?.createdBy || 'current-user'
@@ -228,8 +271,6 @@ export function InvoiceDialog({
       setOpen(false);
     }
   };
-
-  const totals = calculateTotals();
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -584,27 +625,124 @@ export function InvoiceDialog({
                     <span>Subtotal:</span>
                     <span>${totals.subtotal.toFixed(2)}</span>
                   </div>
-                  <div className="flex justify-between items-center">
-                    <Label>Taxes:</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={formData.taxes || 0}
-                      onChange={(e) => setFormData(prev => ({ ...prev, taxes: parseFloat(e.target.value) || 0 }))}
-                      className="w-24"
-                      disabled={mode === 'view'}
-                    />
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <Label>Discounts:</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={formData.discounts || 0}
-                      onChange={(e) => setFormData(prev => ({ ...prev, discounts: parseFloat(e.target.value) || 0 }))}
-                      className="w-24"
-                      disabled={mode === 'view'}
-                    />
+                  <div className="space-y-3">
+                    {/* Tax Section */}
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <Label>Tax:</Label>
+                        <Select 
+                          value={formData.taxType || 'fixed'} 
+                          onValueChange={(value: 'percentage' | 'fixed') => 
+                            setFormData(prev => ({ 
+                              ...prev, 
+                              taxType: value,
+                              taxes: 0,
+                              taxRate: 0 
+                            }))
+                          }
+                          disabled={mode === 'view'}
+                        >
+                          <SelectTrigger className="w-24">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="fixed">$</SelectItem>
+                            <SelectItem value="percentage">%</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-muted-foreground">
+                          {formData.taxType === 'percentage' ? 'Tax Rate (%)' : 'Tax Amount ($)'}
+                        </span>
+                        <div className="flex items-center gap-1">
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={formData.taxType === 'percentage' ? (formData.taxRate || 0) : (formData.taxes || 0)}
+                            onChange={(e) => {
+                              const value = parseFloat(e.target.value) || 0;
+                              if (formData.taxType === 'percentage') {
+                                setFormData(prev => ({ ...prev, taxRate: value }));
+                              } else {
+                                setFormData(prev => ({ ...prev, taxes: value }));
+                              }
+                            }}
+                            className="w-20"
+                            disabled={mode === 'view'}
+                          />
+                          <span className="text-sm text-muted-foreground w-6">
+                            {formData.taxType === 'percentage' ? '%' : '$'}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span>Tax Amount:</span>
+                        <span className="text-blue-600 font-medium">
+                          ${totals.taxAmount?.toFixed(2) || '0.00'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <Separator />
+
+                    {/* Discount Section */}
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <Label>Discount:</Label>
+                        <Select 
+                          value={formData.discountType || 'fixed'} 
+                          onValueChange={(value: 'percentage' | 'fixed') => 
+                            setFormData(prev => ({ 
+                              ...prev, 
+                              discountType: value,
+                              discounts: 0,
+                              discountRate: 0 
+                            }))
+                          }
+                          disabled={mode === 'view'}
+                        >
+                          <SelectTrigger className="w-24">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="fixed">$</SelectItem>
+                            <SelectItem value="percentage">%</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-muted-foreground">
+                          {formData.discountType === 'percentage' ? 'Discount Rate (%)' : 'Discount Amount ($)'}
+                        </span>
+                        <div className="flex items-center gap-1">
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={formData.discountType === 'percentage' ? (formData.discountRate || 0) : (formData.discounts || 0)}
+                            onChange={(e) => {
+                              const value = parseFloat(e.target.value) || 0;
+                              if (formData.discountType === 'percentage') {
+                                setFormData(prev => ({ ...prev, discountRate: value }));
+                              } else {
+                                setFormData(prev => ({ ...prev, discounts: value }));
+                              }
+                            }}
+                            className="w-20"
+                            disabled={mode === 'view'}
+                          />
+                          <span className="text-sm text-muted-foreground w-6">
+                            {formData.discountType === 'percentage' ? '%' : '$'}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span>Discount Amount:</span>
+                        <span className="text-red-600 font-medium">
+                          -${totals.discountAmount?.toFixed(2) || '0.00'}
+                        </span>
+                      </div>
+                    </div>
                   </div>
                   <Separator />
                   <div className="flex justify-between text-lg font-semibold">

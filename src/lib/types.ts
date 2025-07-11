@@ -72,11 +72,15 @@ export type Invoice = {
   items: InvoiceItem[];
   subtotal: number;
   taxes: number;
+  taxRate?: number; // Tax rate as percentage (e.g., 8.5 for 8.5%)
+  taxType?: 'percentage' | 'fixed'; // Type of tax calculation
   discounts: number;
+  discountRate?: number; // Discount rate as percentage
+  discountType?: 'percentage' | 'fixed'; // Type of discount calculation
   totalAmount: number;
   
   // Status and tracking
-  status: 'Draft' | 'Sent' | 'Paid' | 'Unpaid' | 'Overdue' | 'Cancelled';
+  status: 'Draft' | 'Sent' | 'Paid' | 'Unpaid' | 'Pending' | 'Overdue' | 'Cancelled';
   paymentStatus: 'Pending' | 'Partial' | 'Paid' | 'Overdue';
   
   // Payment information

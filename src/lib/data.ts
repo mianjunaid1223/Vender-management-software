@@ -4,25 +4,23 @@ import clientPromise from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
 import type { Invoice, Vendor, User, Contract } from '@/lib/types';
 import { unstable_noStore as noStore } from 'next/cache';
-import { MOCK_INVOICES, MOCK_VENDORS, MOCK_CONTRACTS } from '@/lib/mock-data';
 
 export const getDb = async () => {
     if (!clientPromise) {
-        return null;
+        throw new Error('MongoDB client not configured. Please check your MONGODB_URI environment variable.');
     }
     try {
         const client = await clientPromise;
         return client.db('vendorverse');
     } catch (error) {
         console.error('Database connection failed:', error);
-        return null;
+        throw new Error('Failed to connect to database. Please check your MongoDB connection.');
     }
 }
 
 export async function fetchInvoices(): Promise<Invoice[]> {
     noStore();
     const db = await getDb();
-    if (!db) return MOCK_INVOICES;
 
     try {
         const invoices = await db
@@ -41,15 +39,13 @@ export async function fetchInvoices(): Promise<Invoice[]> {
 
     } catch (error) {
         console.error('Database Error:', error);
-        // Return mock data as fallback
-        return MOCK_INVOICES;
+        throw new Error('Failed to fetch invoices from database.');
     }
 }
 
 export async function fetchVendors(): Promise<Vendor[]> {
     noStore();
     const db = await getDb();
-    if (!db) return MOCK_VENDORS;
     
     try {
         const vendors = await db
@@ -67,21 +63,13 @@ export async function fetchVendors(): Promise<Vendor[]> {
         }) as Vendor[];
     } catch (error) {
         console.error('Database Error:', error);
-        return MOCK_VENDORS;
+        throw new Error('Failed to fetch vendors from database.');
     }
 }
 
 export async function fetchCardData() {
     noStore();
     const db = await getDb();
-    if (!db) {
-        return {
-            totalSpend: 0,
-            activeVendors: 0,
-            unpaidInvoices: 0,
-            nextPaymentDue: null,
-        }
-    }
 
     try {
         const invoicesCollection = db.collection('invoices');
@@ -94,9 +82,13 @@ export async function fetchCardData() {
         
         const activeVendorsPromise = vendorsCollection.countDocuments();
         
-        const unpaidInvoicesPromise = invoicesCollection.countDocuments({ status: { $in: ['Unpaid', 'Overdue'] } });
+        const unpaidInvoicesPromise = invoicesCollection.countDocuments({ 
+          status: { $in: ['Unpaid', 'Pending', 'Overdue'] } 
+        });
         
-        const nextPaymentDuePromise = invoicesCollection.find({ status: { $in: ['Unpaid', 'Overdue'] } })
+        const nextPaymentDuePromise = invoicesCollection.find({ 
+          status: { $in: ['Unpaid', 'Pending', 'Overdue'] } 
+        })
             .sort({ invoiceDueDate: 1 })
             .limit(1)
             .toArray();
@@ -149,10 +141,6 @@ export async function getUser(): Promise<User> {
         image: 'https://placehold.co/100x100.png'
     };
 
-    if (!db) {
-        return defaultUser;
-    }
-
     try {
         const usersCollection = db.collection('users');
         // In a real app, you'd find a user based on session/token
@@ -173,15 +161,13 @@ export async function getUser(): Promise<User> {
 
     } catch (error) {
         console.error('Database Error fetching user:', error);
-        // Return default user on error to allow UI to render
-        return defaultUser;
+        throw new Error('Failed to fetch user from database.');
     }
 }
 
 export async function fetchContracts(): Promise<Contract[]> {
     noStore();
     const db = await getDb();
-    if (!db) return MOCK_CONTRACTS;
     
     try {
         const contracts = await db
@@ -199,23 +185,13 @@ export async function fetchContracts(): Promise<Contract[]> {
         }) as Contract[];
     } catch (error) {
         console.error('Database Error:', error);
-        return MOCK_CONTRACTS;
+        throw new Error('Failed to fetch contracts from database.');
     }
 }
 
 export async function createInvoice(invoice: Partial<Invoice>): Promise<Invoice> {
     noStore();
     const db = await getDb();
-    if (!db) {
-        // Mock data fallback
-        const newInvoice = {
-            ...invoice,
-            id: `INV-${Date.now()}`,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-        } as Invoice;
-        return newInvoice;
-    }
     
     try {
         const invoiceData = {
@@ -242,15 +218,6 @@ export async function createInvoice(invoice: Partial<Invoice>): Promise<Invoice>
 export async function updateInvoice(id: string, updates: Partial<Invoice>): Promise<Invoice> {
     noStore();
     const db = await getDb();
-    if (!db) {
-        // Mock data fallback
-        const updatedInvoice = {
-            ...updates,
-            id,
-            updatedAt: new Date().toISOString(),
-        } as Invoice;
-        return updatedInvoice;
-    }
     
     try {
         const updateData = {
@@ -285,10 +252,6 @@ export async function updateInvoice(id: string, updates: Partial<Invoice>): Prom
 export async function deleteInvoice(id: string): Promise<void> {
     noStore();
     const db = await getDb();
-    if (!db) {
-        // Mock data fallback - just return success
-        return;
-    }
     
     try {
         const result = await db.collection('invoices').deleteOne({ _id: new ObjectId(id) });
@@ -308,10 +271,6 @@ export async function deleteInvoice(id: string): Promise<void> {
 export async function updateInvoiceStatus(id: string, status: Invoice['status']): Promise<void> {
     noStore();
     const db = await getDb();
-    if (!db) {
-        // Mock data fallback - just return success
-        return;
-    }
     
     try {
         const updateData = {

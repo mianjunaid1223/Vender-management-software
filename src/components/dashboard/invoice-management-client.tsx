@@ -1,15 +1,16 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { InvoicesTable } from "@/components/dashboard/invoices-table";
 import { InvoiceDialog } from "@/components/dashboard/invoice-dialog";
 import { 
   createInvoiceAction, 
   updateInvoiceAction, 
   deleteInvoiceAction, 
-  updateInvoiceStatusAction 
+  updateInvoiceStatusAction,
+  refreshInvoiceStatusesAction
 } from "@/app/actions";
-import { Plus } from "lucide-react";
+import { Plus, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import type { Invoice, Vendor, Contract } from "@/lib/types";
@@ -28,6 +29,19 @@ export function InvoiceManagementClient({
   const [invoices, setInvoices] = useState<Invoice[]>(initialInvoices);
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
+
+  // Auto-refresh statuses every 5 minutes (300000ms)
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      try {
+        await refreshInvoiceStatusesAction();
+      } catch (error) {
+        console.error('Auto-refresh failed:', error);
+      }
+    }, 300000); // 5 minutes
+
+    return () => clearInterval(interval);
+  }, []);
 
   const handleInvoiceCreate = async (invoiceData: Partial<Invoice>) => {
     startTransition(async () => {
@@ -181,6 +195,34 @@ export function InvoiceManagementClient({
     });
   };
 
+  const handleRefreshStatuses = async () => {
+    startTransition(async () => {
+      try {
+        const result = await refreshInvoiceStatusesAction();
+        if (result.success) {
+          // Refresh the page to get updated data
+          window.location.reload();
+          toast({
+            title: "Success",
+            description: result.message,
+          });
+        } else {
+          toast({
+            title: "Error",
+            description: result.message,
+            variant: "destructive",
+          });
+        }
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Failed to refresh invoice statuses.",
+          variant: "destructive",
+        });
+      }
+    });
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -190,18 +232,28 @@ export function InvoiceManagementClient({
             Create, track, and manage all your vendor invoices with comprehensive business insights.
           </p>
         </div>
-        <InvoiceDialog
-          vendors={vendors}
-          contracts={contracts}
-          onSubmit={handleInvoiceCreate}
-          mode="create"
-          trigger={
-            <Button disabled={isPending}>
-              <Plus className="mr-2 h-4 w-4" />
-              Create Invoice
-            </Button>
-          }
-        />
+        <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            onClick={handleRefreshStatuses}
+            disabled={isPending}
+          >
+            <RefreshCw className={`mr-2 h-4 w-4 ${isPending ? 'animate-spin' : ''}`} />
+            Refresh Status
+          </Button>
+          <InvoiceDialog
+            vendors={vendors}
+            contracts={contracts}
+            onSubmit={handleInvoiceCreate}
+            mode="create"
+            trigger={
+              <Button disabled={isPending}>
+                <Plus className="mr-2 h-4 w-4" />
+                Create Invoice
+              </Button>
+            }
+          />
+        </div>
       </div>
       
       <InvoicesTable 

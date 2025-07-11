@@ -4,6 +4,8 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getDb, createInvoice, updateInvoice, deleteInvoice, updateInvoiceStatus } from "@/lib/data";
+import { sendPaymentConfirmation } from '@/lib/email-notifications';
+import { ObjectId } from 'mongodb';
 import { Invoice } from "@/lib/types";
 
 const invoiceFormSchema = z.object({
@@ -243,43 +245,135 @@ export async function deleteInvoiceAction(id: string) {
   }
 }
 
-export async function updateInvoiceStatusAction(id: string, status: Invoice['status']) {
+export async function updateInvoiceStatusAction(
+  invoiceId: string, 
+  newStatus: Invoice['status']
+): Promise<{ success: boolean; message: string }> {
+  const db = await getDb();
+  if (!db) {
+    return { success: false, message: 'Database connection failed' };
+  }
+
   try {
-    await updateInvoiceStatus(id, status);
-    
+    const updateData: any = {
+      status: newStatus,
+      lastStatusUpdate: new Date(),
+    };
+
+    // Add paid date if marking as paid
+    if (newStatus === 'Paid') {
+      updateData.paidDate = new Date();
+      updateData.paymentStatus = 'Paid';
+    }
+
+    const result = await db.collection('invoices').updateOne(
+      { _id: new ObjectId(invoiceId) },
+      { $set: updateData }
+    );
+
+    if (result.modifiedCount === 0) {
+      return { success: false, message: 'Invoice not found or not updated' };
+    }
+
+    // Process payment confirmation notification (in-app only)
+    if (newStatus === 'Paid') {
+      try {
+        const invoice = await db.collection('invoices').findOne({ _id: new ObjectId(invoiceId) });
+        if (invoice) {
+          const { _id, ...invoiceData } = invoice;
+          await sendPaymentConfirmation({ ...invoiceData, id: _id.toString() } as Invoice);
+        }
+      } catch (notificationError) {
+        console.error('Failed to process payment confirmation notification:', notificationError);
+      }
+    }
+
+    revalidatePath('/dashboard');
     revalidatePath('/dashboard/invoices');
-    return { success: true };
+
+    return { 
+      success: true, 
+      message: `Invoice status updated to ${newStatus}` 
+    };
+
   } catch (error) {
-    console.error('Failed to update invoice status:', error);
-    // Return success to avoid UI errors in mock mode
-    return { success: true };
+    console.error('Error updating invoice status:', error);
+    return { success: false, message: 'Failed to update invoice status' };
   }
 }
 
-export async function bulkUpdateInvoicesAction(invoiceIds: string[], action: 'mark-paid' | 'mark-sent' | 'delete') {
+export async function bulkUpdateInvoiceStatusAction(
+  invoiceIds: string[], 
+  newStatus: Invoice['status']
+): Promise<{ success: boolean; message: string; updated: number }> {
+  const db = await getDb();
+  if (!db) {
+    return { success: false, message: 'Database connection failed', updated: 0 };
+  }
+
   try {
-    const results = await Promise.all(
-      invoiceIds.map(async (id) => {
-        switch (action) {
-          case 'mark-paid':
-            return updateInvoiceStatus(id, 'Paid');
-          case 'mark-sent':
-            return updateInvoiceStatus(id, 'Sent');
-          case 'delete':
-            return deleteInvoice(id);
-          default:
-            throw new Error(`Unknown action: ${action}`);
-        }
-      })
-    );
+    const objectIds = invoiceIds.map(id => new ObjectId(id));
     
-    revalidatePath('/dashboard/invoices');
-    return { success: true, results };
-  } catch (error) {
-    console.error('Failed to bulk update invoices:', error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : 'Failed to bulk update invoices' 
+    const updateData: any = {
+      status: newStatus,
+      lastStatusUpdate: new Date(),
     };
+
+    if (newStatus === 'Paid') {
+      updateData.paidDate = new Date();
+      updateData.paymentStatus = 'Paid';
+    }
+
+    const result = await db.collection('invoices').updateMany(
+      { _id: { $in: objectIds } },
+      { $set: updateData }
+    );
+
+    // Process payment confirmation notifications (in-app only)
+    if (newStatus === 'Paid' && result.modifiedCount > 0) {
+      try {
+        const invoices = await db.collection('invoices')
+          .find({ _id: { $in: objectIds } })
+          .toArray();
+        
+        for (const invoice of invoices) {
+          const { _id, ...invoiceData } = invoice;
+          await sendPaymentConfirmation({ ...invoiceData, id: _id.toString() } as Invoice);
+        }
+      } catch (notificationError) {
+        console.error('Failed to process payment confirmation notifications:', notificationError);
+      }
+    }
+
+    revalidatePath('/dashboard');
+    revalidatePath('/dashboard/invoices');
+
+    return { 
+      success: true, 
+      message: `${result.modifiedCount} invoice(s) updated to ${newStatus}`, 
+      updated: result.modifiedCount 
+    };
+
+  } catch (error) {
+    console.error('Error bulk updating invoice status:', error);
+    return { success: false, message: 'Failed to update invoice statuses', updated: 0 };
+  }
+}
+
+export async function refreshInvoiceStatusesAction(): Promise<{ success: boolean; message: string }> {
+  try {
+    const { updateInvoiceStatuses } = await import('@/lib/invoice-status-manager');
+    const result = await updateInvoiceStatuses();
+    
+    revalidatePath('/dashboard');
+    revalidatePath('/dashboard/invoices');
+    
+    return {
+      success: true,
+      message: `Status refresh complete. ${result.updated} invoices updated, ${result.alerts.length} alerts generated.`
+    };
+  } catch (error) {
+    console.error('Error refreshing invoice statuses:', error);
+    return { success: false, message: 'Failed to refresh invoice statuses' };
   }
 }

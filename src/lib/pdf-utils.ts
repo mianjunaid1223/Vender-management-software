@@ -16,13 +16,25 @@ export function generateInvoicePDF(invoice: Invoice) {
   const doc = new jsPDF();
   let currentY = 20;
   
-  // Professional color scheme - subtle and corporate
+  // Professional color scheme - enhanced with status and element colors
   const colors = {
     primary: [47, 57, 71] as [number, number, number],      // Professional dark blue-gray
     secondary: [71, 85, 105] as [number, number, number],    // Medium gray
     accent: [148, 163, 184] as [number, number, number],     // Light gray
     background: [249, 250, 251] as [number, number, number], // Very light gray
-    border: [226, 232, 240] as [number, number, number]      // Border gray
+    border: [226, 232, 240] as [number, number, number],     // Border gray
+    
+    // Status colors
+    statusPaid: [34, 197, 94] as [number, number, number],   // Green
+    statusOverdue: [239, 68, 68] as [number, number, number], // Red
+    statusPending: [251, 146, 60] as [number, number, number], // Orange
+    statusDraft: [156, 163, 175] as [number, number, number], // Gray
+    
+    // Financial colors
+    discount: [239, 68, 68] as [number, number, number],     // Red for discounts
+    tax: [59, 130, 246] as [number, number, number],         // Blue for taxes
+    total: [16, 185, 129] as [number, number, number],       // Green for total
+    subtotal: [107, 114, 128] as [number, number, number],   // Gray for subtotal
   };
   
   // Clean, professional header
@@ -44,10 +56,31 @@ export function generateInvoicePDF(invoice: Invoice) {
       doc.text(`Invoice #${invoice.invoiceNumber}`, 190, 25, { align: 'right' });
     }
     
-    // Status (simple text, no badge)
+    // Status (simple text with color coding)
     if (invoice.status) {
       doc.setFontSize(11);
-      doc.setTextColor(...colors.secondary);
+      
+      // Set color based on status
+      let statusColor = colors.secondary;
+      switch (invoice.status.toLowerCase()) {
+        case 'paid':
+          statusColor = colors.statusPaid;
+          break;
+        case 'overdue':
+          statusColor = colors.statusOverdue;
+          break;
+        case 'pending':
+        case 'unpaid':
+          statusColor = colors.statusPending;
+          break;
+        case 'draft':
+          statusColor = colors.statusDraft;
+          break;
+        default:
+          statusColor = colors.secondary;
+      }
+      
+      doc.setTextColor(...statusColor);
       doc.text(`Status: ${invoice.status}`, 190, 32, { align: 'right' });
     }
     
@@ -247,7 +280,7 @@ export function generateInvoicePDF(invoice: Invoice) {
     doc.line(20, currentY, 190, currentY);
     currentY += 8;
     
-    // Table rows - clean and professional with page break handling
+    // Table rows - clean and professional with alternating colors
     items.forEach((item, index) => {
       // Check if we need a new page for this row
       if (currentY + 15 > pageHeight - bottomMargin) {
@@ -269,6 +302,12 @@ export function generateInvoicePDF(invoice: Invoice) {
         currentY += 8;
       }
       
+      // Subtle alternating row background
+      if (index % 2 === 0) {
+        doc.setFillColor(250, 250, 250);
+        doc.rect(20, currentY - 3, 170, 12, 'F');
+      }
+      
       doc.setFontSize(10);
       doc.setTextColor(...colors.primary);
       
@@ -286,24 +325,27 @@ export function generateInvoicePDF(invoice: Invoice) {
         doc.text(description, 20, currentY);
       }
       
-      // Quantity, rate, and amount
+      // Quantity, rate, and amount with enhanced styling
       doc.setTextColor(...colors.secondary);
       doc.text((item.quantity || 0).toString(), 130, currentY, { align: 'center' });
       doc.text(`$${(item.unitPrice || 0).toFixed(2)}`, 150, currentY, { align: 'center' });
       
+      // Amount in primary color for emphasis
       doc.setTextColor(...colors.primary);
+      doc.setFont('helvetica', 'bold');
       doc.text(`$${((item.quantity || 0) * (item.unitPrice || 0)).toFixed(2)}`, 185, currentY, { align: 'right' });
+      doc.setFont('helvetica', 'normal');
       
-      currentY += 12;
+      currentY += 10;
     });
     
     // Bottom border
     doc.setDrawColor(...colors.border);
     doc.line(20, currentY, 190, currentY);
-    currentY += 15;
+    currentY += 10; // Reduced from 15
   };
   
-  // Professional totals section
+  // Professional totals section with color-coded amounts
   const renderTotalsSection = () => {
     const subtotal = (invoice.items || []).reduce((sum: number, item) => sum + ((item.quantity || 0) * (item.unitPrice || 0)), 0);
     const taxAmount = invoice.taxes || 0;
@@ -317,47 +359,62 @@ export function generateInvoicePDF(invoice: Invoice) {
     // Subtotal
     doc.setTextColor(...colors.secondary);
     doc.text('Subtotal:', totalsX, currentY);
-    doc.setTextColor(...colors.primary);
+    doc.setTextColor(...colors.subtotal);
     doc.text(`$${subtotal.toFixed(2)}`, 185, currentY, { align: 'right' });
-    currentY += 8;
+    currentY += 6;
     
-    // Discount (if applicable)
+    // Discount (if applicable) - Red color for discounts
     if (discountAmount > 0) {
       doc.setTextColor(...colors.secondary);
       doc.text('Discount:', totalsX, currentY);
-      doc.setTextColor(...colors.primary);
-      doc.text(`-$${discountAmount.toFixed(2)}`, 185, currentY, { align: 'right' });
-      currentY += 8;
+      doc.setTextColor(...colors.discount);
+      
+      // Check if discount is percentage-based or fixed amount
+      const isPercentageDiscount = invoice.discountRate && invoice.discountRate > 0;
+      if (isPercentageDiscount) {
+        doc.text(`-$${discountAmount.toFixed(2)} (${invoice.discountRate}%)`, 185, currentY, { align: 'right' });
+      } else {
+        doc.text(`-$${discountAmount.toFixed(2)}`, 185, currentY, { align: 'right' });
+      }
+      currentY += 6;
     }
     
-    // Tax (if applicable)
+    // Tax (if applicable) - Blue color for taxes
     if (taxAmount > 0) {
       doc.setTextColor(...colors.secondary);
       doc.text('Tax:', totalsX, currentY);
-      doc.setTextColor(...colors.primary);
-      doc.text(`$${taxAmount.toFixed(2)}`, 185, currentY, { align: 'right' });
-      currentY += 8;
+      doc.setTextColor(...colors.tax);
+      
+      // Check if tax is percentage-based or fixed amount
+      const isPercentage = invoice.taxRate && invoice.taxRate > 0;
+      if (isPercentage) {
+        doc.text(`$${taxAmount.toFixed(2)} (${invoice.taxRate}%)`, 185, currentY, { align: 'right' });
+      } else {
+        doc.text(`$${taxAmount.toFixed(2)}`, 185, currentY, { align: 'right' });
+      }
+      currentY += 6;
     }
     
-    // Total with line separator
+    // Total with line separator - Green color for emphasis
     doc.setDrawColor(...colors.border);
     doc.setLineWidth(0.5);
-    doc.line(totalsX, currentY, 185, currentY);
+    doc.line(totalsX, currentY + 2, 185, currentY + 2);
     currentY += 8;
     
     doc.setFontSize(12);
-    doc.setTextColor(...colors.primary);
+    doc.setTextColor(...colors.secondary);
     doc.text('TOTAL:', totalsX, currentY);
+    doc.setTextColor(...colors.total);
     doc.text(`$${total.toFixed(2)}`, 185, currentY, { align: 'right' });
     
-    currentY += 20;
+    currentY += 15;
   };
   
-  // Clean payment information
+  // Clean payment information with color-coded status
   const renderPaymentInfo = () => {
     const paymentInfo = [
       { label: 'Payment Method:', value: invoice.paymentMethod },
-      { label: 'Payment Status:', value: invoice.paymentStatus }
+      { label: 'Payment Status:', value: invoice.paymentStatus, isStatus: true }
     ].filter(item => item.value);
     
     if (paymentInfo.length > 0) {
@@ -366,16 +423,38 @@ export function generateInvoicePDF(invoice: Invoice) {
       paymentInfo.forEach(info => {
         doc.setTextColor(...colors.secondary);
         doc.text(info.label, 20, currentY);
-        doc.setTextColor(...colors.primary);
+        
+        // Color code payment status
+        if (info.isStatus) {
+          let statusColor = colors.primary;
+          switch (info.value?.toLowerCase()) {
+            case 'paid':
+              statusColor = colors.statusPaid;
+              break;
+            case 'overdue':
+              statusColor = colors.statusOverdue;
+              break;
+            case 'pending':
+            case 'partial':
+              statusColor = colors.statusPending;
+              break;
+            default:
+              statusColor = colors.primary;
+          }
+          doc.setTextColor(...statusColor);
+        } else {
+          doc.setTextColor(...colors.primary);
+        }
+        
         doc.text(info.value, 80, currentY);
-        currentY += 8;
+        currentY += 6;
       });
       
-      currentY += 10;
+      currentY += 8;
     }
   };
   
-  // Professional notes and terms with page break protection
+  // Professional notes and terms with optimized spacing
   const renderNotesAndTerms = () => {
     const sections = [];
     
@@ -388,13 +467,13 @@ export function generateInvoicePDF(invoice: Invoice) {
     }
     
     sections.forEach((section, index) => {
-      if (index > 0) currentY += 15;
+      if (index > 0) currentY += 10; // Reduced spacing
       
       // Check if we need a new page for this section
       const pageHeight = doc.internal.pageSize.height;
-      const estimatedSectionHeight = 60; // Estimate section height
+      const estimatedSectionHeight = 40; // Reduced estimate
       
-      if (currentY + estimatedSectionHeight > pageHeight - 50) {
+      if (currentY + estimatedSectionHeight > pageHeight - 30) {
         doc.addPage();
         currentY = 20;
       }
@@ -403,12 +482,12 @@ export function generateInvoicePDF(invoice: Invoice) {
       doc.setDrawColor(...colors.border);
       doc.setLineWidth(0.5);
       doc.line(20, currentY, 190, currentY);
-      currentY += 10;
+      currentY += 8; // Reduced from 10
       
       doc.setFontSize(11);
       doc.setTextColor(...colors.primary);
       doc.text(section.title.toUpperCase(), 20, currentY);
-      currentY += 8;
+      currentY += 6; // Reduced from 8
       
       doc.setFontSize(10);
       doc.setTextColor(...colors.secondary);
@@ -417,23 +496,23 @@ export function generateInvoicePDF(invoice: Invoice) {
       if (Array.isArray(wrappedContent)) {
         wrappedContent.forEach((line: string) => {
           // Check if we need a new page for each line
-          if (currentY > pageHeight - 50) {
+          if (currentY > pageHeight - 30) {
             doc.addPage();
             currentY = 20;
           }
           doc.text(line, 20, currentY);
-          currentY += 6;
+          currentY += 5; // Reduced from 6
         });
       } else {
         doc.text(wrappedContent, 20, currentY);
-        currentY += 6;
+        currentY += 5;
       }
       
-      currentY += 5;
+      currentY += 3; // Reduced from 5
     });
   };
   
-  // Custom fields (if any)
+  // Custom fields with optimized spacing
   const renderCustomFields = () => {
     const customFields = invoice.customFields?.filter(field => field.value) || [];
     
@@ -442,12 +521,12 @@ export function generateInvoicePDF(invoice: Invoice) {
       doc.setDrawColor(...colors.border);
       doc.setLineWidth(0.5);
       doc.line(20, currentY, 190, currentY);
-      currentY += 10;
+      currentY += 8; // Reduced from 10
       
       doc.setFontSize(11);
       doc.setTextColor(...colors.primary);
       doc.text('ADDITIONAL INFORMATION', 20, currentY);
-      currentY += 8;
+      currentY += 6; // Reduced from 8
       
       doc.setFontSize(10);
       customFields.forEach(field => {
@@ -455,32 +534,29 @@ export function generateInvoicePDF(invoice: Invoice) {
         doc.text(field.name + ':', 20, currentY);
         doc.setTextColor(...colors.primary);
         doc.text(field.value, 80, currentY);
-        currentY += 8;
+        currentY += 6; // Reduced from 8
       });
       
-      currentY += 10;
+      currentY += 5; // Reduced from 10
     }
   };
   
-  // Minimal, professional footer with proper spacing
+  // Minimal, professional footer with optimized spacing
   const renderFooter = () => {
     const pageHeight = doc.internal.pageSize.height;
-    
-    // Ensure we have enough space at the bottom (at least 40 units from bottom)
-    const minBottomMargin = 40;
+    const minBottomMargin = 25;
     const maxFooterY = pageHeight - minBottomMargin;
     
-    // Add extra spacing before footer to prevent content overflow
-    currentY += 20;
+    // Only add minimal spacing before footer
+    currentY += 10;
     
-    // Position footer with proper spacing
-    const footerY = Math.min(currentY + 25, maxFooterY);
+    // Calculate footer position - use current position if it fits, otherwise use bottom
+    const footerY = Math.min(currentY + 15, maxFooterY);
     
-    // Check if we need a new page
-    if (footerY > maxFooterY) {
+    // Only create new page if absolutely necessary
+    if (currentY + 20 > pageHeight - minBottomMargin) {
       doc.addPage();
-      currentY = 20;
-      const newFooterY = currentY + 25;
+      const newFooterY = 30; // Start footer early on new page
       
       // Footer separator
       doc.setDrawColor(...colors.border);
