@@ -37,7 +37,7 @@ import {
   Briefcase
 } from "lucide-react";
 import { fetchContracts, deleteContract, fetchInvoicesByContract, fetchVendors, fetchCompany, updateContract } from "@/lib/data";
-import { Contract, Invoice, ContractStatus, Vendor, Company, ContractParty } from "@/lib/types";
+import { Contract, Invoice, ContractStatus, Vendor, Company, ContractParty, ContractType } from "@/lib/types";
 import { downloadContractPDF, previewContractPDF } from "@/lib/pdf-utils";
 import {
   DropdownMenu,
@@ -580,6 +580,7 @@ function EditContractDialog({
   const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
   const contractStatuses: ContractStatus[] = ['Draft', 'Active', 'Pending', 'Expired', 'Terminated', 'Suspended'];
+  const contractTypes: ContractType[] = ['Service', 'Product', 'Subscription', 'One-time', 'Framework'];
 
   useEffect(() => {
     if (contract) {
@@ -593,6 +594,15 @@ function EditContractDialog({
 
   const handleInputChange = (field: keyof Contract, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handlePartyRoleChange = (party: 'partyA' | 'partyB', newRole: 'Client' | 'Provider') => {
+    const otherParty = party === 'partyA' ? 'partyB' : 'partyA';
+    setFormData(prev => ({
+      ...prev,
+      [party]: { ...prev[party], role: newRole },
+      [otherParty]: { ...prev[otherParty], role: newRole === 'Client' ? 'Provider' : 'Client' }
+    }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -625,59 +635,129 @@ function EditContractDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-3xl">
         <DialogHeader>
           <DialogTitle>Edit Contract</DialogTitle>
           <DialogDescription>Update the details for "{contract.title}"</DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4 py-4 max-h-[70vh] overflow-y-auto pr-4">
-          <div className="space-y-2">
-            <Label htmlFor="title">Title</Label>
-            <Input id="title" value={formData.title || ''} onChange={(e) => handleInputChange('title', e.target.value)} />
-          </div>
+        <form onSubmit={handleSubmit} className="space-y-6 py-4 max-h-[70vh] overflow-y-auto pr-4">
           
-          <div className="grid grid-cols-2 gap-4">
-            {formData.partyA && <div className="space-y-2">
-                <Label>Party A: {formData.partyA.name} ({formData.partyA.role})</Label>
-            </div>}
-            {formData.partyB && <div className="space-y-2">
-                <Label>Party B: {formData.partyB.name} ({formData.partyB.role})</Label>
-            </div>}
+          {/* Basic Info */}
+          <div className="space-y-4 p-4 border rounded-lg">
+            <h3 className="font-medium">Basic Information</h3>
+            <div className="space-y-2">
+              <Label htmlFor="title">Title</Label>
+              <Input id="title" value={formData.title || ''} onChange={(e) => handleInputChange('title', e.target.value)} />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="type">Contract Type</Label>
+                <Select value={formData.type} onValueChange={(value) => handleInputChange('type', value)}>
+                  <SelectTrigger id="type"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {contractTypes.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+               <div className="space-y-2">
+                <Label htmlFor="status">Status</Label>
+                <Select value={formData.status} onValueChange={(value) => handleInputChange('status', value)}>
+                  <SelectTrigger id="status"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {contractStatuses.map((status) => <SelectItem key={status} value={status}>{status}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+             <div className="space-y-2">
+                <Label htmlFor="description">Description</Label>
+                <Textarea id="description" value={formData.description || ''} onChange={(e) => handleInputChange('description', e.target.value)} />
+            </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="value">Value</Label>
-              <Input id="value" type="number" value={formData.value || 0} onChange={(e) => handleInputChange('value', parseFloat(e.target.value))} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="status">Status</Label>
-              <Select value={formData.status} onValueChange={(value) => handleInputChange('status', value)}>
-                <SelectTrigger id="status">
-                  <SelectValue placeholder="Select status" />
-                </SelectTrigger>
-                <SelectContent>
-                  {contractStatuses.map((status) => (
-                    <SelectItem key={status} value={status}>{status}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="startDate">Start Date</Label>
-              <Input id="startDate" type="date" value={formData.startDate || ''} onChange={(e) => handleInputChange('startDate', e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="endDate">End Date</Label>
-              <Input id="endDate" type="date" value={formData.endDate || ''} onChange={(e) => handleInputChange('endDate', e.target.value)} />
+          {/* Parties */}
+          <div className="space-y-4 p-4 border rounded-lg">
+            <h3 className="font-medium">Parties</h3>
+            <div className="grid grid-cols-2 gap-4">
+              {formData.partyA && <div className="space-y-2">
+                  <Label>Party A: {formData.partyA.name}</Label>
+                   <Select value={formData.partyA.role} onValueChange={(role: 'Client' | 'Provider') => handlePartyRoleChange('partyA', role)}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="Client">Client</SelectItem>
+                            <SelectItem value="Provider">Provider</SelectItem>
+                        </SelectContent>
+                    </Select>
+              </div>}
+              {formData.partyB && <div className="space-y-2">
+                  <Label>Party B: {formData.partyB.name}</Label>
+                   <Select value={formData.partyB.role} onValueChange={(role: 'Client' | 'Provider') => handlePartyRoleChange('partyB', role)}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="Client">Client</SelectItem>
+                            <SelectItem value="Provider">Provider</SelectItem>
+                        </SelectContent>
+                    </Select>
+              </div>}
             </div>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
-            <Textarea id="description" value={formData.description || ''} onChange={(e) => handleInputChange('description', e.target.value)} />
+
+          {/* Financial Details */}
+          <div className="space-y-4 p-4 border rounded-lg">
+            <h3 className="font-medium">Financial Details</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="value">Value</Label>
+                <Input id="value" type="number" value={formData.value || 0} onChange={(e) => handleInputChange('value', parseFloat(e.target.value))} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="currency">Currency</Label>
+                <Input id="currency" value={formData.currency || 'USD'} onChange={(e) => handleInputChange('currency', e.target.value)} />
+              </div>
+            </div>
+             <div className="space-y-2">
+              <Label htmlFor="paymentTerms">Payment Terms</Label>
+              <Input id="paymentTerms" value={formData.paymentTerms || ''} onChange={(e) => handleInputChange('paymentTerms', e.target.value)} />
+            </div>
           </div>
+
+          {/* Timeline */}
+          <div className="space-y-4 p-4 border rounded-lg">
+            <h3 className="font-medium">Timeline & Renewal</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="startDate">Start Date</Label>
+                <Input id="startDate" type="date" value={formData.startDate || ''} onChange={(e) => handleInputChange('startDate', e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="endDate">End Date</Label>
+                <Input id="endDate" type="date" value={formData.endDate || ''} onChange={(e) => handleInputChange('endDate', e.target.value)} />
+              </div>
+            </div>
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="autoRenew"
+                checked={formData.autoRenew || false}
+                onChange={(e) => handleInputChange('autoRenew', e.target.checked)}
+                className="rounded border-gray-300"
+              />
+              <Label htmlFor="autoRenew">Auto-renew this contract</Label>
+            </div>
+             {formData.autoRenew && (
+              <div className="space-y-2">
+                <Label htmlFor="renewalPeriod">Renewal Period (months)</Label>
+                <Input
+                  id="renewalPeriod"
+                  type="number"
+                  value={formData.renewalPeriod || 12}
+                  onChange={(e) => handleInputChange('renewalPeriod', Number(e.target.value))}
+                  min="1"
+                />
+              </div>
+            )}
+          </div>
+          
           <div className="flex justify-end gap-2 pt-4">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
             <Button type="submit" disabled={isSaving}>
