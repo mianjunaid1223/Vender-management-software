@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { format } from "date-fns";
 import { Contract } from "@/lib/types";
+import { DashboardAlerts } from "@/components/dashboard/dashboard-alerts";
 
 export default async function DashboardPage() {
     const isDbConfigured = clientPromise !== null;
@@ -114,19 +115,19 @@ export default async function DashboardPage() {
     },
   ];
 
+  const hasAlerts = alerts.length > 0 || expiringContracts.length > 0;
+
   return (
     <div className="flex flex-col gap-6 animate-fade-in">
       {!isDbConfigured && <DbConfigWarning />}
       
       {/* Alerts Section */}
-      <div className="grid gap-6 md:grid-cols-2">
-        {alerts.length > 0 && (
-          <DashboardAlertsWrapper alerts={alerts} />
-        )}
-        {expiringContracts.length > 0 && (
-          <ExpiringContractsCard contracts={expiringContracts} />
-        )}
-      </div>
+      {hasAlerts && (
+        <DashboardAlertsWrapper 
+          invoiceAlerts={alerts} 
+          contractAlerts={expiringContracts}
+        />
+      )}
       
       <div className="grid gap-6">
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
@@ -146,47 +147,5 @@ export default async function DashboardPage() {
         <RecentInvoices data={invoices} />
       </div>
     </div>
-  );
-}
-
-
-function ExpiringContractsCard({ contracts }: { contracts: Contract[] }) {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <AlertCircle className="h-5 w-5 text-yellow-500" />
-          Expiring Contracts
-        </CardTitle>
-        <CardDescription>
-          {contracts.length} contract(s) are expiring in the next 30 days.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-4">
-          {contracts.slice(0, 3).map(contract => (
-            <div key={contract.id} className="flex items-center justify-between">
-              <div>
-                <p className="font-medium">{contract.title}</p>
-                <p className="text-sm text-muted-foreground">
-                  with {contract.partyB?.name}
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="text-sm font-semibold">
-                  Expires {format(new Date(contract.endDate), "MMM dd, yyyy")}
-                </p>
-                <p className="text-xs text-yellow-600">
-                  {contract.autoRenew ? "Will Auto-Renew" : "Action Required"}
-                </p>
-              </div>
-            </div>
-          ))}
-          <Button asChild variant="outline" className="w-full">
-            <Link href="/dashboard/contracts">View All Contracts</Link>
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
   );
 }
