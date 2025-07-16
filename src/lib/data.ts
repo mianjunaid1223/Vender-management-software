@@ -29,13 +29,7 @@ export async function fetchInvoices(): Promise<Invoice[]> {
             .sort({ invoiceDate: -1 })
             .toArray();
         
-        return invoices.map(invoice => {
-            const { _id, ...rest } = invoice;
-            return {
-                ...rest,
-                id: _id.toString(),
-            };
-        }) as Invoice[];
+        return JSON.parse(JSON.stringify(invoices));
 
     } catch (error) {
         console.error('Database Error:', error);
@@ -54,13 +48,7 @@ export async function fetchVendors(): Promise<Vendor[]> {
             .sort({ name: 1 })
             .toArray();
 
-        return vendors.map(vendor => {
-            const { _id, ...rest } = vendor;
-            return {
-                ...rest,
-                id: _id.toString(),
-            };
-        }) as Vendor[];
+        return JSON.parse(JSON.stringify(vendors));
     } catch (error) {
         console.error('Database Error:', error);
         throw new Error('Failed to fetch vendors from database.');
@@ -105,20 +93,15 @@ export async function fetchCardData() {
         const unpaidInvoices = data[2];
         let nextPaymentDue = data[3][0] || null;
 
-        let nextPaymentDueFormatted = null;
         if (nextPaymentDue) {
-            const { _id, ...rest } = nextPaymentDue;
-            nextPaymentDueFormatted = {
-                ...rest,
-                id: _id.toString(),
-            };
+            nextPaymentDue = JSON.parse(JSON.stringify(nextPaymentDue));
         }
 
         return {
             totalSpend,
             activeVendors,
             unpaidInvoices,
-            nextPaymentDue: nextPaymentDueFormatted,
+            nextPaymentDue,
         };
     } catch (error) {
         console.error('Database Error:', error);
@@ -135,7 +118,7 @@ export async function getUser(): Promise<User> {
     const db = await getDb();
 
     const defaultUser = {
-        id: 'default-user',
+        _id: new ObjectId(),
         name: 'Alicia Cook',
         email: 'alicia@example.com',
         image: 'https://placehold.co/100x100.png'
@@ -143,21 +126,14 @@ export async function getUser(): Promise<User> {
 
     try {
         const usersCollection = db.collection('users');
-        // In a real app, you'd find a user based on session/token
         const user = await usersCollection.findOne({});
 
         if (!user) {
-            // Seed a user if none exists for demonstration
             await usersCollection.insertOne(defaultUser);
-            return { ...defaultUser, id: defaultUser.id };
+            return JSON.parse(JSON.stringify({ ...defaultUser, id: defaultUser._id.toString() }));
         }
 
-        return {
-            id: user._id.toString(),
-            name: user.name,
-            email: user.email,
-            image: user.image || 'https://placehold.co/100x100.png',
-        } as User;
+        return JSON.parse(JSON.stringify(user));
 
     } catch (error) {
         console.error('Database Error fetching user:', error);
@@ -176,13 +152,7 @@ export async function fetchContracts(): Promise<Contract[]> {
             .sort({ createdAt: -1 })
             .toArray();
 
-        return contracts.map(contract => {
-            const { _id, ...rest } = contract;
-            return {
-                ...rest,
-                id: _id.toString(),
-            };
-        }) as Contract[];
+        return JSON.parse(JSON.stringify(contracts));
     } catch (error) {
         console.error('Database Error:', error);
         throw new Error('Failed to fetch contracts from database.');
@@ -202,10 +172,8 @@ export async function createInvoice(invoice: Partial<Invoice>): Promise<Invoice>
         
         const result = await db.collection('invoices').insertOne(invoiceData);
         
-        return {
-            ...invoiceData,
-            id: result.insertedId.toString(),
-        } as Invoice;
+        const newInvoice = await db.collection('invoices').findOne({ _id: result.insertedId });
+        return JSON.parse(JSON.stringify(newInvoice));
     } catch (error) {
         console.error('Database Error:', error);
         if (error instanceof Error) {
@@ -220,10 +188,8 @@ export async function updateInvoice(id: string, updates: Partial<Invoice>): Prom
     const db = await getDb();
     
     try {
-        const updateData = {
-            ...updates,
-            updatedAt: new Date().toISOString(),
-        };
+        const { id: _, ...updateData } = updates;
+        updateData.updatedAt = new Date().toISOString();
         
         const result = await db.collection('invoices').findOneAndUpdate(
             { _id: new ObjectId(id) },
@@ -231,15 +197,11 @@ export async function updateInvoice(id: string, updates: Partial<Invoice>): Prom
             { returnDocument: 'after' }
         );
         
-        if (!result || !result.value) {
+        if (!result) {
             throw new Error('Invoice not found');
         }
         
-        const { _id, ...rest } = result.value;
-        return {
-            ...rest,
-            id: _id.toString(),
-        } as Invoice;
+        return JSON.parse(JSON.stringify(result));
     } catch (error) {
         console.error('Database Error:', error);
         if (error instanceof Error) {
@@ -308,11 +270,7 @@ export async function fetchCompany(): Promise<Company | null> {
             return null;
         }
         
-        const { _id, ...rest } = company;
-        return {
-            ...rest,
-            id: _id.toString(),
-        } as Company;
+        return JSON.parse(JSON.stringify(company));
     } catch (error) {
         console.error('Database Error:', error);
         throw new Error('Failed to fetch company from database.');
@@ -332,10 +290,8 @@ export async function createCompany(company: Partial<Company>): Promise<Company>
         
         const result = await db.collection('companies').insertOne(companyData);
         
-        return {
-            ...companyData,
-            id: result.insertedId.toString(),
-        } as Company;
+        const newCompany = await db.collection('companies').findOne({ _id: result.insertedId });
+        return JSON.parse(JSON.stringify(newCompany));
     } catch (error) {
         console.error('Database Error:', error);
         throw new Error('Failed to create company.');
@@ -347,26 +303,20 @@ export async function updateCompany(id: string, updates: Partial<Company>): Prom
     const db = await getDb();
     
     try {
-        const updateData = {
-            ...updates,
-            updatedAt: new Date().toISOString(),
-        };
-        
+        const { id: _, ...updateData } = updates;
+        updateData.updatedAt = new Date().toISOString();
+
         const result = await db.collection('companies').findOneAndUpdate(
             { _id: new ObjectId(id) },
             { $set: updateData },
             { returnDocument: 'after' }
         );
         
-        if (!result || !result.value) {
+        if (!result) {
             throw new Error('Company not found');
         }
         
-        const { _id, ...rest } = result.value;
-        return {
-            ...rest,
-            id: _id.toString(),
-        } as Company;
+        return JSON.parse(JSON.stringify(result));
     } catch (error) {
         console.error('Database Error:', error);
         throw new Error('Failed to update company.');
@@ -387,10 +337,8 @@ export async function createContract(contract: Partial<Contract>): Promise<Contr
         
         const result = await db.collection('contracts').insertOne(contractData);
         
-        return {
-            ...contractData,
-            id: result.insertedId.toString(),
-        } as Contract;
+        const newContract = await db.collection('contracts').findOne({ _id: result.insertedId });
+        return JSON.parse(JSON.stringify(newContract));
     } catch (error) {
         console.error('Database Error:', error);
         throw new Error('Failed to create contract.');
@@ -402,10 +350,8 @@ export async function updateContract(id: string, updates: Partial<Contract>): Pr
     const db = await getDb();
     
     try {
-        const updateData = {
-            ...updates,
-            updatedAt: new Date().toISOString(),
-        };
+        const { id: _, ...updateData } = updates;
+        updateData.updatedAt = new Date().toISOString();
         
         const result = await db.collection('contracts').findOneAndUpdate(
             { _id: new ObjectId(id) },
@@ -413,15 +359,11 @@ export async function updateContract(id: string, updates: Partial<Contract>): Pr
             { returnDocument: 'after' }
         );
         
-        if (!result || !result.value) {
+        if (!result) {
             throw new Error('Contract not found');
         }
         
-        const { _id, ...rest } = result.value;
-        return {
-            ...rest,
-            id: _id.toString(),
-        } as Contract;
+        return JSON.parse(JSON.stringify(result));
     } catch (error) {
         console.error('Database Error:', error);
         throw new Error('Failed to update contract.');
@@ -455,13 +397,7 @@ export async function fetchContractsByVendor(vendorId: string): Promise<Contract
             .sort({ createdAt: -1 })
             .toArray();
 
-        return contracts.map(contract => {
-            const { _id, ...rest } = contract;
-            return {
-                ...rest,
-                id: _id.toString(),
-            };
-        }) as Contract[];
+        return JSON.parse(JSON.stringify(contracts));
     } catch (error) {
         console.error('Database Error:', error);
         throw new Error('Failed to fetch contracts by vendor.');
@@ -485,13 +421,7 @@ export async function fetchExpiringContracts(daysAhead: number = 30): Promise<Co
             .sort({ endDate: 1 })
             .toArray();
 
-        return contracts.map(contract => {
-            const { _id, ...rest } = contract;
-            return {
-                ...rest,
-                id: _id.toString(),
-            };
-        }) as Contract[];
+        return JSON.parse(JSON.stringify(contracts));
     } catch (error) {
         console.error('Database Error:', error);
         throw new Error('Failed to fetch expiring contracts.');
@@ -512,10 +442,8 @@ export async function createVendor(vendor: Partial<Vendor>): Promise<Vendor> {
         
         const result = await db.collection('vendors').insertOne(vendorData);
         
-        return {
-            ...vendorData,
-            id: result.insertedId.toString(),
-        } as Vendor;
+        const newVendor = await db.collection('vendors').findOne({ _id: result.insertedId });
+        return JSON.parse(JSON.stringify(newVendor));
     } catch (error) {
         console.error('Database Error:', error);
         throw new Error('Failed to create vendor.');
@@ -527,10 +455,8 @@ export async function updateVendor(id: string, updates: Partial<Vendor>): Promis
     const db = await getDb();
     
     try {
-        const updateData = {
-            ...updates,
-            updatedAt: new Date().toISOString(),
-        };
+        const { id: _, ...updateData } = updates;
+        updateData.updatedAt = new Date().toISOString();
         
         const result = await db.collection('vendors').findOneAndUpdate(
             { _id: new ObjectId(id) },
@@ -538,15 +464,11 @@ export async function updateVendor(id: string, updates: Partial<Vendor>): Promis
             { returnDocument: 'after' }
         );
         
-        if (!result || !result.value) {
+        if (!result) {
             throw new Error('Vendor not found');
         }
         
-        const { _id, ...rest } = result.value;
-        return {
-            ...rest,
-            id: _id.toString(),
-        } as Vendor;
+        return JSON.parse(JSON.stringify(result));
     } catch (error) {
         console.error('Database Error:', error);
         throw new Error('Failed to update vendor.');
@@ -598,13 +520,7 @@ export async function searchVendors(filters: SearchFilters): Promise<Vendor[]> {
             .sort({ name: 1 })
             .toArray();
 
-        return vendors.map(vendor => {
-            const { _id, ...rest } = vendor;
-            return {
-                ...rest,
-                id: _id.toString(),
-            };
-        }) as Vendor[];
+        return JSON.parse(JSON.stringify(vendors));
     } catch (error) {
         console.error('Database Error:', error);
         throw new Error('Failed to search vendors.');
@@ -625,10 +541,8 @@ export async function createNotification(notification: Partial<Notification>): P
         
         const result = await db.collection('notifications').insertOne(notificationData);
         
-        return {
-            ...notificationData,
-            id: result.insertedId.toString(),
-        } as Notification;
+        const newNotification = await db.collection('notifications').findOne({ _id: result.insertedId });
+        return JSON.parse(JSON.stringify(newNotification));
     } catch (error) {
         console.error('Database Error:', error);
         throw new Error('Failed to create notification.');
@@ -647,13 +561,7 @@ export async function fetchNotifications(userId: string): Promise<Notification[]
             .limit(50)
             .toArray();
 
-        return notifications.map(notification => {
-            const { _id, ...rest } = notification;
-            return {
-                ...rest,
-                id: _id.toString(),
-            };
-        }) as Notification[];
+        return JSON.parse(JSON.stringify(notifications));
     } catch (error) {
         console.error('Database Error:', error);
         throw new Error('Failed to fetch notifications.');
@@ -705,13 +613,7 @@ export async function fetchRecentActions(userId: string, limit: number = 10): Pr
             .limit(limit)
             .toArray();
 
-        return actions.map(action => {
-            const { _id, ...rest } = action;
-            return {
-                ...rest,
-                id: _id.toString(),
-            };
-        }) as ActionLog[];
+        return JSON.parse(JSON.stringify(actions));
     } catch (error) {
         console.error('Database Error:', error);
         throw new Error('Failed to fetch recent actions.');

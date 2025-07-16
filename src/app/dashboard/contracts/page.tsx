@@ -57,7 +57,11 @@ export default function ContractsPage() {
   const loadContracts = async () => {
     try {
       setLoading(true);
-      const contractsData = await fetchContracts();
+      const response = await fetch('/api/contracts');
+      if (!response.ok) {
+        throw new Error('Failed to fetch contracts');
+      }
+      const contractsData: Contract[] = await response.json();
       setContracts(contractsData);
     } catch (err) {
       console.error("Error loading contracts:", err);
@@ -96,6 +100,9 @@ export default function ContractsPage() {
         if (typeof value === 'string') {
           return `"${value.replace(/"/g, '""')}"`;
         }
+        if (typeof value === 'object' && value !== null) {
+          return `"${JSON.stringify(value).replace(/"/g, '""')}"`;
+        }
         return value;
       });
       csvRows.push(row.join(','));
@@ -124,14 +131,16 @@ export default function ContractsPage() {
   const getFilteredContracts = () => {
     let filtered = contracts;
     
+    const lowerCaseSearchTerm = searchTerm.toLowerCase();
+    
     if (activeTab !== "all") {
         filtered = contracts.filter(c => c.status.toLowerCase() === activeTab);
     }
     
     if (searchTerm) {
       filtered = filtered.filter(contract => 
-        contract.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        contract.vendorName?.toLowerCase().includes(searchTerm.toLowerCase())
+        contract.title?.toLowerCase().includes(lowerCaseSearchTerm) ||
+        contract.vendorName?.toLowerCase().includes(lowerCaseSearchTerm)
       );
     }
     
@@ -219,15 +228,28 @@ export default function ContractsPage() {
             </div>
           </div>
         </div>
-        <ContractsGrid contracts={getFilteredContracts()} onContractDeleted={handleContractDeleted} />
+        <ContractsGrid 
+          contracts={getFilteredContracts()} 
+          onContractDeleted={handleContractDeleted}
+          onContractUpdated={loadContracts}
+        />
       </Tabs>
     </div>
   );
 }
 
-function ContractsGrid({ contracts, onContractDeleted }: { contracts: Contract[], onContractDeleted: (id: string) => void }) {
+function ContractsGrid({ 
+  contracts, 
+  onContractDeleted,
+  onContractUpdated
+}: { 
+  contracts: Contract[], 
+  onContractDeleted: (id: string) => void,
+  onContractUpdated: () => void 
+}) {
   const [selectedContract, setSelectedContract] = useState<Contract | null>(null);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const { toast } = useToast();
@@ -242,7 +264,10 @@ function ContractsGrid({ contracts, onContractDeleted }: { contracts: Contract[]
 
     setIsDeleting(true);
     try {
-      await deleteContractAction(selectedContract.id);
+      const response = await fetch(`/api/contracts/${selectedContract.id}`, { method: 'DELETE' });
+      if (!response.ok) {
+        throw new Error('Failed to delete');
+      }
       toast({
         title: "Success",
         description: "Contract deleted successfully.",
@@ -259,6 +284,11 @@ function ContractsGrid({ contracts, onContractDeleted }: { contracts: Contract[]
     } finally {
       setIsDeleting(false);
     }
+  };
+
+  const openEditDialog = (contract: Contract) => {
+    setSelectedContract(contract);
+    setEditDialogOpen(true);
   };
 
   return (
@@ -309,7 +339,7 @@ function ContractsGrid({ contracts, onContractDeleted }: { contracts: Contract[]
                   View
                 </Button>
                 
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="sm" onClick={() => openEditDialog(contract)}>
                   <Edit className="h-4 w-4 mr-2" />
                   Edit
                 </Button>
@@ -335,6 +365,7 @@ function ContractsGrid({ contracts, onContractDeleted }: { contracts: Contract[]
         </div>
       )}
 
+      {/* View Dialog */}
       <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
@@ -401,7 +432,16 @@ function ContractsGrid({ contracts, onContractDeleted }: { contracts: Contract[]
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Edit Dialog */}
+      <EditContractDialog 
+        contract={selectedContract} 
+        open={editDialogOpen} 
+        onOpenChange={setEditDialogOpen} 
+        onContractUpdated={onContractUpdated}
+      />
       
+      {/* Delete Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -412,7 +452,7 @@ function ContractsGrid({ contracts, onContractDeleted }: { contracts: Contract[]
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} disabled={isDeleting}>
+            <AlertDialogAction onClick={confirmDelete} disabled={isDeleting} className="bg-red-600 hover:bg-red-700">
               {isDeleting ? "Deleting..." : "Continue"}
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -421,6 +461,115 @@ function ContractsGrid({ contracts, onContractDeleted }: { contracts: Contract[]
     </>
   );
 }
+
+// Edit Contract Dialog Component
+function EditContractDialog({ 
+  contract, 
+  open, 
+  onOpenChange, 
+  onContractUpdated 
+}: { 
+  contract: Contract | null, 
+  open: boolean, 
+  onOpenChange: (open: boolean) => void,
+  onContractUpdated: () => void 
+}) {
+  const [formData, setFormData] = useState<Partial<Contract>>({});
+  const [isSaving, setIsSaving] = useState(false);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    if (contract) {
+      setFormData({
+        ...contract,
+        startDate: contract.startDate.split('T')[0],
+        endDate: contract.endDate.split('T')[0],
+      });
+    }
+  }, [contract]);
+
+  const handleInputChange = (field: keyof Contract, value: any) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!contract) return;
+
+    setIsSaving(true);
+    try {
+      const response = await fetch(`/api/contracts/${contract.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update contract');
+      }
+
+      toast({
+        title: "Success",
+        description: "Contract updated successfully.",
+      });
+      onOpenChange(false);
+      onContractUpdated();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update contract.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  if (!contract) return null;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Edit Contract</DialogTitle>
+          <DialogDescription>Update the details for "{contract.title}"</DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4 py-4">
+          <div>
+            <Label htmlFor="title">Title</Label>
+            <Input id="title" value={formData.title || ''} onChange={(e) => handleInputChange('title', e.target.value)} />
+          </div>
+          <div>
+            <Label htmlFor="value">Value</Label>
+            <Input id="value" type="number" value={formData.value || 0} onChange={(e) => handleInputChange('value', parseFloat(e.target.value))} />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="startDate">Start Date</Label>
+              <Input id="startDate" type="date" value={formData.startDate || ''} onChange={(e) => handleInputChange('startDate', e.target.value)} />
+            </div>
+            <div>
+              <Label htmlFor="endDate">End Date</Label>
+              <Input id="endDate" type="date" value={formData.endDate || ''} onChange={(e) => handleInputChange('endDate', e.target.value)} />
+            </div>
+          </div>
+          <div>
+            <Label htmlFor="description">Description</Label>
+            <Textarea id="description" value={formData.description || ''} onChange={(e) => handleInputChange('description', e.target.value)} />
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button type="submit" disabled={isSaving}>
+              {isSaving && <Save className="mr-2 h-4 w-4 animate-spin" />}
+              Save Changes
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 
 function ContractsPageSkeleton() {
   return (

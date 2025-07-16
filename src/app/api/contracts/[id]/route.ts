@@ -8,11 +8,13 @@ export async function PUT(
   try {
     const body = await request.json();
     const contract = await updateContract(params.id, body);
-    return NextResponse.json(contract);
+    const serializedContract = JSON.parse(JSON.stringify(contract));
+    return NextResponse.json(serializedContract);
   } catch (error) {
     console.error('Error updating contract:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Failed to update contract';
     return NextResponse.json(
-      { error: 'Failed to update contract' },
+      { error: errorMessage },
       { status: 500 }
     );
   }
@@ -27,8 +29,9 @@ export async function DELETE(
     return NextResponse.json({ message: 'Contract deleted successfully' });
   } catch (error) {
     console.error('Error deleting contract:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Failed to delete contract';
     return NextResponse.json(
-      { error: 'Failed to delete contract' },
+      { error: errorMessage },
       { status: 500 }
     );
   }

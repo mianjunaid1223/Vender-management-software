@@ -135,9 +135,9 @@ export type Contract = {
   description?: string;
   
   // Enhanced contract fields
-  type: ContractType;
-  currency: string;
-  autoRenew: boolean;
+  type?: ContractType;
+  currency?: string;
+  autoRenew?: boolean;
   renewalPeriod?: number; // in months
   renewalNotice?: number; // days before renewal
   milestones?: ContractMilestone[];
@@ -154,7 +154,7 @@ export type Contract = {
   // Metadata
   createdAt: string;
   updatedAt: string;
-  createdBy: string;
+  createdBy?: string;
   signedAt?: string;
   signedBy?: string;
 };
