@@ -33,7 +33,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
                 <nav className="flex-1 overflow-auto py-2">
                     <DashboardNav />
                 </nav>
-                <div className="mt-auto border-t p-4">
+                <div className="mt-auto border-t p-4" suppressHydrationWarning>
                      <ThemeToggle asDropUp={true} />
                 </div>
             </aside>
@@ -55,7 +55,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
                             <nav className="flex-grow overflow-auto">
                                 <DashboardNav isMobile />
                             </nav>
-                            <div className="mt-auto border-t p-4">
+                            <div className="mt-auto border-t p-4" suppressHydrationWarning>
                                 <ThemeToggle asDropUp={true} />
                             </div>
                         </SheetContent>
