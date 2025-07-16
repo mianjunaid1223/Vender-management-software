@@ -1,4 +1,5 @@
 
+
 'use server';
 
 import clientPromise from '@/lib/mongodb';
@@ -476,11 +477,11 @@ export async function fetchContractsByVendor(vendorId: string): Promise<Contract
     try {
         const contracts = await db
             .collection('contracts')
-            .find({ vendorId })
+            .find({ $or: [ { "partyA.id": vendorId }, { "partyB.id": vendorId } ]})
             .sort({ createdAt: -1 })
             .toArray();
 
-        return JSON.parse(JSON.stringify(contracts));
+        return JSON.parse(JSON.stringify(contracts.map(c => ({...c, id: c._id.toString()}))));
     } catch (error) {
         console.error('Database Error:', error);
         throw new Error('Failed to fetch contracts by vendor.');
@@ -580,16 +581,15 @@ export async function updateVendor(id: string, updates: Partial<Vendor>): Promis
             const serializedResult = JSON.parse(JSON.stringify(result));
             updatedVendor = { ...serializedResult, id: serializedResult._id.toString() } as Vendor;
             
-            // Propagate vendor name change to associated contracts and invoices
             if (updates.name) {
                 await contractsCollection.updateMany(
-                    { vendorId: id },
-                    { $set: { vendorName: updates.name } },
+                    { $or: [ { "partyA.id": id }, { "partyB.id": id } ] },
+                    { $set: { "partyA.id": id ? { name: updates.name } : {}, "partyB.id": id ? { name: updates.name } : {} } },
                     { session }
                 );
                 await invoicesCollection.updateMany(
-                    { vendorId: id },
-                    { $set: { vendorName: updates.name } },
+                    { $or: [ { "seller.id": id }, { "buyer.id": id } ] },
+                    { $set: { "seller.id": id ? { name: updates.name } : {}, "buyer.id": id ? { name: updates.name } : {} } },
                     { session }
                 );
             }
@@ -604,8 +604,6 @@ export async function updateVendor(id: string, updates: Partial<Vendor>): Promis
     } catch (error) {
         console.error('Database Error:', error);
         throw new Error('Failed to update vendor and associated data.');
-    } finally {
-        await session.endSession();
     }
 }
 
@@ -621,14 +619,14 @@ export async function deleteVendor(id: string): Promise<void> {
             const invoicesCollection = db.collection('invoices');
 
             // Find all contracts associated with the vendor
-            const contractsToDelete = await contractsCollection.find({ vendorId: id }, { session }).project({ _id: 1 }).toArray();
+            const contractsToDelete = await contractsCollection.find({ $or: [ { "partyA.id": id }, { "partyB.id": id } ] }, { session }).project({ _id: 1 }).toArray();
             const contractIdsToDelete = contractsToDelete.map(c => c._id.toString());
             
             // Delete all invoices associated with the vendor's contracts OR directly to the vendor
-            await invoicesCollection.deleteMany({ $or: [{ contractId: { $in: contractIdsToDelete } }, { vendorId: id }] }, { session });
+            await invoicesCollection.deleteMany({ $or: [{ contractId: { $in: contractIdsToDelete } }, { "seller.id": id }, { "buyer.id": id }] }, { session });
             
             // Delete all contracts associated with the vendor
-            await contractsCollection.deleteMany({ vendorId: id }, { session });
+            await contractsCollection.deleteMany({ $or: [ { "partyA.id": id }, { "partyB.id": id } ] }, { session });
             
             // Delete the vendor itself
             const result = await vendorsCollection.deleteOne({ _id: new ObjectId(id) }, { session });
@@ -649,8 +647,8 @@ export async function fetchInvoicesByVendor(vendorId: string): Promise<Invoice[]
     noStore();
     const db = await getDb();
     try {
-        const invoices = await db.collection('invoices').find({ vendorId }).toArray();
-        return JSON.parse(JSON.stringify(invoices));
+        const invoices = await db.collection('invoices').find({ $or: [ { "seller.id": vendorId }, { "buyer.id": vendorId } ] }).toArray();
+        return JSON.parse(JSON.stringify(invoices.map(i => ({...i, id: i._id.toString()}))));
     } catch (error) {
         console.error("Database Error fetching invoices by vendor:", error);
         throw new Error('Failed to fetch invoices for vendor.');

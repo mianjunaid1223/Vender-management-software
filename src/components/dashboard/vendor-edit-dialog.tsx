@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -105,12 +106,9 @@ export function VendorEditDialog({ vendor, open, onOpenChange, onVendorUpdated }
           fetchContractsByVendor(vendor.id),
           fetchInvoicesByVendor(vendor.id)
         ]);
-
-        const impactedContracts = contracts.filter(c => c.vendorName !== formData.name);
-        const impactedInvoices = invoices.filter(i => i.vendorName !== formData.name);
-
-        if (impactedContracts.length > 0 || impactedInvoices.length > 0) {
-          setImpactData({ contracts: impactedContracts, invoices: impactedInvoices });
+        
+        if (contracts.length > 0 || invoices.length > 0) {
+          setImpactData({ contracts, invoices });
           setShowImpactDialog(true);
         } else {
           await saveChanges();
