@@ -26,10 +26,12 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { FileText, Plus, Calendar as CalendarIcon, DollarSign } from "lucide-react";
+import { FileText, Plus, Calendar as CalendarIcon, DollarSign, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { fetchVendors, createContract } from "@/lib/data";
+import { Vendor } from "@/lib/types";
 
 interface ContractAddButtonProps {
   onContractAdded?: () => void;
@@ -40,11 +42,12 @@ export function ContractAddButton({ onContractAdded }: ContractAddButtonProps) {
   const [open, setOpen] = useState(false);
   const [startDate, setStartDate] = useState<Date>();
   const [endDate, setEndDate] = useState<Date>();
-  const [vendors, setVendors] = useState<any[]>([]);
+  const [vendors, setVendors] = useState<Vendor[]>([]);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
-    vendor: "",
+    vendorId: "",
+    vendorName: "",
     value: "",
     description: "",
     status: "Draft",
@@ -53,26 +56,35 @@ export function ContractAddButton({ onContractAdded }: ContractAddButtonProps) {
 
   useEffect(() => {
     if (open) {
-      fetchVendors();
+      loadVendors();
     }
   }, [open]);
 
-  const fetchVendors = async () => {
+  const loadVendors = async () => {
     try {
-      const response = await fetch('/api/vendors');
-      if (response.ok) {
-        const vendorsData = await response.json();
-        setVendors(vendorsData);
-      }
+      const vendorsData = await fetchVendors();
+      setVendors(vendorsData);
     } catch (error) {
       console.error('Error fetching vendors:', error);
+      toast({ title: "Error", description: "Failed to load vendors.", variant: "destructive" });
+    }
+  };
+  
+  const handleVendorChange = (vendorId: string) => {
+    const selectedVendor = vendors.find(v => v.id === vendorId);
+    if (selectedVendor) {
+      setFormData({
+        ...formData,
+        vendorId: selectedVendor.id,
+        vendorName: selectedVendor.name,
+      });
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.title || !formData.vendor || !formData.value || !startDate || !endDate) {
+    if (!formData.title || !formData.vendorId || !formData.value || !startDate || !endDate) {
       toast({
         title: "Missing Information",
         description: "Please fill in all required fields.",
@@ -86,49 +98,39 @@ export function ContractAddButton({ onContractAdded }: ContractAddButtonProps) {
     try {
       const contractData = {
         title: formData.title,
-        vendor: formData.vendor,
+        vendorId: formData.vendorId,
+        vendorName: formData.vendorName,
         value: parseFloat(formData.value),
         description: formData.description,
-        status: formData.status,
+        status: formData.status as any,
         type: formData.type,
         startDate: startDate.toISOString(),
         endDate: endDate.toISOString(),
+        paymentTerms: "Net 30" // Assuming a default
       };
 
-      const response = await fetch('/api/contracts', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(contractData),
-      });
+      await createContract(contractData);
 
-      if (response.ok) {
-        toast({
-          title: "Contract Created",
-          description: `Contract "${formData.title}" has been created successfully.`,
-        });
-        
-        // Reset form
-        setOpen(false);
-        setFormData({
-          title: "",
-          vendor: "",
-          value: "",
-          description: "",
-          status: "Draft",
-          type: "Service Agreement"
-        });
-        setStartDate(undefined);
-        setEndDate(undefined);
-        
-        // Notify parent to refresh
-        if (onContractAdded) {
-          onContractAdded();
-        }
-      } else {
-        throw new Error('Failed to create contract');
-      }
+      toast({
+        title: "Contract Created",
+        description: `Contract "${formData.title}" has been created successfully.`,
+      });
+      
+      setOpen(false);
+      setFormData({
+        title: "",
+        vendorId: "",
+        vendorName: "",
+        value: "",
+        description: "",
+        status: "Draft",
+        type: "Service Agreement"
+      });
+      setStartDate(undefined);
+      setEndDate(undefined);
+      
+      onContractAdded?.();
+
     } catch (error) {
       console.error('Error creating contract:', error);
       toast({
@@ -160,147 +162,115 @@ export function ContractAddButton({ onContractAdded }: ContractAddButtonProps) {
           </DialogDescription>
         </DialogHeader>
         
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 gap-4">
+        <form onSubmit={handleSubmit} className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="title">Contract Title *</Label>
+            <Input
+              id="title"
+              placeholder="e.g., Annual Software License"
+              value={formData.title}
+              onChange={(e) => setFormData({...formData, title: e.target.value})}
+              required
+            />
+          </div>
+          
+          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="title">Contract Title *</Label>
-              <Input
-                id="title"
-                placeholder="Enter contract title"
-                value={formData.title}
-                onChange={(e) => setFormData({...formData, title: e.target.value})}
-                required
-              />
+              <Label htmlFor="vendor">Vendor *</Label>
+              <Select value={formData.vendorId} onValueChange={handleVendorChange}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select vendor" />
+                </SelectTrigger>
+                <SelectContent>
+                  {vendors.map((vendor) => (
+                    <SelectItem key={vendor.id} value={vendor.id}>
+                      {vendor.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="vendor">Vendor *</Label>
-                <Select value={formData.vendor} onValueChange={(value) => setFormData({...formData, vendor: value})}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select vendor" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {vendors.map((vendor) => (
-                      <SelectItem key={vendor.id} value={vendor.name}>
-                        {vendor.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+            <div className="space-y-2">
+              <Label htmlFor="value">Contract Value *</Label>
+              <div className="relative">
+                <DollarSign className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  id="value"
+                  type="number"
+                  placeholder="0.00"
+                  className="pl-9"
+                  value={formData.value}
+                  onChange={(e) => setFormData({...formData, value: e.target.value})}
+                  required
+                />
               </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="value">Contract Value *</Label>
-                <div className="relative">
-                  <DollarSign className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    id="value"
-                    placeholder="0.00"
-                    className="pl-9"
-                    value={formData.value}
-                    onChange={(e) => setFormData({...formData, value: e.target.value})}
-                    required
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Start Date *</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant={"outline"}
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !startDate && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {startDate ? format(startDate, "PPP") : <span>Pick a date</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <Calendar
+                    mode="single"
+                    selected={startDate}
+                    onSelect={setStartDate}
+                    initialFocus
                   />
-                </div>
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="type">Contract Type</Label>
-                <Select value={formData.type} onValueChange={(value) => setFormData({...formData, type: value})}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Service Agreement">Service Agreement</SelectItem>
-                    <SelectItem value="Supply Contract">Supply Contract</SelectItem>
-                    <SelectItem value="Maintenance Contract">Maintenance Contract</SelectItem>
-                    <SelectItem value="Consulting Agreement">Consulting Agreement</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="status">Status</Label>
-                <Select value={formData.status} onValueChange={(value) => setFormData({...formData, status: value})}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Draft">Draft</SelectItem>
-                    <SelectItem value="Active">Active</SelectItem>
-                    <SelectItem value="Pending">Pending</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Start Date *</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant={"outline"}
-                      className={cn(
-                        "w-full justify-start text-left font-normal",
-                        !startDate && "text-muted-foreground"
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {startDate ? format(startDate, "PPP") : <span>Pick a date</span>}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0">
-                    <Calendar
-                      mode="single"
-                      selected={startDate}
-                      onSelect={setStartDate}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-              
-              <div className="space-y-2">
-                <Label>End Date *</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant={"outline"}
-                      className={cn(
-                        "w-full justify-start text-left font-normal",
-                        !endDate && "text-muted-foreground"
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {endDate ? format(endDate, "PPP") : <span>Pick a date</span>}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0">
-                    <Calendar
-                      mode="single"
-                      selected={endDate}
-                      onSelect={setEndDate}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
+                </PopoverContent>
+              </Popover>
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
-              <Textarea
-                id="description"
-                placeholder="Enter contract description or terms..."
-                value={formData.description}
-                onChange={(e) => setFormData({...formData, description: e.target.value})}
-                rows={3}
-              />
+              <Label>End Date *</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant={"outline"}
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !endDate && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {endDate ? format(endDate, "PPP") : <span>Pick a date</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <Calendar
+                    mode="single"
+                    selected={endDate}
+                    onSelect={setEndDate}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="description">Description</Label>
+            <Textarea
+              id="description"
+              placeholder="Enter contract description or terms..."
+              value={formData.description}
+              onChange={(e) => setFormData({...formData, description: e.target.value})}
+              rows={3}
+            />
           </div>
           
           <div className="flex justify-end space-x-2 pt-4">
@@ -308,7 +278,8 @@ export function ContractAddButton({ onContractAdded }: ContractAddButtonProps) {
               Cancel
             </Button>
             <Button type="submit" disabled={loading}>
-              {loading ? 'Creating...' : 'Create Contract'}
+              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Create Contract
             </Button>
           </div>
         </form>

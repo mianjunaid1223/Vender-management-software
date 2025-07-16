@@ -9,9 +9,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
 import { 
   AlertCircle, 
   CheckCircle, 
@@ -25,15 +26,29 @@ import {
   Calendar,
   Building,
   Save,
-  X
+  X,
+  Clock
 } from "lucide-react";
-import { fetchContracts, fetchExpiringContracts } from "@/lib/data";
+import { fetchContracts, deleteContract as deleteContractAction } from "@/lib/data";
+import { Contract } from "@/lib/types";
+import { downloadContractPDF } from "@/lib/pdf-utils";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export default function ContractsPage() {
-  const [contracts, setContracts] = useState([]);
+  const [contracts, setContracts] = useState<Contract[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState("all");
+  const { toast } = useToast();
 
   useEffect(() => {
     loadContracts();
@@ -46,53 +61,77 @@ export default function ContractsPage() {
       setContracts(contractsData);
     } catch (err) {
       console.error("Error loading contracts:", err);
+      toast({
+        title: "Error",
+        description: "Failed to load contracts.",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
   };
 
+  const handleContractAdded = () => {
+    loadContracts();
+  };
+
+  const handleContractDeleted = (contractId: string) => {
+    setContracts(prev => prev.filter(c => c.id !== contractId));
+  };
+  
   const handleExportContracts = () => {
     const filteredContracts = getFilteredContracts();
     const csvContent = convertToCSV(filteredContracts);
     downloadCSV(csvContent, "contracts.csv");
   };
 
-  const convertToCSV = (data) => {
-    const headers = ['Title', 'Vendor', 'Status', 'Value'];
+  const convertToCSV = (data: Contract[]) => {
+    if (!data.length) return "";
+    const headers = Object.keys(data[0]);
     const csvRows = [headers.join(',')];
     
     data.forEach(contract => {
-      const row = [
-        contract.title || '',
-        contract.vendor || '',
-        contract.status || '',
-        contract.value || 0
-      ];
+      const row = headers.map(header => {
+        let value = contract[header as keyof Contract];
+        if (typeof value === 'string') {
+          return `"${value.replace(/"/g, '""')}"`;
+        }
+        return value;
+      });
       csvRows.push(row.join(','));
     });
     
     return csvRows.join('\n');
   };
 
-  const downloadCSV = (content, filename) => {
-    const blob = new Blob([content], { type: 'text/csv' });
+  const downloadCSV = (content: string, filename: string) => {
+    if (!content) {
+      toast({
+        title: "No Data",
+        description: "There is no data to export.",
+      });
+      return;
+    }
+    const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
     link.download = filename;
+    document.body.appendChild(link);
     link.click();
+    document.body.removeChild(link);
   };
 
   const getFilteredContracts = () => {
     let filtered = contracts;
     
-    if (activeTab === "active") filtered = contracts.filter(c => c.status === 'Active');
-    else if (activeTab === "draft") filtered = contracts.filter(c => c.status === 'Draft');
-    else if (activeTab === "expired") filtered = contracts.filter(c => c.status === 'Expired');
+    if (activeTab !== "all") {
+        filtered = contracts.filter(c => c.status.toLowerCase() === activeTab);
+    }
     
     if (searchTerm) {
       filtered = filtered.filter(contract => 
         contract.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        contract.vendor?.toLowerCase().includes(searchTerm.toLowerCase())
+        contract.vendorName?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
     
@@ -111,9 +150,9 @@ export default function ContractsPage() {
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={handleExportContracts}>
             <Download className="h-4 w-4 mr-2" />
-            Export
+            Export CSV
           </Button>
-          <ContractAddButton />
+          <ContractAddButton onContractAdded={handleContractAdded} />
         </div>
       </PageHeader>
 
@@ -147,14 +186,14 @@ export default function ContractsPage() {
             <div className="text-2xl font-bold">{expiredContracts.length}</div>
           </CardContent>
         </Card>
-
+        
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Contracts</CardTitle>
-            <DollarSign className="h-4 w-4 text-purple-600" />
+            <CardTitle className="text-sm font-medium">Pending Contracts</CardTitle>
+            <Clock className="h-4 w-4 text-yellow-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{contracts.length}</div>
+            <div className="text-2xl font-bold">{contracts.filter(c => c.status === 'Pending').length}</div>
           </CardContent>
         </Card>
       </div>
@@ -180,30 +219,47 @@ export default function ContractsPage() {
             </div>
           </div>
         </div>
-
-        <TabsContent value="all">
-          <ContractsGrid contracts={getFilteredContracts()} />
-        </TabsContent>
-
-        <TabsContent value="active">
-          <ContractsGrid contracts={getFilteredContracts()} />
-        </TabsContent>
-
-        <TabsContent value="draft">
-          <ContractsGrid contracts={getFilteredContracts()} />
-        </TabsContent>
-
-        <TabsContent value="expired">
-          <ContractsGrid contracts={getFilteredContracts()} />
-        </TabsContent>
+        <ContractsGrid contracts={getFilteredContracts()} onContractDeleted={handleContractDeleted} />
       </Tabs>
     </div>
   );
 }
 
-function ContractsGrid({ contracts }) {
-  const [selectedContract, setSelectedContract] = useState(null);
+function ContractsGrid({ contracts, onContractDeleted }: { contracts: Contract[], onContractDeleted: (id: string) => void }) {
+  const [selectedContract, setSelectedContract] = useState<Contract | null>(null);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const { toast } = useToast();
+
+  const openDeleteDialog = (contract: Contract) => {
+    setSelectedContract(contract);
+    setDeleteDialogOpen(true);
+  };
+  
+  const confirmDelete = async () => {
+    if (!selectedContract) return;
+
+    setIsDeleting(true);
+    try {
+      await deleteContractAction(selectedContract.id);
+      toast({
+        title: "Success",
+        description: "Contract deleted successfully.",
+      });
+      onContractDeleted(selectedContract.id);
+      setDeleteDialogOpen(false);
+      setSelectedContract(null);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete contract.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   return (
     <>
@@ -220,7 +276,7 @@ function ContractsGrid({ contracts }) {
               </div>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Building className="h-4 w-4" />
-                <span>{contract.vendor}</span>
+                <span>{contract.vendorName}</span>
               </div>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -262,6 +318,7 @@ function ContractsGrid({ contracts }) {
                   variant="outline" 
                   size="sm" 
                   className="text-red-600 hover:text-red-700"
+                  onClick={() => openDeleteDialog(contract)}
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
@@ -282,9 +339,12 @@ function ContractsGrid({ contracts }) {
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Contract Details</DialogTitle>
+            <DialogDescription>
+              Review the details of the contract.
+            </DialogDescription>
           </DialogHeader>
           {selectedContract && (
-            <div className="space-y-4">
+            <div className="space-y-4 py-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label>Title</Label>
@@ -304,7 +364,7 @@ function ContractsGrid({ contracts }) {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label>Vendor</Label>
-                  <p className="text-sm mt-1">{selectedContract.vendor}</p>
+                  <p className="text-sm mt-1">{selectedContract.vendorName}</p>
                 </div>
                 <div>
                   <Label>Value</Label>
@@ -326,13 +386,38 @@ function ContractsGrid({ contracts }) {
               {selectedContract.description && (
                 <div>
                   <Label>Description</Label>
-                  <p className="text-sm mt-1">{selectedContract.description}</p>
+                  <p className="text-sm mt-1 text-muted-foreground">{selectedContract.description}</p>
                 </div>
               )}
+
+              <div className="flex justify-end pt-4 gap-2">
+                 <Button variant="outline" onClick={() => downloadContractPDF(selectedContract)}>
+                    <Download className="h-4 w-4 mr-2" />
+                    Download PDF
+                 </Button>
+                 <Button onClick={() => setViewDialogOpen(false)}>Close</Button>
+              </div>
             </div>
           )}
         </DialogContent>
       </Dialog>
+      
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the contract "{selectedContract?.title}" from the database.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} disabled={isDeleting}>
+              {isDeleting ? "Deleting..." : "Continue"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
@@ -340,6 +425,12 @@ function ContractsGrid({ contracts }) {
 function ContractsPageSkeleton() {
   return (
     <div className="space-y-6">
+       <PageHeader title="Contracts" description="Manage and track all your vendor contracts">
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-9 w-28" />
+          <Skeleton className="h-9 w-32" />
+        </div>
+      </PageHeader>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => (
           <Card key={i}>
@@ -351,6 +442,31 @@ function ContractsPageSkeleton() {
             </CardContent>
           </Card>
         ))}
+      </div>
+      <div className="space-y-4">
+         <div className="flex justify-between">
+            <Skeleton className="h-10 w-96" />
+            <Skeleton className="h-10 w-64" />
+         </div>
+         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {Array.from({length: 6}).map((_, i) => (
+                <Card key={i}>
+                    <CardHeader>
+                        <Skeleton className="h-5 w-4/5" />
+                        <Skeleton className="h-4 w-2/5" />
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                        <Skeleton className="h-4 w-full" />
+                        <Skeleton className="h-4 w-1/2" />
+                        <div className="flex gap-2 pt-2 border-t">
+                            <Skeleton className="h-8 w-20" />
+                            <Skeleton className="h-8 w-20" />
+                            <Skeleton className="h-8 w-8" />
+                        </div>
+                    </CardContent>
+                </Card>
+            ))}
+         </div>
       </div>
     </div>
   );

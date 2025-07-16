@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const contract = await createContract(body);
-    return NextResponse.json(contract);
+    return NextResponse.json(contract, { status: 201 });
   } catch (error) {
     console.error('Error creating contract:', error);
     return NextResponse.json(
