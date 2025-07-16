@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { PageHeader } from "@/components/page-header";
-import { ContractAddButton } from "@/components/dashboard/contract-add-button";
+import { ContractOnboardingDialog } from "@/components/dashboard/contract-onboarding-dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -164,7 +164,7 @@ export default function ContractsPage() {
             <Download className="h-4 w-4 mr-2" />
             Export CSV
           </Button>
-          <ContractAddButton onContractAdded={handleContractAdded} />
+          <ContractOnboardingDialog />
         </div>
       </PageHeader>
 
