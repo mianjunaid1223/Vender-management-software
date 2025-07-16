@@ -1,3 +1,4 @@
+
 'use server';
 
 import clientPromise from '@/lib/mongodb';
@@ -258,7 +259,7 @@ export async function updateInvoice(id: string, updates: Partial<Invoice>): Prom
     const db = await getDb();
     
     try {
-        const { id: _, ...updateData } = updates;
+        const { id: _, _id, ...updateData } = updates as any;
         updateData.updatedAt = new Date().toISOString();
         
         const result = await db.collection('invoices').findOneAndUpdate(
