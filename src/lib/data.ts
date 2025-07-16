@@ -29,7 +29,11 @@ export async function fetchInvoices(): Promise<Invoice[]> {
             .sort({ invoiceDate: -1 })
             .toArray();
         
-        return JSON.parse(JSON.stringify(invoices));
+        // Ensure _id is mapped to id and properly serialized
+        return invoices.map(invoice => ({
+            ...invoice,
+            id: invoice._id.toString(),
+        })) as Invoice[];
 
     } catch (error) {
         console.error('Database Error:', error);
