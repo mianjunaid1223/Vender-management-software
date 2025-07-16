@@ -17,9 +17,27 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { 
   MoreHorizontal, 
   Eye, 
@@ -32,22 +50,72 @@ import {
   MapPin 
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
+import { deleteVendor } from "@/lib/data";
 import type { Vendor } from "@/lib/types";
 
 interface VendorsTableProps {
   data: Vendor[];
-  onVendorUpdate?: (vendor: Partial<Vendor>) => void;
-  onVendorDelete?: (vendorId: string) => void;
 }
 
-export function VendorsTable({ data, onVendorUpdate, onVendorDelete }: VendorsTableProps) {
+export function VendorsTable({ data }: VendorsTableProps) {
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedVendor, setSelectedVendor] = useState<Vendor | null>(null);
+  const [showViewDialog, setShowViewDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const { toast } = useToast();
 
   const filteredData = data.filter(vendor => 
     vendor.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     vendor.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
     vendor.service.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const handleViewVendor = (vendor: Vendor) => {
+    setSelectedVendor(vendor);
+    setShowViewDialog(true);
+  };
+
+  const handleEditVendor = (vendor: Vendor) => {
+    setSelectedVendor(vendor);
+    // TODO: Implement edit functionality
+    toast({
+      title: "Edit Vendor",
+      description: "Edit functionality will be implemented soon.",
+    });
+  };
+
+  const handleDeleteVendor = (vendor: Vendor) => {
+    setSelectedVendor(vendor);
+    setShowDeleteDialog(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!selectedVendor) return;
+    
+    setIsDeleting(true);
+    try {
+      await deleteVendor(selectedVendor.id);
+      toast({
+        title: "Success",
+        description: "Vendor deleted successfully.",
+      });
+      setShowDeleteDialog(false);
+      setSelectedVendor(null);
+      // Refresh the page to update the data
+      window.location.reload();
+    } catch (error) {
+      console.error('Error deleting vendor:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete vendor. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const getStatusColor = (status?: string) => {
     switch (status) {
@@ -161,17 +229,17 @@ export function VendorsTable({ data, onVendorUpdate, onVendorDelete }: VendorsTa
                     <DropdownMenuContent align="end">
                       <DropdownMenuLabel>Actions</DropdownMenuLabel>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleViewVendor(vendor)}>
                         <Eye className="mr-2 h-4 w-4" />
                         View Details
                       </DropdownMenuItem>
-                      <DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleEditVendor(vendor)}>
                         <Edit className="mr-2 h-4 w-4" />
                         Edit
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem 
-                        onClick={() => onVendorDelete && onVendorDelete(vendor.id)}
+                        onClick={() => handleDeleteVendor(vendor)}
                         className="text-red-600"
                       >
                         <Trash2 className="mr-2 h-4 w-4" />
@@ -191,6 +259,90 @@ export function VendorsTable({ data, onVendorUpdate, onVendorDelete }: VendorsTa
           </div>
         )}
       </div>
+
+      {/* View Vendor Dialog */}
+      <Dialog open={showViewDialog} onOpenChange={setShowViewDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Vendor Details</DialogTitle>
+          </DialogHeader>
+          {selectedVendor && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium">Name</label>
+                  <p className="text-sm text-muted-foreground">{selectedVendor.name}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Service</label>
+                  <p className="text-sm text-muted-foreground">{selectedVendor.service}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Email</label>
+                  <p className="text-sm text-muted-foreground">{selectedVendor.email}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Phone</label>
+                  <p className="text-sm text-muted-foreground">{selectedVendor.phone}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Status</label>
+                  <Badge className={getStatusColor(selectedVendor.status)}>
+                    {selectedVendor.status || 'Active'}
+                  </Badge>
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Payment Terms</label>
+                  <p className="text-sm text-muted-foreground">{selectedVendor.paymentTerms || 'Net 30'}</p>
+                </div>
+              </div>
+              {selectedVendor.address && (
+                <div>
+                  <label className="text-sm font-medium">Address</label>
+                  <p className="text-sm text-muted-foreground">
+                    {selectedVendor.address.street}, {selectedVendor.address.city}, {selectedVendor.address.state} {selectedVendor.address.zipCode}
+                  </p>
+                </div>
+              )}
+              {selectedVendor.contactPerson && (
+                <div>
+                  <label className="text-sm font-medium">Contact Person</label>
+                  <p className="text-sm text-muted-foreground">{selectedVendor.contactPerson}</p>
+                </div>
+              )}
+              {selectedVendor.taxId && (
+                <div>
+                  <label className="text-sm font-medium">Tax ID</label>
+                  <p className="text-sm text-muted-foreground">{selectedVendor.taxId}</p>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the vendor
+              "{selectedVendor?.name}" and all associated data.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              disabled={isDeleting}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

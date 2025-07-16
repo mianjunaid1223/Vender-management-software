@@ -11,6 +11,9 @@ export type Vendor = {
   contactPerson?: string;
   paymentTerms?: string;
   status?: 'Active' | 'Inactive' | 'Pending';
+  tags?: string[];
+  notes?: string;
+  rating?: number;
   
   // Metadata
   createdAt?: string;
@@ -127,11 +130,210 @@ export type Contract = {
   startDate: string;
   endDate: string;
   value: number;
-  status: 'Active' | 'Expired' | 'Terminated' | 'Draft';
+  status: ContractStatus;
   paymentTerms: string;
   description?: string;
+  
+  // Enhanced contract fields
+  type: ContractType;
+  currency: string;
+  autoRenew: boolean;
+  renewalPeriod?: number; // in months
+  renewalNotice?: number; // days before renewal
+  milestones?: ContractMilestone[];
+  files?: ContractFile[];
+  reminders?: ContractReminder[];
+  tags?: string[];
+  notes?: string;
+  
+  // Terms and conditions
+  termsAndConditions?: string;
+  deliverables?: string[];
+  kpis?: ContractKPI[];
   
   // Metadata
   createdAt: string;
   updatedAt: string;
+  createdBy: string;
+  signedAt?: string;
+  signedBy?: string;
+};
+
+export type ContractMilestone = {
+  id: string;
+  title: string;
+  description?: string;
+  dueDate: string;
+  amount: number;
+  status: 'Pending' | 'In Progress' | 'Completed' | 'Overdue';
+  deliverables?: string[];
+};
+
+export type ContractKPI = {
+  id: string;
+  name: string;
+  target: number;
+  actual?: number;
+  unit: string;
+  description?: string;
+};
+
+// Agency/Company Types
+export type Company = {
+  id: string;
+  name: string;
+  businessType: string;
+  industry?: string;
+  addresses: InvoiceAddress[];
+  primaryAddress?: InvoiceAddress;
+  taxId?: string;
+  legalId?: string;
+  contacts: ContactInfo[];
+  primaryContact?: ContactInfo;
+  website?: string;
+  description?: string;
+  otherIdentifiers?: Record<string, string>;
+  preferences?: CompanyPreferences;
+  
+  // Metadata
+  createdAt: string;
+  updatedAt: string;
+  createdBy: string;
+};
+
+export type ContactInfo = {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  role?: string;
+  isPrimary?: boolean;
+};
+
+export type CompanyPreferences = {
+  defaultPaymentTerms?: string;
+  defaultCurrency?: string;
+  defaultTaxRate?: number;
+  emailNotifications?: boolean;
+  invoiceReminders?: boolean;
+  contractReminders?: boolean;
+  preferredLanguage?: string;
+};
+
+// Enhanced AI Context Types
+export type AIContext = {
+  user: User;
+  company: Company;
+  recentInvoices: Invoice[];
+  activeVendors: Vendor[];
+  activeContracts: Contract[];
+  preferences: CompanyPreferences;
+  currentModule: string;
+  lastActions: ActionLog[];
+};
+
+export type ActionLog = {
+  id: string;
+  action: string;
+  module: string;
+  timestamp: string;
+  details?: Record<string, any>;
+};
+
+// Enhanced Contract Types
+export type ContractType = 'Service' | 'Product' | 'Subscription' | 'One-time' | 'Framework';
+
+export type ContractStatus = 'Draft' | 'Active' | 'Pending' | 'Expired' | 'Terminated' | 'Suspended';
+
+export type ContractReminder = {
+  id: string;
+  type: 'renewal' | 'expiry' | 'payment' | 'milestone';
+  date: string;
+  message: string;
+  isActive: boolean;
+};
+
+export type ContractFile = {
+  id: string;
+  name: string;
+  type: string;
+  size: number;
+  url: string;
+  uploadedAt: string;
+  uploadedBy: string;
+};
+
+// Onboarding Types
+export type OnboardingStep = {
+  id: string;
+  title: string;
+  description: string;
+  completed: boolean;
+  required: boolean;
+  fields: OnboardingField[];
+};
+
+export type OnboardingField = {
+  id: string;
+  name: string;
+  type: 'text' | 'email' | 'phone' | 'select' | 'multiselect' | 'textarea' | 'date' | 'file';
+  label: string;
+  required: boolean;
+  options?: string[];
+  validation?: FieldValidation;
+};
+
+export type FieldValidation = {
+  pattern?: string;
+  minLength?: number;
+  maxLength?: number;
+  min?: number;
+  max?: number;
+  custom?: (value: any) => boolean | string;
+};
+
+// Search and Filter Types
+export type SearchFilters = {
+  query?: string;
+  status?: string[];
+  dateRange?: {
+    start: string;
+    end: string;
+  };
+  tags?: string[];
+  category?: string;
+  amountRange?: {
+    min: number;
+    max: number;
+  };
+};
+
+export type SortOption = {
+  field: string;
+  direction: 'asc' | 'desc';
+};
+
+// Notification Types
+export type NotificationType = 'info' | 'success' | 'warning' | 'error';
+
+export type Notification = {
+  id: string;
+  type: NotificationType;
+  title: string;
+  message: string;
+  isRead: boolean;
+  createdAt: string;
+  expiresAt?: string;
+  actions?: NotificationAction[];
+  relatedEntity?: {
+    type: 'invoice' | 'contract' | 'vendor';
+    id: string;
+  };
+};
+
+export type NotificationAction = {
+  id: string;
+  label: string;
+  action: string;
+  isPrimary?: boolean;
 };

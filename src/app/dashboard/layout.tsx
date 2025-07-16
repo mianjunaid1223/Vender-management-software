@@ -6,7 +6,7 @@ import { Sheet, SheetTrigger, SheetContent, SheetTitle } from "@/components/ui/s
 import { UserNav } from "@/components/user-nav";
 import { Logo } from "@/components/logo";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { getUser, fetchInvoices, fetchVendors } from "@/lib/data";
+import { getUser, fetchInvoices, fetchVendors, fetchContracts, fetchCompany } from "@/lib/data";
 import { DashboardNav } from "@/components/dashboard-nav";
 import { AISpotlight } from "@/components/dashboard/ai-spotlight";
 
@@ -14,6 +14,8 @@ export default async function DashboardLayout({ children }: { children: ReactNod
     const user = await getUser();
     const invoices = await fetchInvoices();
     const vendors = await fetchVendors();
+    const contracts = await fetchContracts();
+    const company = await fetchCompany();
 
     return (
         <div className="min-h-screen w-full bg-muted/40" suppressHydrationWarning>
@@ -53,7 +55,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
                 
                 <div className="flex flex-1 justify-center px-4 md:px-8">
                     <div className="w-full max-w-sm">
-                        <AISpotlight user={user} invoices={invoices} vendors={vendors} />
+                        <AISpotlight user={user} invoices={invoices} vendors={vendors} contracts={contracts} company={company || undefined} />
                     </div>
                 </div>
 

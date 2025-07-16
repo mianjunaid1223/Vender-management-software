@@ -14,7 +14,9 @@ const AIAssistantInputSchema = z.object({
   query: z.string().describe('The user query for the AI assistant.'),
   invoiceData: z.string().describe('The historical invoice data as a JSON string.'),
   vendorData: z.string().describe('Vendor data as a JSON string.'),
+  contractData: z.string().describe('Contract data as a JSON string.'),
   userData: z.string().describe('The current user data as a JSON string.'),
+  companyData: z.string().optional().describe('Company profile data as a JSON string.'),
 });
 export type AIAssistantInput = z.infer<typeof AIAssistantInputSchema>;
 
@@ -33,14 +35,18 @@ const prompt = ai.definePrompt({
   output: {schema: AIAssistantOutputSchema},
   prompt: `You are an expert AI assistant for a vendor management application called VendorVerse.
 Your goal is to provide helpful and accurate answers to user queries based on the data provided.
-You have access to the user's profile information, their full invoice history, and a list of their vendors.
+You have access to the user's profile information, their full invoice history, vendor list, contract information, and company profile.
 Analyze all the provided data to formulate your response. Be concise and clear.
+
+When providing suggestions, be specific about actionable steps the user can take. If you mention specific vendors, contracts, or invoices, provide relevant details.
 
 User Query: {{{query}}}
 
 User Profile Data: {{{userData}}}
+Company Profile Data: {{{companyData}}}
 Vendor Data: {{{vendorData}}}
 Invoice Data: {{{invoiceData}}}
+Contract Data: {{{contractData}}}
 
 Response:`,
 });
