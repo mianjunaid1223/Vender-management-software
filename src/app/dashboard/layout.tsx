@@ -11,11 +11,21 @@ import { DashboardNav } from "@/components/dashboard-nav";
 import { AISpotlight } from "@/components/dashboard/ai-spotlight";
 
 export default async function DashboardLayout({ children }: { children: ReactNode }) {
-    const user = await getUser();
-    const invoices = await fetchInvoices();
-    const vendors = await fetchVendors();
-    const contracts = await fetchContracts();
-    const company = await fetchCompany();
+    // Fetch all data in parallel
+    const [user, invoices, vendors, contracts, company] = await Promise.all([
+        getUser(),
+        fetchInvoices(),
+        fetchVendors(),
+        fetchContracts(),
+        fetchCompany()
+    ]);
+
+    // Serialize all data before passing to client components
+    const serializedUser = JSON.parse(JSON.stringify(user));
+    const serializedInvoices = JSON.parse(JSON.stringify(invoices));
+    const serializedVendors = JSON.parse(JSON.stringify(vendors));
+    const serializedContracts = JSON.parse(JSON.stringify(contracts));
+    const serializedCompany = company ? JSON.parse(JSON.stringify(company)) : undefined;
 
     return (
         <div className="min-h-screen w-full bg-muted/40" suppressHydrationWarning>
@@ -55,12 +65,18 @@ export default async function DashboardLayout({ children }: { children: ReactNod
                 
                 <div className="flex flex-1 justify-center px-4 md:px-8">
                     <div className="w-full max-w-sm">
-                        <AISpotlight user={user} invoices={invoices} vendors={vendors} contracts={contracts} company={company || undefined} />
+                        <AISpotlight 
+                          user={serializedUser} 
+                          invoices={serializedInvoices} 
+                          vendors={serializedVendors} 
+                          contracts={serializedContracts} 
+                          company={serializedCompany}
+                        />
                     </div>
                 </div>
 
                 <div className="flex items-center gap-3">
-                    <UserNav user={user} />
+                    <UserNav user={serializedUser} />
                 </div>
             </header>
 
