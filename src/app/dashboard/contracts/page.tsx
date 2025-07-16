@@ -422,10 +422,10 @@ function ContractsGrid({
                         </DropdownMenuSubContent>
                     </DropdownMenuSub>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => downloadContractPDF(contract)}>
+                    <DropdownMenuItem onClick={async () => downloadContractPDF(await contract)}>
                       <Download className="mr-2 h-4 w-4" /> Download PDF
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => previewContractPDF(contract)}>
+                    <DropdownMenuItem onClick={async () => previewContractPDF(await contract)}>
                       <Printer className="mr-2 h-4 w-4" /> Preview PDF
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
@@ -499,11 +499,11 @@ function ContractsGrid({
               </div>
 
               <div className="flex justify-end pt-4 gap-2">
-                 <Button variant="outline" onClick={() => downloadContractPDF(selectedContract)}>
+                 <Button variant="outline" onClick={async () => downloadContractPDF(await selectedContract)}>
                     <Download className="h-4 w-4 mr-2" />
                     Download PDF
                  </Button>
-                 <Button variant="outline" onClick={() => previewContractPDF(selectedContract)}>
+                 <Button variant="outline" onClick={async () => previewContractPDF(await selectedContract)}>
                     <Printer className="h-4 w-4 mr-2" />
                     Preview PDF
                  </Button>
@@ -597,22 +597,11 @@ function EditContractDialog({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!contract) return;
+    if (!contract || !formData.id) return;
 
     setIsSaving(true);
     try {
-      const response = await fetch(`/api/contracts/${contract.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to update contract');
-      }
-
-      const updatedContract = await response.json();
+      const updatedContract = await updateContract(formData.id, formData);
 
       toast({
         title: "Success",
@@ -632,7 +621,7 @@ function EditContractDialog({
     }
   };
 
-  if (!contract || !formData.partyA) return null;
+  if (!contract) return null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -648,12 +637,12 @@ function EditContractDialog({
           </div>
           
           <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-                <Label>Party A: {formData.partyA.name}</Label>
-            </div>
-             <div className="space-y-2">
-                <Label>Party B: {formData.partyB.name}</Label>
-            </div>
+            {formData.partyA && <div className="space-y-2">
+                <Label>Party A: {formData.partyA.name} ({formData.partyA.role})</Label>
+            </div>}
+            {formData.partyB && <div className="space-y-2">
+                <Label>Party B: {formData.partyB.name} ({formData.partyB.role})</Label>
+            </div>}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -752,4 +741,3 @@ function ContractsPageSkeleton() {
     </div>
   );
 }
-
