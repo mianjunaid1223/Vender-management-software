@@ -20,7 +20,6 @@ import {
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -37,7 +36,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { 
   MoreHorizontal, 
   Eye, 
@@ -49,22 +47,29 @@ import {
   Phone, 
   MapPin 
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { deleteVendor } from "@/lib/data";
 import type { Vendor } from "@/lib/types";
+import { VendorEditDialog } from "./vendor-edit-dialog";
 
 interface VendorsTableProps {
   data: Vendor[];
 }
 
-export function VendorsTable({ data }: VendorsTableProps) {
+export function VendorsTable({ data: initialData }: VendorsTableProps) {
+  const [data, setData] = useState(initialData);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedVendor, setSelectedVendor] = useState<Vendor | null>(null);
   const [showViewDialog, setShowViewDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const { toast } = useToast();
+
+  const handleVendorUpdate = (updatedVendor: Vendor) => {
+    setData(prev => prev.map(v => v.id === updatedVendor.id ? updatedVendor : v));
+    setShowEditDialog(false);
+  };
 
   const filteredData = data.filter(vendor => 
     vendor.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -79,11 +84,7 @@ export function VendorsTable({ data }: VendorsTableProps) {
 
   const handleEditVendor = (vendor: Vendor) => {
     setSelectedVendor(vendor);
-    // TODO: Implement edit functionality
-    toast({
-      title: "Edit Vendor",
-      description: "Edit functionality will be implemented soon.",
-    });
+    setShowEditDialog(true);
   };
 
   const handleDeleteVendor = (vendor: Vendor) => {
@@ -97,14 +98,13 @@ export function VendorsTable({ data }: VendorsTableProps) {
     setIsDeleting(true);
     try {
       await deleteVendor(selectedVendor.id);
+      setData(prev => prev.filter(v => v.id !== selectedVendor.id));
       toast({
         title: "Success",
         description: "Vendor deleted successfully.",
       });
       setShowDeleteDialog(false);
       setSelectedVendor(null);
-      // Refresh the page to update the data
-      window.location.reload();
     } catch (error) {
       console.error('Error deleting vendor:', error);
       toast({
@@ -320,6 +320,16 @@ export function VendorsTable({ data }: VendorsTableProps) {
           )}
         </DialogContent>
       </Dialog>
+      
+      {/* Edit Vendor Dialog */}
+      {selectedVendor && (
+        <VendorEditDialog
+          vendor={selectedVendor}
+          open={showEditDialog}
+          onOpenChange={setShowEditDialog}
+          onVendorUpdated={handleVendorUpdate}
+        />
+      )}
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>

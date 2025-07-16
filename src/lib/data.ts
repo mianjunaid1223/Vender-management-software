@@ -350,7 +350,7 @@ export async function updateContract(id: string, updates: Partial<Contract>): Pr
     const db = await getDb();
     
     try {
-        const { id: _, ...updateData } = updates;
+        const { _id, ...updateData } = updates as any;
         updateData.updatedAt = new Date().toISOString();
         
         const result = await db.collection('contracts').findOneAndUpdate(
@@ -455,7 +455,7 @@ export async function updateVendor(id: string, updates: Partial<Vendor>): Promis
     const db = await getDb();
     
     try {
-        const { id: _, ...updateData } = updates;
+        const { _id, ...updateData } = updates as any;
         updateData.updatedAt = new Date().toISOString();
         
         const result = await db.collection('vendors').findOneAndUpdate(
