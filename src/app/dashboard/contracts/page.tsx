@@ -31,7 +31,7 @@ import {
   Receipt
 } from "lucide-react";
 import { fetchContracts, deleteContract, fetchInvoicesByContract } from "@/lib/data";
-import { Contract, Invoice } from "@/lib/types";
+import { Contract, Invoice, ContractStatus } from "@/lib/types";
 import { downloadContractPDF } from "@/lib/pdf-utils";
 import {
   AlertDialog,
@@ -44,6 +44,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function ContractsPage() {
   const [contracts, setContracts] = useState<Contract[]>([]);
@@ -503,6 +504,7 @@ function EditContractDialog({
   const [formData, setFormData] = useState<Partial<Contract>>({});
   const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
+  const contractStatuses: ContractStatus[] = ['Draft', 'Active', 'Pending', 'Expired', 'Terminated', 'Suspended'];
 
   useEffect(() => {
     if (contract) {
@@ -565,9 +567,24 @@ function EditContractDialog({
             <Label htmlFor="title">Title</Label>
             <Input id="title" value={formData.title || ''} onChange={(e) => handleInputChange('title', e.target.value)} />
           </div>
-          <div>
-            <Label htmlFor="value">Value</Label>
-            <Input id="value" type="number" value={formData.value || 0} onChange={(e) => handleInputChange('value', parseFloat(e.target.value))} />
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="value">Value</Label>
+              <Input id="value" type="number" value={formData.value || 0} onChange={(e) => handleInputChange('value', parseFloat(e.target.value))} />
+            </div>
+            <div>
+              <Label htmlFor="status">Status</Label>
+              <Select value={formData.status} onValueChange={(value) => handleInputChange('status', value)}>
+                <SelectTrigger id="status">
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  {contractStatuses.map((status) => (
+                    <SelectItem key={status} value={status}>{status}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
