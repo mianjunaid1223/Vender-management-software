@@ -122,11 +122,20 @@ export type User = {
     image?: string;
 }
 
+export type ContractParty = {
+  id: string; // can be 'company' or a vendor ID
+  name: string;
+  role: 'Client' | 'Provider';
+};
+
 export type Contract = {
   id: string;
   title: string;
-  vendorId: string;
-  vendorName: string;
+  
+  // Bi-directional party system
+  partyA: ContractParty;
+  partyB: ContractParty;
+  
   startDate: string;
   endDate: string;
   value: number;
@@ -157,6 +166,10 @@ export type Contract = {
   createdBy?: string;
   signedAt?: string;
   signedBy?: string;
+
+  // Legacy fields for backward compatibility
+  vendorId?: string;
+  vendorName?: string;
 };
 
 export type ContractMilestone = {

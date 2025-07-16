@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -31,17 +32,19 @@ import {
   CheckCircle,
   AlertCircle,
   ArrowRight,
-  ArrowLeft
+  ArrowLeft,
+  Users,
+  Briefcase
 } from "lucide-react";
-import { Contract, ContractType, ContractStatus, Vendor } from "@/lib/types";
+import { Contract, ContractType, ContractStatus, Vendor, Company, ContractParty } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { createContract } from "@/lib/data";
 import { cn } from "@/lib/utils";
 
 interface ContractFormData {
   title: string;
-  vendorId: string;
-  vendorName: string;
+  partyA: ContractParty;
+  partyB: ContractParty;
   type: ContractType;
   value: number;
   currency: string;
@@ -54,10 +57,10 @@ interface ContractFormData {
   termsAndConditions: string;
 }
 
-const initialFormData: ContractFormData = {
+const initialFormData = (companyName: string): ContractFormData => ({
   title: "",
-  vendorId: "",
-  vendorName: "",
+  partyA: { id: 'company', name: companyName, role: 'Client' },
+  partyB: { id: '', name: '', role: 'Provider' },
   type: "Service",
   value: 0,
   currency: "USD",
@@ -68,15 +71,15 @@ const initialFormData: ContractFormData = {
   autoRenew: false,
   renewalPeriod: 12,
   termsAndConditions: ""
-};
+});
 
 const onboardingSteps = [
   {
     id: 1,
     title: "Basic Information",
-    description: "Contract details and vendor information",
+    description: "Contract details and parties",
     icon: FileText,
-    fields: ["title", "vendorId", "vendorName", "type"]
+    fields: ["title", "partyA", "partyB"]
   },
   {
     id: 2,
@@ -103,48 +106,45 @@ const onboardingSteps = [
 
 interface ContractOnboardingDialogProps {
     vendors: Vendor[];
-    onContractAdded: () => void;
+    company: Company | null;
+    onContractAdded: (contract: Contract) => void;
 }
 
-export function ContractOnboardingDialog({ vendors, onContractAdded }: ContractOnboardingDialogProps) {
+export function ContractOnboardingDialog({ vendors, company, onContractAdded }: ContractOnboardingDialogProps) {
   const [open, setOpen] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
-  const [formData, setFormData] = useState<ContractFormData>(initialFormData);
+  const [formData, setFormData] = useState<ContractFormData>(initialFormData(company?.name || 'Your Company'));
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
-  const handleInputChange = (field: keyof ContractFormData, value: any) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+  const handlePartySelect = (party: 'partyA' | 'partyB', id: string) => {
+    const selectedEntity = id === 'company' 
+      ? { id: 'company', name: company?.name || 'Your Company' }
+      : vendors.find(v => v.id === id);
+    
+    if (selectedEntity) {
+        setFormData(prev => ({
+            ...prev,
+            [party]: { ...prev[party], id: selectedEntity.id, name: selectedEntity.name }
+        }));
+    }
   };
 
-  const handleVendorChange = (vendorId: string) => {
-    const selectedVendor = vendors.find(v => v.id === vendorId);
-    if (selectedVendor) {
-      handleInputChange("vendorId", selectedVendor.id);
-      handleInputChange("vendorName", selectedVendor.name);
-    }
+  const handleRoleChange = (party: 'partyA' | 'partyB', role: 'Client' | 'Provider') => {
+      setFormData(prev => ({
+          ...prev,
+          [party]: { ...prev[party], role }
+      }));
   };
 
   const validateStep = (step: number): boolean => {
-    const stepConfig = onboardingSteps[step - 1];
-    const requiredFields = stepConfig.fields;
-    
-    for (const field of requiredFields) {
-      if (!formData[field as keyof ContractFormData]) {
-        return false;
-      }
+    if (step === 1) {
+        if (!formData.title || !formData.partyA.id || !formData.partyB.id) return false;
+        if (formData.partyA.id === formData.partyB.id) return false;
+        if (formData.partyA.role === formData.partyB.role) return false;
     }
-    
-    // Additional validation
-    if (step === 2 && formData.value <= 0) {
-      return false;
-    }
-    
-    if (step === 3 && formData.startDate && formData.endDate) {
-      if (new Date(formData.startDate) >= new Date(formData.endDate)) {
-        return false;
-      }
-    }
+    if (step === 2 && (formData.value <= 0 || !formData.paymentTerms)) return false;
+    if (step === 3 && (!formData.startDate || !formData.endDate || new Date(formData.startDate) >= new Date(formData.endDate))) return false;
     
     return true;
   };
@@ -166,15 +166,6 @@ export function ContractOnboardingDialog({ vendors, onContractAdded }: ContractO
   };
 
   const handleSubmit = async () => {
-    if (!validateStep(currentStep - 1) && currentStep < onboardingSteps.length) {
-      toast({
-        title: "Validation Error",
-        description: "Please review all fields before submitting.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setIsSubmitting(true);
     try {
       const contractData: Partial<Contract> = {
@@ -183,7 +174,7 @@ export function ContractOnboardingDialog({ vendors, onContractAdded }: ContractO
         createdBy: "current-user", // This should come from auth context
       };
 
-      await createContract(contractData);
+      const newContract = await createContract(contractData);
       
       toast({
         title: "Success",
@@ -192,8 +183,8 @@ export function ContractOnboardingDialog({ vendors, onContractAdded }: ContractO
       
       setOpen(false);
       setCurrentStep(1);
-      setFormData(initialFormData);
-      onContractAdded();
+      setFormData(initialFormData(company?.name || 'Your Company'));
+      onContractAdded(newContract);
       
     } catch (error) {
       console.error('Error creating contract:', error);
@@ -208,6 +199,7 @@ export function ContractOnboardingDialog({ vendors, onContractAdded }: ContractO
   };
 
   const renderStepContent = () => {
+    const partyOptions = [{id: 'company', name: company?.name || 'Your Company'}, ...vendors];
     switch (currentStep) {
       case 1:
         return (
@@ -217,26 +209,50 @@ export function ContractOnboardingDialog({ vendors, onContractAdded }: ContractO
               <Input
                 id="title"
                 value={formData.title}
-                onChange={(e) => handleInputChange("title", e.target.value)}
-                placeholder="Enter contract title"
+                onChange={(e) => setFormData(p => ({...p, title: e.target.value}))}
+                placeholder="e.g., Annual Marketing Retainer"
               />
             </div>
-            <div>
-              <Label htmlFor="vendor">Vendor *</Label>
-              <Select value={formData.vendorId} onValueChange={handleVendorChange}>
-                <SelectTrigger id="vendor">
-                  <SelectValue placeholder="Select a vendor" />
-                </SelectTrigger>
-                <SelectContent>
-                  {vendors.map(vendor => (
-                    <SelectItem key={vendor.id} value={vendor.id}>{vendor.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            
+            <div className="grid grid-cols-2 gap-4">
+                {/* Party A */}
+                <div className="space-y-2 rounded-md border p-4">
+                    <Label className="font-semibold">Party A</Label>
+                    <Select value={formData.partyA.id} onValueChange={(id) => handlePartySelect('partyA', id)}>
+                        <SelectTrigger><SelectValue placeholder="Select Party A" /></SelectTrigger>
+                        <SelectContent>
+                            {partyOptions.map(opt => <SelectItem key={opt.id} value={opt.id}>{opt.name}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                    <Select value={formData.partyA.role} onValueChange={(role: 'Client' | 'Provider') => handleRoleChange('partyA', role)}>
+                        <SelectTrigger><SelectValue placeholder="Select Role" /></SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="Client">Client</SelectItem>
+                            <SelectItem value="Provider">Provider</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+                {/* Party B */}
+                <div className="space-y-2 rounded-md border p-4">
+                    <Label className="font-semibold">Party B</Label>
+                    <Select value={formData.partyB.id} onValueChange={(id) => handlePartySelect('partyB', id)}>
+                        <SelectTrigger><SelectValue placeholder="Select Party B" /></SelectTrigger>
+                        <SelectContent>
+                            {partyOptions.map(opt => <SelectItem key={opt.id} value={opt.id}>{opt.name}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                    <Select value={formData.partyB.role} onValueChange={(role: 'Client' | 'Provider') => handleRoleChange('partyB', role)}>
+                        <SelectTrigger><SelectValue placeholder="Select Role" /></SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="Client">Client</SelectItem>
+                            <SelectItem value="Provider">Provider</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
             </div>
             <div>
               <Label htmlFor="type">Contract Type *</Label>
-              <Select value={formData.type} onValueChange={(value) => handleInputChange("type", value)}>
+              <Select value={formData.type} onValueChange={(value) => setFormData(p => ({...p, type: value as ContractType}))}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select contract type" />
                 </SelectTrigger>
@@ -248,16 +264,6 @@ export function ContractOnboardingDialog({ vendors, onContractAdded }: ContractO
                   <SelectItem value="Framework">Framework</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
-            <div>
-              <Label htmlFor="description">Description</Label>
-              <Textarea
-                id="description"
-                value={formData.description}
-                onChange={(e) => handleInputChange("description", e.target.value)}
-                placeholder="Enter contract description"
-                rows={3}
-              />
             </div>
           </div>
         );
@@ -271,7 +277,7 @@ export function ContractOnboardingDialog({ vendors, onContractAdded }: ContractO
                 id="value"
                 type="number"
                 value={formData.value}
-                onChange={(e) => handleInputChange("value", Number(e.target.value))}
+                onChange={(e) => setFormData(p => ({...p, value: Number(e.target.value)}))}
                 placeholder="Enter contract value"
                 min="0"
                 step="0.01"
@@ -279,7 +285,7 @@ export function ContractOnboardingDialog({ vendors, onContractAdded }: ContractO
             </div>
             <div>
               <Label htmlFor="currency">Currency</Label>
-              <Select value={formData.currency} onValueChange={(value) => handleInputChange("currency", value)}>
+              <Select value={formData.currency} onValueChange={(value) => setFormData(p => ({...p, currency: value}))}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select currency" />
                 </SelectTrigger>
@@ -293,7 +299,7 @@ export function ContractOnboardingDialog({ vendors, onContractAdded }: ContractO
             </div>
             <div>
               <Label htmlFor="paymentTerms">Payment Terms</Label>
-              <Select value={formData.paymentTerms} onValueChange={(value) => handleInputChange("paymentTerms", value)}>
+              <Select value={formData.paymentTerms} onValueChange={(value) => setFormData(p => ({...p, paymentTerms: value}))}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select payment terms" />
                 </SelectTrigger>
@@ -319,7 +325,7 @@ export function ContractOnboardingDialog({ vendors, onContractAdded }: ContractO
                 id="startDate"
                 type="date"
                 value={formData.startDate}
-                onChange={(e) => handleInputChange("startDate", e.target.value)}
+                onChange={(e) => setFormData(p => ({...p, startDate: e.target.value}))}
               />
             </div>
             <div>
@@ -328,7 +334,7 @@ export function ContractOnboardingDialog({ vendors, onContractAdded }: ContractO
                 id="endDate"
                 type="date"
                 value={formData.endDate}
-                onChange={(e) => handleInputChange("endDate", e.target.value)}
+                onChange={(e) => setFormData(p => ({...p, endDate: e.target.value}))}
               />
             </div>
             <div className="flex items-center space-x-2">
@@ -336,7 +342,7 @@ export function ContractOnboardingDialog({ vendors, onContractAdded }: ContractO
                 type="checkbox"
                 id="autoRenew"
                 checked={formData.autoRenew}
-                onChange={(e) => handleInputChange("autoRenew", e.target.checked)}
+                onChange={(e) => setFormData(p => ({...p, autoRenew: e.target.checked}))}
                 className="rounded border-gray-300"
               />
               <Label htmlFor="autoRenew">Auto-renew this contract</Label>
@@ -348,7 +354,7 @@ export function ContractOnboardingDialog({ vendors, onContractAdded }: ContractO
                   id="renewalPeriod"
                   type="number"
                   value={formData.renewalPeriod}
-                  onChange={(e) => handleInputChange("renewalPeriod", Number(e.target.value))}
+                  onChange={(e) => setFormData(p => ({...p, renewalPeriod: Number(e.target.value)}))}
                   min="1"
                   max="60"
                 />
@@ -359,7 +365,7 @@ export function ContractOnboardingDialog({ vendors, onContractAdded }: ContractO
               <Textarea
                 id="termsAndConditions"
                 value={formData.termsAndConditions}
-                onChange={(e) => handleInputChange("termsAndConditions", e.target.value)}
+                onChange={(e) => setFormData(p => ({...p, termsAndConditions: e.target.value}))}
                 placeholder="Enter terms and conditions"
                 rows={4}
               />
@@ -373,30 +379,15 @@ export function ContractOnboardingDialog({ vendors, onContractAdded }: ContractO
             <div className="bg-muted/50 p-4 rounded-lg">
               <h4 className="font-medium mb-2">Contract Summary</h4>
               <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="font-medium">Title:</span> {formData.title}
-                </div>
-                <div>
-                  <span className="font-medium">Vendor:</span> {formData.vendorName}
-                </div>
-                <div>
-                  <span className="font-medium">Type:</span> {formData.type}
-                </div>
-                <div>
-                  <span className="font-medium">Value:</span> {formData.currency} {formData.value.toLocaleString()}
-                </div>
-                <div>
-                  <span className="font-medium">Start Date:</span> {formData.startDate}
-                </div>
-                <div>
-                  <span className="font-medium">End Date:</span> {formData.endDate}
-                </div>
-                <div>
-                  <span className="font-medium">Payment Terms:</span> {formData.paymentTerms}
-                </div>
-                <div>
-                  <span className="font-medium">Auto-renew:</span> {formData.autoRenew ? 'Yes' : 'No'}
-                </div>
+                <div><span className="font-medium">Title:</span> {formData.title}</div>
+                <div><span className="font-medium">Type:</span> {formData.type}</div>
+                <div><span className="font-medium">Party A ({formData.partyA.role}):</span> {formData.partyA.name}</div>
+                <div><span className="font-medium">Party B ({formData.partyB.role}):</span> {formData.partyB.name}</div>
+                <div><span className="font-medium">Value:</span> {formData.currency} {formData.value.toLocaleString()}</div>
+                <div><span className="font-medium">Payment Terms:</span> {formData.paymentTerms}</div>
+                <div><span className="font-medium">Start Date:</span> {formData.startDate}</div>
+                <div><span className="font-medium">End Date:</span> {formData.endDate}</div>
+                <div><span className="font-medium">Auto-renew:</span> {formData.autoRenew ? 'Yes' : 'No'}</div>
               </div>
             </div>
             <div className="flex items-center space-x-2 p-3 bg-blue-50 rounded-lg">

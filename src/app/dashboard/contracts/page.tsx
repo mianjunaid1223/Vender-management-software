@@ -30,10 +30,14 @@ import {
   Clock,
   Receipt,
   MoreHorizontal,
-  Printer
+  Printer,
+  ChevronDown,
+  User,
+  Users,
+  Briefcase
 } from "lucide-react";
-import { fetchContracts, deleteContract, fetchInvoicesByContract, fetchVendors } from "@/lib/data";
-import { Contract, Invoice, ContractStatus, Vendor } from "@/lib/types";
+import { fetchContracts, deleteContract, fetchInvoicesByContract, fetchVendors, fetchCompany, updateContract } from "@/lib/data";
+import { Contract, Invoice, ContractStatus, Vendor, Company, ContractParty } from "@/lib/types";
 import { downloadContractPDF, previewContractPDF } from "@/lib/pdf-utils";
 import {
   DropdownMenu,
@@ -42,6 +46,9 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent
 } from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
@@ -55,10 +62,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 
 export default function ContractsPage() {
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [vendors, setVendors] = useState<Vendor[]>([]);
+  const [company, setCompany] = useState<Company | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState("all");
@@ -71,20 +80,22 @@ export default function ContractsPage() {
   const loadInitialData = async () => {
     try {
       setLoading(true);
-      const [contractsData, vendorsData] = await Promise.all([
+      const [contractsData, vendorsData, companyData] = await Promise.all([
         fetch('/api/contracts').then(res => {
           if (!res.ok) throw new Error('Failed to fetch contracts');
           return res.json();
         }),
-        fetchVendors()
+        fetchVendors(),
+        fetchCompany()
       ]);
       setContracts(contractsData);
       setVendors(vendorsData);
+      setCompany(companyData);
     } catch (err) {
       console.error("Error loading initial data:", err);
       toast({
         title: "Error",
-        description: "Failed to load contracts or vendors.",
+        description: "Failed to load initial data.",
         variant: "destructive",
       });
     } finally {
@@ -92,27 +103,16 @@ export default function ContractsPage() {
     }
   };
 
-  const loadContracts = async () => {
-    try {
-      const response = await fetch('/api/contracts');
-      if (!response.ok) {
-        throw new Error('Failed to fetch contracts');
-      }
-      const contractsData: Contract[] = await response.json();
-      setContracts(contractsData);
-    } catch (err) {
-      console.error("Error loading contracts:", err);
-      toast({
-        title: "Error",
-        description: "Failed to load contracts.",
-        variant: "destructive",
-      });
-    }
-  };
-
-
-  const handleContractAdded = () => {
-    loadContracts();
+  const handleContractAddedOrUpdated = (updatedContract: Contract) => {
+    setContracts(prev => {
+        const index = prev.findIndex(c => c.id === updatedContract.id);
+        if (index > -1) {
+            const newContracts = [...prev];
+            newContracts[index] = updatedContract;
+            return newContracts;
+        }
+        return [updatedContract, ...prev];
+    });
   };
 
   const handleContractDeleted = (contractId: string) => {
@@ -176,7 +176,8 @@ export default function ContractsPage() {
     if (searchTerm) {
       filtered = filtered.filter(contract => 
         contract.title?.toLowerCase().includes(lowerCaseSearchTerm) ||
-        contract.vendorName?.toLowerCase().includes(lowerCaseSearchTerm)
+        contract.partyA?.name?.toLowerCase().includes(lowerCaseSearchTerm) ||
+        contract.partyB?.name?.toLowerCase().includes(lowerCaseSearchTerm)
       );
     }
     
@@ -197,7 +198,11 @@ export default function ContractsPage() {
             <Download className="h-4 w-4 mr-2" />
             Export CSV
           </Button>
-          <ContractOnboardingDialog vendors={vendors} onContractAdded={handleContractAdded}/>
+          <ContractOnboardingDialog 
+            vendors={vendors} 
+            company={company}
+            onContractAdded={handleContractAddedOrUpdated}
+          />
         </div>
       </PageHeader>
 
@@ -267,10 +272,9 @@ export default function ContractsPage() {
         <ContractsGrid 
           contracts={getFilteredContracts()} 
           vendors={vendors}
+          company={company}
           onContractDeleted={handleContractDeleted}
-          onContractUpdated={(updatedContract) => {
-            setContracts(prev => prev.map(c => c.id === updatedContract.id ? updatedContract : c))
-          }}
+          onContractUpdated={handleContractAddedOrUpdated}
         />
       </Tabs>
     </div>
@@ -280,11 +284,13 @@ export default function ContractsPage() {
 function ContractsGrid({ 
   contracts, 
   vendors,
+  company,
   onContractDeleted,
   onContractUpdated
 }: { 
   contracts: Contract[], 
   vendors: Vendor[],
+  company: Company | null,
   onContractDeleted: (id: string) => void,
   onContractUpdated: (contract: Contract) => void 
 }) {
@@ -296,6 +302,30 @@ function ContractsGrid({
   const [isDeleting, setIsDeleting] = useState(false);
   const { toast } = useToast();
 
+  const getStatusColor = (status: ContractStatus) => {
+    switch (status) {
+      case 'Active': return 'bg-green-100 text-green-800 border-green-200';
+      case 'Draft': return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'Expired': return 'bg-red-100 text-red-800 border-red-200';
+      case 'Pending': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'Terminated': return 'bg-gray-200 text-gray-800 border-gray-300';
+      case 'Suspended': return 'bg-orange-100 text-orange-800 border-orange-200';
+      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  };
+
+  const contractStatuses: ContractStatus[] = ['Draft', 'Active', 'Pending', 'Expired', 'Terminated', 'Suspended'];
+
+  const handleChangeStatus = async (contract: Contract, status: ContractStatus) => {
+    try {
+      const updated = await updateContract(contract.id, { ...contract, status });
+      onContractUpdated(updated);
+      toast({ title: 'Status Updated', description: `Contract status changed to ${status}.` });
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to update contract status.', variant: 'destructive' });
+    }
+  };
+  
   const openDeleteDialog = async (contract: Contract) => {
     setSelectedContract(contract);
     try {
@@ -340,15 +370,31 @@ function ContractsGrid({
     setSelectedContract(contract);
     setEditDialogOpen(true);
   };
+  
+  const getPartyInfo = (party: ContractParty) => {
+    return (
+      <div className="flex items-center gap-2">
+        <div className="flex items-center justify-center h-6 w-6 rounded-full bg-muted text-muted-foreground">
+            {party.role === 'Client' ? <User className="h-4 w-4"/> : <Briefcase className="h-4 w-4"/>}
+        </div>
+        <div>
+            <div className="text-sm font-medium">{party.name}</div>
+            <div className="text-xs text-muted-foreground">{party.role}</div>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {contracts.map((contract) => (
-          <Card key={contract.id} className="hover:shadow-lg transition-shadow">
+          <Card key={contract.id} className="flex flex-col">
             <CardHeader className="pb-3">
               <div className="flex items-start justify-between">
-                <CardTitle className="text-lg flex-1 pr-2">{contract.title}</CardTitle>
+                 <Badge variant="outline" className={cn("capitalize", getStatusColor(contract.status))}>
+                    {contract.status}
+                </Badge>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="h-8 w-8 p-0">
@@ -362,6 +408,18 @@ function ContractsGrid({
                     <DropdownMenuItem onClick={() => openEditDialog(contract)}>
                       <Edit className="mr-2 h-4 w-4" /> Edit Contract
                     </DropdownMenuItem>
+                    <DropdownMenuSub>
+                        <DropdownMenuSubTrigger>
+                            <ChevronDown className="mr-2 h-4 w-4" /> Change Status
+                        </DropdownMenuSubTrigger>
+                        <DropdownMenuSubContent>
+                            {contractStatuses.map(status => (
+                                <DropdownMenuItem key={status} onSelect={() => handleChangeStatus(contract, status)} disabled={contract.status === status}>
+                                    {status}
+                                </DropdownMenuItem>
+                            ))}
+                        </DropdownMenuSubContent>
+                    </DropdownMenuSub>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={() => downloadContractPDF(contract)}>
                       <Download className="mr-2 h-4 w-4" /> Download PDF
@@ -376,30 +434,22 @@ function ContractsGrid({
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground pt-1">
-                <Building className="h-4 w-4" />
-                <span>{contract.vendorName}</span>
-              </div>
+              <CardTitle className="text-lg pt-2">{contract.title}</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
-               <Badge variant={contract.status === 'Active' ? 'default' : 
-                              contract.status === 'Draft' ? 'secondary' : 'destructive'}>
-                  {contract.status}
-                </Badge>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <span>Start: {new Date(contract.startDate).toLocaleDateString()}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <span>End: {new Date(contract.endDate).toLocaleDateString()}</span>
-                </div>
+            <CardContent className="space-y-4 flex-grow">
+              <div className="space-y-3">
+                {getPartyInfo(contract.partyA)}
+                {getPartyInfo(contract.partyB)}
               </div>
-              
-              <div className="flex items-center gap-2 text-sm">
-                <DollarSign className="h-4 w-4 text-muted-foreground" />
-                <span className="font-medium">${contract.value?.toLocaleString() || 0}</span>
+              <div className="grid grid-cols-2 gap-4 text-sm pt-4 border-t">
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  <span>{new Date(contract.startDate).toLocaleDateString()} - {new Date(contract.endDate).toLocaleDateString()}</span>
+                </div>
+                <div className="flex items-center gap-2 font-medium">
+                  <DollarSign className="h-4 w-4 text-muted-foreground" />
+                  <span>{contract.value?.toLocaleString() || 0} {contract.currency}</span>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -426,12 +476,13 @@ function ContractsGrid({
             <div className="space-y-4 py-4 max-h-[70vh] overflow-y-auto pr-4">
               <div className="grid grid-cols-2 gap-4">
                 <div><Label>Title</Label><p className="text-sm mt-1">{selectedContract.title}</p></div>
-                <div><Label>Vendor</Label><p className="text-sm mt-1">{selectedContract.vendorName}</p></div>
                 <div><Label>Status</Label><div className="mt-1"><Badge variant={selectedContract.status === 'Active' ? 'default' : selectedContract.status === 'Draft' ? 'secondary' : 'destructive'}>{selectedContract.status}</Badge></div></div>
+                <div><Label>Party A ({selectedContract.partyA.role})</Label><p className="text-sm mt-1">{selectedContract.partyA.name}</p></div>
+                <div><Label>Party B ({selectedContract.partyB.role})</Label><p className="text-sm mt-1">{selectedContract.partyB.name}</p></div>
                 <div><Label>Value</Label><p className="text-sm font-medium mt-1">${selectedContract.value?.toLocaleString() || 0} {selectedContract.currency}</p></div>
+                <div><Label>Contract Type</Label><p className="text-sm mt-1">{selectedContract.type}</p></div>
                 <div><Label>Start Date</Label><p className="text-sm mt-1">{new Date(selectedContract.startDate).toLocaleDateString()}</p></div>
                 <div><Label>End Date</Label><p className="text-sm mt-1">{new Date(selectedContract.endDate).toLocaleDateString()}</p></div>
-                <div><Label>Contract Type</Label><p className="text-sm mt-1">{selectedContract.type}</p></div>
                 <div><Label>Payment Terms</Label><p className="text-sm mt-1">{selectedContract.paymentTerms}</p></div>
               </div>
               
@@ -469,6 +520,7 @@ function ContractsGrid({
         onOpenChange={setEditDialogOpen} 
         onContractUpdated={onContractUpdated}
         vendors={vendors}
+        company={company}
       />
       
       {/* Delete Dialog */}
@@ -513,13 +565,15 @@ function EditContractDialog({
   open, 
   onOpenChange, 
   onContractUpdated,
-  vendors
+  vendors,
+  company
 }: { 
   contract: Contract | null, 
   open: boolean, 
   onOpenChange: (open: boolean) => void,
   onContractUpdated: (contract: Contract) => void,
-  vendors: Vendor[]
+  vendors: Vendor[],
+  company: Company | null,
 }) {
   const [formData, setFormData] = useState<Partial<Contract>>({});
   const [isSaving, setIsSaving] = useState(false);
@@ -538,17 +592,6 @@ function EditContractDialog({
 
   const handleInputChange = (field: keyof Contract, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-  };
-
-  const handleVendorChange = (vendorId: string) => {
-    const selectedVendor = vendors.find(v => v.id === vendorId);
-    if (selectedVendor) {
-      setFormData(prev => ({
-        ...prev,
-        vendorId: selectedVendor.id,
-        vendorName: selectedVendor.name,
-      }));
-    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -588,7 +631,7 @@ function EditContractDialog({
     }
   };
 
-  if (!contract) return null;
+  if (!contract || !formData.partyA) return null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -603,18 +646,13 @@ function EditContractDialog({
             <Input id="title" value={formData.title || ''} onChange={(e) => handleInputChange('title', e.target.value)} />
           </div>
           
-          <div className="space-y-2">
-            <Label htmlFor="vendor">Vendor</Label>
-            <Select value={formData.vendorId} onValueChange={handleVendorChange}>
-              <SelectTrigger id="vendor">
-                <SelectValue placeholder="Select vendor" />
-              </SelectTrigger>
-              <SelectContent>
-                {vendors.map((vendor) => (
-                  <SelectItem key={vendor.id} value={vendor.id}>{vendor.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+                <Label>Party A: {formData.partyA.name}</Label>
+            </div>
+             <div className="space-y-2">
+                <Label>Party B: {formData.partyB.name}</Label>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
