@@ -48,7 +48,13 @@ export async function fetchVendors(): Promise<Vendor[]> {
             .sort({ name: 1 })
             .toArray();
 
-        return JSON.parse(JSON.stringify(vendors));
+        // Map _id to id and ensure proper serialization
+        return vendors.map(vendor => ({
+            ...vendor,
+            id: vendor._id.toString(),
+            _id: undefined, // remove _id to avoid confusion
+        })) as Vendor[];
+
     } catch (error) {
         console.error('Database Error:', error);
         throw new Error('Failed to fetch vendors from database.');
@@ -455,12 +461,11 @@ export async function updateVendor(id: string, updates: Partial<Vendor>): Promis
     const db = await getDb();
     
     try {
-        const { _id, ...updateData } = updates as any;
-        updateData.updatedAt = new Date().toISOString();
+        const { id: _, ...updateData } = updates;
         
         const result = await db.collection('vendors').findOneAndUpdate(
             { _id: new ObjectId(id) },
-            { $set: updateData },
+            { $set: { ...updateData, updatedAt: new Date().toISOString() } },
             { returnDocument: 'after' }
         );
         
@@ -468,7 +473,10 @@ export async function updateVendor(id: string, updates: Partial<Vendor>): Promis
             throw new Error('Vendor not found');
         }
         
-        return JSON.parse(JSON.stringify(result));
+        const updatedVendor = { ...result, id: result._id.toString() };
+        delete updatedVendor._id;
+        
+        return updatedVendor as Vendor;
     } catch (error) {
         console.error('Database Error:', error);
         throw new Error('Failed to update vendor.');
