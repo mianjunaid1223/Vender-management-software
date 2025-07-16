@@ -104,14 +104,19 @@ export default function ContractsPage() {
   };
 
   const handleContractAddedOrUpdated = (updatedContract: Contract) => {
+    const contractWithId = {
+      ...updatedContract,
+      id: updatedContract.id || updatedContract._id?.toString()
+    };
+  
     setContracts(prev => {
-        const index = prev.findIndex(c => c.id === updatedContract.id);
+        const index = prev.findIndex(c => c.id === contractWithId.id);
         if (index > -1) {
             const newContracts = [...prev];
-            newContracts[index] = updatedContract;
+            newContracts[index] = contractWithId;
             return newContracts;
         }
-        return [updatedContract, ...prev];
+        return [contractWithId, ...prev];
     });
   };
 
