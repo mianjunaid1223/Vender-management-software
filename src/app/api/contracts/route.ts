@@ -4,8 +4,12 @@ import { createContract, fetchContracts } from '@/lib/data';
 export async function GET() {
   try {
     const contracts = await fetchContracts();
-    const serializedContracts = JSON.parse(JSON.stringify(contracts));
-    return NextResponse.json(serializedContracts);
+    // Ensure each contract has a unique 'id' from '_id'
+    const serializedContracts = contracts.map(contract => ({
+      ...contract,
+      id: contract._id.toString(),
+    }));
+    return NextResponse.json(JSON.parse(JSON.stringify(serializedContracts)));
   } catch (error) {
     console.error('Error fetching contracts:', error);
     return NextResponse.json(
