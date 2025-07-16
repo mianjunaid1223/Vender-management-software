@@ -100,9 +100,7 @@ export function VendorEditDialog({ vendor, open, onOpenChange, onVendorUpdated }
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Only check for impact if the name is changing
-    if (formData.name && formData.name !== vendor.name) {
-      try {
+    try {
         setIsSubmitting(true);
         const [contracts, invoices] = await Promise.all([
           fetchContractsByVendor(vendor.id),
@@ -115,18 +113,14 @@ export function VendorEditDialog({ vendor, open, onOpenChange, onVendorUpdated }
         } else {
           await saveChanges();
         }
-      } catch (error) {
+    } catch (error) {
         toast({
           title: "Error",
           description: "Could not fetch associated data to check for impact.",
           variant: "destructive",
         });
-      } finally {
+    } finally {
         setIsSubmitting(false);
-      }
-    } else {
-      // If name hasn't changed, save directly
-      await saveChanges();
     }
   };
 
@@ -352,7 +346,7 @@ export function VendorEditDialog({ vendor, open, onOpenChange, onVendorUpdated }
           <AlertDialogHeader>
             <AlertDialogTitle>Confirm Vendor Update</AlertDialogTitle>
             <AlertDialogDescription>
-              Changing the vendor's name will also update the name on all associated records listed below. This action cannot be easily undone.
+               This action will update the vendor details. This may affect associated records. Please review before saving.
             </AlertDialogDescription>
           </AlertDialogHeader>
           {(impactData.contracts.length > 0 || impactData.invoices.length > 0) && (
