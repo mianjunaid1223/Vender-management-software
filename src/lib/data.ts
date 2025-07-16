@@ -565,7 +565,7 @@ export async function updateVendor(id: string, updates: Partial<Vendor>): Promis
             const contractsCollection = db.collection('contracts');
             const invoicesCollection = db.collection('invoices');
 
-            const { id: _, ...updateData } = updates;
+            const { _id, ...updateData } = updates as any;
             updateData.updatedAt = new Date().toISOString();
             
             const result = await vendorsCollection.findOneAndUpdate(
@@ -581,15 +581,30 @@ export async function updateVendor(id: string, updates: Partial<Vendor>): Promis
             const serializedResult = JSON.parse(JSON.stringify(result));
             updatedVendor = { ...serializedResult, id: serializedResult._id.toString() } as Vendor;
             
-            if (updates.name) {
+            if (updates.name && updates.name !== result.name) {
                 await contractsCollection.updateMany(
-                    { $or: [ { "partyA.id": id }, { "partyB.id": id } ] },
-                    { $set: { "partyA.id": id ? { name: updates.name } : {}, "partyB.id": id ? { name: updates.name } : {} } },
+                    { "partyA.id": id },
+                    { $set: { "partyA.name": updates.name } },
+                    { session }
+                );
+                await contractsCollection.updateMany(
+                    { "partyB.id": id },
+                    { $set: { "partyB.name": updates.name } },
                     { session }
                 );
                 await invoicesCollection.updateMany(
-                    { $or: [ { "seller.id": id }, { "buyer.id": id } ] },
-                    { $set: { "seller.id": id ? { name: updates.name } : {}, "buyer.id": id ? { name: updates.name } : {} } },
+                    { "seller.id": id },
+                    { $set: { "seller.name": updates.name } },
+                    { session }
+                );
+                await invoicesCollection.updateMany(
+                    { "buyer.id": id },
+                    { $set: { "buyer.name": updates.name } },
+                    { session }
+                );
+                await invoicesCollection.updateMany(
+                    { vendorId: id },
+                    { $set: { vendorName: updates.name } },
                     { session }
                 );
             }
@@ -604,6 +619,11 @@ export async function updateVendor(id: string, updates: Partial<Vendor>): Promis
     } catch (error) {
         console.error('Database Error:', error);
         throw new Error('Failed to update vendor and associated data.');
+    } finally {
+        if (session.inTransaction()) {
+            await session.abortTransaction();
+        }
+        await session.endSession();
     }
 }
 
@@ -623,7 +643,7 @@ export async function deleteVendor(id: string): Promise<void> {
             const contractIdsToDelete = contractsToDelete.map(c => c._id.toString());
             
             // Delete all invoices associated with the vendor's contracts OR directly to the vendor
-            await invoicesCollection.deleteMany({ $or: [{ contractId: { $in: contractIdsToDelete } }, { "seller.id": id }, { "buyer.id": id }] }, { session });
+            await invoicesCollection.deleteMany({ $or: [{ contractId: { $in: contractIdsToDelete } }, { vendorId: id }] }, { session });
             
             // Delete all contracts associated with the vendor
             await contractsCollection.deleteMany({ $or: [ { "partyA.id": id }, { "partyB.id": id } ] }, { session });
@@ -647,7 +667,7 @@ export async function fetchInvoicesByVendor(vendorId: string): Promise<Invoice[]
     noStore();
     const db = await getDb();
     try {
-        const invoices = await db.collection('invoices').find({ $or: [ { "seller.id": vendorId }, { "buyer.id": vendorId } ] }).toArray();
+        const invoices = await db.collection('invoices').find({ vendorId }).toArray();
         return JSON.parse(JSON.stringify(invoices.map(i => ({...i, id: i._id.toString()}))));
     } catch (error) {
         console.error("Database Error fetching invoices by vendor:", error);

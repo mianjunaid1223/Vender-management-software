@@ -361,7 +361,7 @@ export function VendorEditDialog({ vendor, open, onOpenChange, onVendorUpdated }
             <div className="mt-4 space-y-4">
               {impactData.contracts.length > 0 && (
                 <div>
-                  <h4 className="font-semibold mb-2">Affected Contracts:</h4>
+                  <h4 className="font-semibold mb-2">Affected Contracts ({impactData.contracts.length}):</h4>
                   <ScrollArea className="h-24 w-full rounded-md border p-2">
                     <ul className="space-y-1">
                       {impactData.contracts.map(contract => (
@@ -376,7 +376,7 @@ export function VendorEditDialog({ vendor, open, onOpenChange, onVendorUpdated }
               )}
               {impactData.invoices.length > 0 && (
                 <div>
-                  <h4 className="font-semibold mb-2">Affected Invoices:</h4>
+                  <h4 className="font-semibold mb-2">Affected Invoices ({impactData.invoices.length}):</h4>
                   <ScrollArea className="h-24 w-full rounded-md border p-2">
                     <ul className="space-y-1">
                       {impactData.invoices.map(invoice => (
