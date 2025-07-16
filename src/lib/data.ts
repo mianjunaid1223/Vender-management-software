@@ -197,7 +197,7 @@ export async function processAndFetchContracts(): Promise<Contract[]> {
   
       // Fetch all contracts again after processing
       const allContracts = await contractsCollection.find({}).sort({ createdAt: -1 }).toArray();
-      return JSON.parse(JSON.stringify(allContracts));
+      return JSON.parse(JSON.stringify(allContracts.map(c => ({...c, id: c._id.toString()}))));
   
     } catch (error) {
       console.error('Database Error processing contracts:', error);
@@ -236,7 +236,13 @@ export async function createInvoice(invoice: Partial<Invoice>): Promise<Invoice>
         
         const result = await db.collection('invoices').insertOne(invoiceData);
         
-        const newInvoice = await db.collection('invoices').findOne({ _id: result.insertedId });
+        const newInvoiceDoc = await db.collection('invoices').findOne({ _id: result.insertedId });
+        if (!newInvoiceDoc) {
+          throw new Error('Failed to retrieve newly created invoice.');
+        }
+        const { _id, ...rest } = newInvoiceDoc;
+        const newInvoice = { ...rest, id: _id.toString() } as Invoice;
+
         return JSON.parse(JSON.stringify(newInvoice));
     } catch (error) {
         console.error('Database Error:', error);

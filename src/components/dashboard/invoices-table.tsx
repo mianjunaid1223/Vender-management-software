@@ -51,6 +51,7 @@ interface InvoicesTableProps {
   onInvoiceUpdate: (invoice: Partial<Invoice>) => void;
   onInvoiceDelete: (invoiceId: string) => void;
   onStatusChange: (invoiceId: string, status: Invoice['status']) => void;
+  onInvoiceCreate: (invoice: Partial<Invoice>) => void;
 }
 
 export function InvoicesTable({ 
@@ -59,7 +60,8 @@ export function InvoicesTable({
   contracts, 
   onInvoiceUpdate, 
   onInvoiceDelete, 
-  onStatusChange 
+  onStatusChange,
+  onInvoiceCreate
 }: InvoicesTableProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -127,6 +129,17 @@ export function InvoicesTable({
 
   const handleQuickStatusChange = (invoiceId: string, newStatus: Invoice['status']) => {
     onStatusChange(invoiceId, newStatus);
+  };
+  
+  const handleDuplicateInvoice = (invoice: Invoice) => {
+    const { id, _id, invoiceNumber, status, createdAt, updatedAt, ...rest } = invoice;
+    const newInvoice: Partial<Invoice> = {
+      ...rest,
+      id: crypto.randomUUID(), // Ensure a new unique ID for the key prop
+      invoiceNumber: `COPY-${invoiceNumber}`,
+      status: 'Draft',
+    };
+    onInvoiceCreate(newInvoice);
   };
 
   const handleBulkAction = (action: string) => {
@@ -423,10 +436,10 @@ export function InvoicesTable({
                       <DropdownMenuSeparator />
                       
                       <DropdownMenuItem 
-                        onClick={() => navigator.clipboard.writeText(invoice.invoiceNumber || '')}
+                        onClick={() => handleDuplicateInvoice(invoice)}
                       >
                         <Copy className="mr-2 h-4 w-4" />
-                        Copy Invoice #
+                        Duplicate Invoice
                       </DropdownMenuItem>
                       
                       {invoice.status !== 'Paid' && (

@@ -163,6 +163,7 @@ export function InvoiceManagementClient({
         onInvoiceUpdate={handleInvoiceUpdate}
         onInvoiceDelete={handleInvoiceDelete}
         onStatusChange={handleStatusChange}
+        onInvoiceCreate={handleInvoiceCreate}
       />
     </div>
   );
