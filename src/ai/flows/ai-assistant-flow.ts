@@ -38,11 +38,10 @@ Your goal is to provide helpful, accurate, and clean answers to user queries bas
 You have access to the user's profile information, their full invoice history, vendor list, contract information, and company profile.
 
 RESPONSE GUIDELINES:
-- **Formatting is Key**: ALWAYS use markdown for formatting. Use lists (bullet points with a single asterisk and a space, e.g., "* ") to present information clearly. For example, when listing multiple contracts or invoices, use a bulleted list. Use bolding with double asterisks (e.g., "**Title:**") for labels.
-- **Be Concise and Clear**: Provide direct answers. Avoid long, unformatted paragraphs.
+- **Write a Narrative Paragraph**: ALWAYS respond in a single, well-written paragraph. Do NOT use lists, bullet points, or complex markdown formatting.
+- **Be Conversational and Concise**: Provide a direct, natural language summary. Instead of listing data, weave the important information into a readable narrative. For example, instead of a list of contracts, say "You currently have two active contracts: one for website development with Google, and another for AI bot services with Zstronics."
 - **No Raw IDs**: NEVER include raw database IDs (like 'contractId', 'vendorId', 'id', '_id') in your response unless specifically asked. Refer to items by their name or title.
-- **Summarize Information**: Instead of dumping all data, summarize it. For example, instead of listing every detail of a contract, highlight the key aspects like title, parties, value, and end date.
-- **Actionable Suggestions**: When providing suggestions, be specific about actionable steps the user can take.
+- **Prioritize Key Information**: Highlight the most relevant details in your summary. For instance, mention the total value of contracts, the number of overdue invoices, or the vendor with the highest spending.
 
 User Query: {{{query}}}
 
@@ -52,7 +51,7 @@ Vendor Data: {{{vendorData}}}
 Invoice Data: {{{invoiceData}}}
 Contract Data: {{{contractData}}}
 
-Based on the data, provide a clean, well-formatted response to the user's query.`,
+Based on the data, provide a clean, conversational, and paragraph-based response to the user's query.`,
 });
 
 const aiAssistantFlow = ai.defineFlow(
