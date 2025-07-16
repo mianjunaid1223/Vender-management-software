@@ -60,6 +60,13 @@ export function InvoiceDialog({
   const [company, setCompany] = useState<Company | null>(null);
   const { toast } = useToast();
 
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+    }).format(amount || 0);
+  };
+
   const initializeFormData = async () => {
     const companyData = await fetchCompany();
     setCompany(companyData);
@@ -395,7 +402,7 @@ export function InvoiceDialog({
                       <Input type="number" value={item.unitPrice} placeholder="0.00" onChange={(e) => updateItem(item.id, { unitPrice: parseFloat(e.target.value) || 0 })} disabled={mode === 'view'} />
                     </div>
                     <div className="col-span-2 text-right font-medium">
-                      ${item.total.toFixed(2)}
+                      {formatCurrency(item.total)}
                     </div>
                     <div className="col-span-1 text-right">
                       {mode !== 'view' && (
