@@ -11,8 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
-import { Plus, Minus, Edit, Trash2 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Plus, Trash2 } from "lucide-react";
 import type { Invoice, InvoiceItem, Vendor, Contract, CustomField, Company, InvoiceEntity } from "@/lib/types";
 import { fetchCompany } from "@/lib/data";
 import { useToast } from "@/hooks/use-toast";
@@ -57,42 +56,49 @@ export function InvoiceDialog({
   const [items, setItems] = useState<InvoiceItem[]>([]);
   const [customFields, setCustomFields] = useState<CustomField[]>([]);
   const [activeTab, setActiveTab] = useState("basic");
+  const [myRole, setMyRole] = useState<'seller' | 'buyer'>('seller');
+  const [company, setCompany] = useState<Company | null>(null);
   const { toast } = useToast();
 
   const initializeFormData = async () => {
-    if (mode === 'create') {
-      const company = await fetchCompany();
-      const defaultSeller: InvoiceEntity = company ? {
-        name: company.name,
-        address: company.primaryAddress || { street: '', city: '', state: '', zipCode: '', country: 'US' },
-        email: company.primaryContact?.email,
-        phone: company.primaryContact?.phone,
-        taxId: company.taxId
-      } : {
-          name: 'Your Company',
-          address: { street: '', city: '', state: '', zipCode: '', country: 'US' }
-      };
+    const companyData = await fetchCompany();
+    setCompany(companyData);
 
+    const companyEntity: InvoiceEntity = companyData ? {
+      name: companyData.name,
+      address: companyData.primaryAddress || { street: '', city: '', state: '', zipCode: '', country: 'US' },
+      email: companyData.primaryContact?.email,
+      phone: companyData.primaryContact?.phone,
+      taxId: companyData.taxId
+    } : {
+        name: 'Your Company',
+        address: { street: '', city: '', state: '', zipCode: '', country: 'US' }
+    };
+    
+    if (mode === 'create') {
       setFormData({
         invoiceNumber: generateInvoiceNumber(),
         invoiceDate: new Date().toISOString().split('T')[0],
         invoiceDueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
         status: 'Draft',
         paymentStatus: 'Pending',
-        paymentTerms: company?.preferences?.defaultPaymentTerms || 'Net 30',
+        paymentTerms: companyData?.preferences?.defaultPaymentTerms || 'Net 30',
         paymentMethod: 'Bank Transfer',
         taxes: 0,
-        taxRate: company?.preferences?.defaultTaxRate || 0,
+        taxRate: companyData?.preferences?.defaultTaxRate || 0,
         taxType: 'percentage',
         discounts: 0,
         discountRate: 0,
         discountType: 'percentage',
-        seller: defaultSeller,
-        buyer: { name: '', address: { street: '', city: '', state: '', zipCode: '', country: 'US' } }
+        seller: myRole === 'seller' ? companyEntity : { name: '', address: { street: '', city: '', state: '', zipCode: '', country: 'US' } },
+        buyer: myRole === 'buyer' ? companyEntity : { name: '', address: { street: '', city: '', state: '', zipCode: '', country: 'US' } }
       });
       setItems([createEmptyItem()]);
       setCustomFields([]);
     } else if (invoice) {
+      // Determine role from existing invoice
+      const isSeller = invoice.seller?.name === companyData?.name;
+      setMyRole(isSeller ? 'seller' : 'buyer');
       setFormData(invoice);
       setItems(invoice.items || []);
       setCustomFields(invoice.customFields || []);
@@ -104,6 +110,25 @@ export function InvoiceDialog({
       initializeFormData();
     }
   }, [open, invoice, mode]);
+
+  const handleRoleChange = (role: 'seller' | 'buyer') => {
+    setMyRole(role);
+    const companyEntity: InvoiceEntity = company ? {
+        name: company.name,
+        address: company.primaryAddress || { street: '', city: '', state: '', zipCode: '', country: 'US' },
+        email: company.primaryContact?.email,
+        phone: company.primaryContact?.phone,
+        taxId: company.taxId,
+    } : { name: '', address: { street: '', city: '', state: '', zipCode: '', country: 'US' } };
+
+    const otherParty = role === 'seller' ? formData.seller : formData.buyer;
+
+    setFormData(prev => ({
+        ...prev,
+        seller: role === 'seller' ? companyEntity : otherParty,
+        buyer: role === 'buyer' ? companyEntity : otherParty
+    }));
+  };
 
   const addItem = () => {
     setItems([...items, createEmptyItem()]);
@@ -146,22 +171,24 @@ export function InvoiceDialog({
     return { subtotal, totalAmount, taxAmount, discountAmount };
   }, [items, formData.taxType, formData.taxRate, formData.taxes, formData.discountType, formData.discountRate, formData.discounts]);
 
-
   const handleVendorSelect = (vendorId: string) => {
     const vendor = vendors.find(v => v.id === vendorId);
     if (vendor) {
+      const vendorEntity: InvoiceEntity = {
+        name: vendor.name,
+        address: vendor.address || { street: '', city: '', state: '', zipCode: '', country: 'US' },
+        email: vendor.email,
+        phone: vendor.phone,
+        taxId: vendor.taxId,
+        contactPerson: vendor.contactPerson,
+      };
+
       setFormData(prev => ({
         ...prev,
         vendorId: vendor.id,
         vendorName: vendor.name,
-        buyer: {
-          name: vendor.name,
-          address: vendor.address || { street: '', city: '', state: '', zipCode: '', country: 'US' },
-          email: vendor.email,
-          phone: vendor.phone,
-          taxId: vendor.taxId,
-          contactPerson: vendor.contactPerson
-        },
+        seller: myRole === 'buyer' ? vendorEntity : prev.seller,
+        buyer: myRole === 'seller' ? vendorEntity : prev.buyer,
         paymentTerms: vendor.paymentTerms || prev.paymentTerms
       }));
     }
@@ -217,6 +244,8 @@ export function InvoiceDialog({
       setOpen(false);
     }
   };
+
+  const otherPartyIsVendor = myRole === 'seller' || myRole === 'buyer';
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -279,7 +308,7 @@ export function InvoiceDialog({
             </div>
              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                    <Label>Vendor (Buyer)</Label>
+                    <Label>Vendor</Label>
                     <Select value={formData.vendorId || ''} onValueChange={handleVendorSelect} disabled={mode === 'view'}>
                         <SelectTrigger><SelectValue placeholder="Select vendor" /></SelectTrigger>
                         <SelectContent>
@@ -305,64 +334,99 @@ export function InvoiceDialog({
             </div>
           </TabsContent>
 
-          <TabsContent value="parties" className="grid grid-cols-2 gap-6 pt-4">
-            <Card>
-              <CardHeader><CardTitle>Seller (Your Company)</CardTitle></CardHeader>
-              <CardContent className="space-y-2">
-                <Label>Company Name</Label>
-                <Input value={formData.seller?.name || ''} onChange={(e) => setFormData(prev => ({...prev, seller: {...prev.seller!, name: e.target.value}}))} disabled={mode === 'view'} />
-                <Label>Street</Label>
-                <Input value={formData.seller?.address?.street || ''} onChange={(e) => setFormData(prev => ({...prev, seller: {...prev.seller!, address: {...prev.seller!.address!, street: e.target.value}}}))} disabled={mode === 'view'} />
-                <div className="grid grid-cols-2 gap-2">
-                  <div><Label>City</Label><Input value={formData.seller?.address?.city || ''} onChange={(e) => setFormData(prev => ({...prev, seller: {...prev.seller!, address: {...prev.seller!.address!, city: e.target.value}}}))} disabled={mode === 'view'} /></div>
-                  <div><Label>State</Label><Input value={formData.seller?.address?.state || ''} onChange={(e) => setFormData(prev => ({...prev, seller: {...prev.seller!, address: {...prev.seller!.address!, state: e.target.value}}}))} disabled={mode === 'view'} /></div>
+          <TabsContent value="parties" className="space-y-4 pt-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                    <Label>My Role</Label>
+                    <Select value={myRole} onValueChange={(v) => handleRoleChange(v as any)} disabled={mode === 'view'}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="seller">I am the Seller (sending invoice)</SelectItem>
+                            <SelectItem value="buyer">I am the Buyer (receiving invoice)</SelectItem>
+                        </SelectContent>
+                    </Select>
                 </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader><CardTitle>Buyer (Vendor)</CardTitle></CardHeader>
-              <CardContent className="space-y-2">
-                <Label>Company Name</Label>
-                <Input value={formData.buyer?.name || ''} onChange={(e) => setFormData(prev => ({...prev, buyer: {...prev.buyer!, name: e.target.value}}))} disabled={mode === 'view'} />
-                 <Label>Email</Label>
-                <Input value={formData.buyer?.email || ''} onChange={(e) => setFormData(prev => ({...prev, buyer: {...prev.buyer!, email: e.target.value}}))} disabled={mode === 'view'} />
-                <Label>Street</Label>
-                <Input value={formData.buyer?.address?.street || ''} onChange={(e) => setFormData(prev => ({...prev, buyer: {...prev.buyer!, address: {...prev.buyer!.address!, street: e.target.value}}}))} disabled={mode === 'view'} />
-                <div className="grid grid-cols-2 gap-2">
-                  <div><Label>City</Label><Input value={formData.buyer?.address?.city || ''} onChange={(e) => setFormData(prev => ({...prev, buyer: {...prev.buyer!, address: {...prev.buyer!.address!, city: e.target.value}}}))} disabled={mode === 'view'} /></div>
-                  <div><Label>State</Label><Input value={formData.buyer?.address?.state || ''} onChange={(e) => setFormData(prev => ({...prev, buyer: {...prev.buyer!, address: {...prev.buyer!.address!, state: e.target.value}}}))} disabled={mode === 'view'} /></div>
-                </div>
-              </CardContent>
-            </Card>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <Card>
+                    <CardHeader><CardTitle>{myRole === 'seller' ? 'Seller (Your Company)' : 'Seller (Vendor)'}</CardTitle></CardHeader>
+                    <CardContent className="space-y-2">
+                        <Label>Company Name</Label>
+                        <Input value={formData.seller?.name || ''} onChange={(e) => setFormData(prev => ({...prev, seller: {...prev.seller!, name: e.target.value}}))} disabled={mode === 'view' || myRole === 'seller'} />
+                        <Label>Email</Label>
+                        <Input value={formData.seller?.email || ''} onChange={(e) => setFormData(prev => ({...prev, seller: {...prev.seller!, email: e.target.value}}))} disabled={mode === 'view' || myRole === 'seller'} />
+                        <Label>Street</Label>
+                        <Input value={formData.seller?.address?.street || ''} onChange={(e) => setFormData(prev => ({...prev, seller: {...prev.seller!, address: {...prev.seller!.address!, street: e.target.value}}}))} disabled={mode === 'view' || myRole === 'seller'} />
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader><CardTitle>{myRole === 'buyer' ? 'Buyer (Your Company)' : 'Buyer (Vendor)'}</CardTitle></CardHeader>
+                    <CardContent className="space-y-2">
+                        <Label>Company Name</Label>
+                        <Input value={formData.buyer?.name || ''} onChange={(e) => setFormData(prev => ({...prev, buyer: {...prev.buyer!, name: e.target.value}}))} disabled={mode === 'view' || myRole === 'buyer'} />
+                        <Label>Email</Label>
+                        <Input value={formData.buyer?.email || ''} onChange={(e) => setFormData(prev => ({...prev, buyer: {...prev.buyer!, email: e.target.value}}))} disabled={mode === 'view' || myRole === 'buyer'} />
+                        <Label>Street</Label>
+                        <Input value={formData.buyer?.address?.street || ''} onChange={(e) => setFormData(prev => ({...prev, buyer: {...prev.buyer!, address: {...prev.buyer!.address!, street: e.target.value}}}))} disabled={mode === 'view' || myRole === 'buyer'} />
+                    </CardContent>
+                </Card>
+            </div>
           </TabsContent>
           
           <TabsContent value="items" className="space-y-4 pt-4">
-            {items.map((item) => (
-              <div key={item.id} className="grid grid-cols-12 gap-2 items-end">
-                <div className="col-span-5 space-y-1"><Label>Description</Label><Textarea value={item.description} onChange={(e) => updateItem(item.id, { description: e.target.value })} disabled={mode === 'view'} /></div>
-                <div className="col-span-2 space-y-1"><Label>Quantity</Label><Input type="number" value={item.quantity} onChange={(e) => updateItem(item.id, { quantity: parseFloat(e.target.value) })} disabled={mode === 'view'} /></div>
-                <div className="col-span-2 space-y-1"><Label>Unit Price</Label><Input type="number" value={item.unitPrice} onChange={(e) => updateItem(item.id, { unitPrice: parseFloat(e.target.value) })} disabled={mode === 'view'} /></div>
-                <div className="col-span-2 space-y-1"><Label>Total</Label><Input type="number" value={item.total.toFixed(2)} disabled /></div>
-                <div className="col-span-1">{mode !== 'view' && <Button variant="ghost" size="icon" onClick={() => removeItem(item.id)}><Minus className="h-4 w-4" /></Button>}</div>
+            <div className="rounded-md border">
+              <div className="grid grid-cols-12 gap-4 p-2 bg-muted/50 text-sm font-medium">
+                  <div className="col-span-5">Description</div>
+                  <div className="col-span-2">Quantity</div>
+                  <div className="col-span-2">Unit Price</div>
+                  <div className="col-span-2 text-right">Total</div>
+                  <div className="col-span-1"></div>
               </div>
-            ))}
+              <div className="p-2 space-y-2">
+                {items.map((item, index) => (
+                  <div key={item.id} className="grid grid-cols-12 gap-2 items-center">
+                    <div className="col-span-5">
+                      <Input value={item.description} placeholder="Item description" onChange={(e) => updateItem(item.id, { description: e.target.value })} disabled={mode === 'view'} />
+                    </div>
+                    <div className="col-span-2">
+                      <Input type="number" value={item.quantity} onChange={(e) => updateItem(item.id, { quantity: parseFloat(e.target.value) || 0 })} disabled={mode === 'view'} />
+                    </div>
+                    <div className="col-span-2">
+                      <Input type="number" value={item.unitPrice} placeholder="0.00" onChange={(e) => updateItem(item.id, { unitPrice: parseFloat(e.target.value) || 0 })} disabled={mode === 'view'} />
+                    </div>
+                    <div className="col-span-2 text-right font-medium">
+                      ${item.total.toFixed(2)}
+                    </div>
+                    <div className="col-span-1 text-right">
+                      {mode !== 'view' && (
+                        <Button variant="ghost" size="icon" onClick={() => removeItem(item.id)} className="text-muted-foreground hover:text-destructive">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
             {mode !== 'view' && <Button onClick={addItem} size="sm" variant="outline"><Plus className="mr-2 h-4 w-4" />Add Item</Button>}
-            <Separator />
+            
             <div className="flex justify-end">
-                <div className="w-64 space-y-2">
-                    <div className="flex justify-between"><span>Subtotal:</span><span>${totals.subtotal.toFixed(2)}</span></div>
-                    <div className="flex justify-between items-center">
-                        <Label>Tax (%):</Label>
-                        <Input type="number" className="w-24" value={formData.taxRate || 0} onChange={(e) => setFormData(prev => ({...prev, taxRate: parseFloat(e.target.value)}))} disabled={mode === 'view'} />
-                    </div>
-                    <div className="flex justify-between"><span>Tax Amount:</span><span>${totals.taxAmount.toFixed(2)}</span></div>
-                     <div className="flex justify-between items-center">
-                        <Label>Discount (%):</Label>
-                        <Input type="number" className="w-24" value={formData.discountRate || 0} onChange={(e) => setFormData(prev => ({...prev, discountRate: parseFloat(e.target.value)}))} disabled={mode === 'view'} />
-                    </div>
-                    <div className="flex justify-between"><span>Discount Amount:</span><span>-${totals.discountAmount.toFixed(2)}</span></div>
+                <div className="w-full max-w-sm space-y-2">
                     <Separator />
-                    <div className="flex justify-between font-bold text-lg"><span>Total:</span><span>${totals.totalAmount.toFixed(2)}</span></div>
+                    <div className="flex justify-between"><span>Subtotal</span><span>{formatCurrency(totals.subtotal)}</span></div>
+                    <div className="flex justify-between items-center">
+                        <Label>Tax (%)</Label>
+                        <Input type="number" className="w-24 h-8" value={formData.taxRate || 0} onChange={(e) => setFormData(prev => ({...prev, taxRate: parseFloat(e.target.value)}))} disabled={mode === 'view'} />
+                    </div>
+                    <div className="flex justify-between"><span>Tax Amount</span><span>{formatCurrency(totals.taxAmount)}</span></div>
+                     <div className="flex justify-between items-center">
+                        <Label>Discount (%)</Label>
+                        <Input type="number" className="w-24 h-8" value={formData.discountRate || 0} onChange={(e) => setFormData(prev => ({...prev, discountRate: parseFloat(e.target.value)}))} disabled={mode === 'view'} />
+                    </div>
+                    <div className="flex justify-between"><span>Discount Amount</span><span className="text-destructive">-{formatCurrency(totals.discountAmount)}</span></div>
+                    <Separator />
+                    <div className="flex justify-between font-bold text-lg"><span>Total</span><span>{formatCurrency(totals.totalAmount)}</span></div>
                 </div>
             </div>
           </TabsContent>
@@ -406,7 +470,7 @@ export function InvoiceDialog({
                 <div key={field.id} className="grid grid-cols-3 gap-2 items-end">
                     <div className="space-y-1"><Label>Field Name</Label><Input value={field.name} onChange={(e) => updateCustomField(field.id, { name: e.target.value })} disabled={mode === 'view'}/></div>
                     <div className="space-y-1"><Label>Value</Label><Input value={field.value} onChange={(e) => updateCustomField(field.id, { value: e.target.value })} disabled={mode === 'view'}/></div>
-                    <div>{mode !== 'view' && <Button variant="ghost" size="icon" onClick={() => removeCustomField(field.id)}><Minus className="h-4 w-4" /></Button>}</div>
+                    <div>{mode !== 'view' && <Button variant="ghost" size="icon" onClick={() => removeCustomField(field.id)}><Trash2 className="h-4 w-4" /></Button>}</div>
                 </div>
             ))}
             {mode !== 'view' && <Button onClick={addCustomField} size="sm" variant="outline"><Plus className="mr-2 h-4 w-4"/>Add Custom Field</Button>}
