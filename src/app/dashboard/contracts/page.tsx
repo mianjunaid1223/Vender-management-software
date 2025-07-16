@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -26,13 +27,22 @@ import {
   Calendar,
   Building,
   Save,
-  X,
   Clock,
-  Receipt
+  Receipt,
+  MoreHorizontal,
+  Printer
 } from "lucide-react";
 import { fetchContracts, deleteContract, fetchInvoicesByContract, fetchVendors } from "@/lib/data";
 import { Contract, Invoice, ContractStatus, Vendor } from "@/lib/types";
-import { downloadContractPDF } from "@/lib/pdf-utils";
+import { downloadContractPDF, previewContractPDF } from "@/lib/pdf-utils";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -337,19 +347,45 @@ function ContractsGrid({
         {contracts.map((contract) => (
           <Card key={contract.id} className="hover:shadow-lg transition-shadow">
             <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg">{contract.title}</CardTitle>
-                <Badge variant={contract.status === 'Active' ? 'default' : 
-                              contract.status === 'Draft' ? 'secondary' : 'destructive'}>
-                  {contract.status}
-                </Badge>
+              <div className="flex items-start justify-between">
+                <CardTitle className="text-lg flex-1 pr-2">{contract.title}</CardTitle>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="h-8 w-8 p-0">
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => { setSelectedContract(contract); setViewDialogOpen(true); }}>
+                      <Eye className="mr-2 h-4 w-4" /> View Details
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => openEditDialog(contract)}>
+                      <Edit className="mr-2 h-4 w-4" /> Edit Contract
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => downloadContractPDF(contract)}>
+                      <Download className="mr-2 h-4 w-4" /> Download PDF
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => previewContractPDF(contract)}>
+                      <Printer className="mr-2 h-4 w-4" /> Preview PDF
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => openDeleteDialog(contract)} className="text-red-500">
+                      <Trash2 className="mr-2 h-4 w-4" /> Delete Contract
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground pt-1">
                 <Building className="h-4 w-4" />
                 <span>{contract.vendorName}</span>
               </div>
             </CardHeader>
             <CardContent className="space-y-3">
+               <Badge variant={contract.status === 'Active' ? 'default' : 
+                              contract.status === 'Draft' ? 'secondary' : 'destructive'}>
+                  {contract.status}
+                </Badge>
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div className="flex items-center gap-2">
                   <Calendar className="h-4 w-4 text-muted-foreground" />
@@ -364,34 +400,6 @@ function ContractsGrid({
               <div className="flex items-center gap-2 text-sm">
                 <DollarSign className="h-4 w-4 text-muted-foreground" />
                 <span className="font-medium">${contract.value?.toLocaleString() || 0}</span>
-              </div>
-              
-              <div className="flex items-center gap-2 pt-2 border-t">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={async () => {
-                    setSelectedContract(contract);
-                    setViewDialogOpen(true);
-                  }}
-                >
-                  <Eye className="h-4 w-4 mr-2" />
-                  View
-                </Button>
-                
-                <Button variant="outline" size="sm" onClick={() => openEditDialog(contract)}>
-                  <Edit className="h-4 w-4 mr-2" />
-                  Edit
-                </Button>
-                
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="text-red-600 hover:text-red-700"
-                  onClick={() => openDeleteDialog(contract)}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
               </div>
             </CardContent>
           </Card>
@@ -415,56 +423,37 @@ function ContractsGrid({
             </DialogDescription>
           </DialogHeader>
           {selectedContract && (
-            <div className="space-y-4 py-4">
+            <div className="space-y-4 py-4 max-h-[70vh] overflow-y-auto pr-4">
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Title</Label>
-                  <p className="text-sm mt-1">{selectedContract.title}</p>
-                </div>
-                <div>
-                  <Label>Status</Label>
-                  <div className="mt-1">
-                    <Badge variant={selectedContract.status === 'Active' ? 'default' : 
-                                  selectedContract.status === 'Draft' ? 'secondary' : 'destructive'}>
-                      {selectedContract.status}
-                    </Badge>
-                  </div>
-                </div>
+                <div><Label>Title</Label><p className="text-sm mt-1">{selectedContract.title}</p></div>
+                <div><Label>Vendor</Label><p className="text-sm mt-1">{selectedContract.vendorName}</p></div>
+                <div><Label>Status</Label><div className="mt-1"><Badge variant={selectedContract.status === 'Active' ? 'default' : selectedContract.status === 'Draft' ? 'secondary' : 'destructive'}>{selectedContract.status}</Badge></div></div>
+                <div><Label>Value</Label><p className="text-sm font-medium mt-1">${selectedContract.value?.toLocaleString() || 0} {selectedContract.currency}</p></div>
+                <div><Label>Start Date</Label><p className="text-sm mt-1">{new Date(selectedContract.startDate).toLocaleDateString()}</p></div>
+                <div><Label>End Date</Label><p className="text-sm mt-1">{new Date(selectedContract.endDate).toLocaleDateString()}</p></div>
+                <div><Label>Contract Type</Label><p className="text-sm mt-1">{selectedContract.type}</p></div>
+                <div><Label>Payment Terms</Label><p className="text-sm mt-1">{selectedContract.paymentTerms}</p></div>
               </div>
               
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Vendor</Label>
-                  <p className="text-sm mt-1">{selectedContract.vendorName}</p>
-                </div>
-                <div>
-                  <Label>Value</Label>
-                  <p className="text-sm font-medium mt-1">${selectedContract.value?.toLocaleString() || 0}</p>
-                </div>
+              {selectedContract.description && (<div><Label>Description</Label><p className="text-sm mt-1 text-muted-foreground">{selectedContract.description}</p></div>)}
+              {selectedContract.termsAndConditions && (<div><Label>Terms & Conditions</Label><p className="text-sm mt-1 text-muted-foreground">{selectedContract.termsAndConditions}</p></div>)}
+
+              <div className="flex items-center gap-2">
+                <Label>Auto-renew:</Label>
+                <Badge variant={selectedContract.autoRenew ? "default" : "secondary"}>
+                  {selectedContract.autoRenew ? 'Yes' : 'No'}
+                </Badge>
+                {selectedContract.autoRenew && <p className="text-sm text-muted-foreground">(Renews every {selectedContract.renewalPeriod} months)</p>}
               </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Start Date</Label>
-                  <p className="text-sm mt-1">{new Date(selectedContract.startDate).toLocaleDateString()}</p>
-                </div>
-                <div>
-                  <Label>End Date</Label>
-                  <p className="text-sm mt-1">{new Date(selectedContract.endDate).toLocaleDateString()}</p>
-                </div>
-              </div>
-              
-              {selectedContract.description && (
-                <div>
-                  <Label>Description</Label>
-                  <p className="text-sm mt-1 text-muted-foreground">{selectedContract.description}</p>
-                </div>
-              )}
 
               <div className="flex justify-end pt-4 gap-2">
                  <Button variant="outline" onClick={() => downloadContractPDF(selectedContract)}>
                     <Download className="h-4 w-4 mr-2" />
                     Download PDF
+                 </Button>
+                 <Button variant="outline" onClick={() => previewContractPDF(selectedContract)}>
+                    <Printer className="h-4 w-4 mr-2" />
+                    Preview PDF
                  </Button>
                  <Button onClick={() => setViewDialogOpen(false)}>Close</Button>
               </div>

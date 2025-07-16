@@ -1,3 +1,4 @@
+
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Contract, Invoice } from './types';
@@ -9,7 +10,7 @@ const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-US", {
       style: "currency",
       currency: "USD",
-    }).format(amount);
+    }).format(amount || 0);
 };
 
 // --- Contract PDF Generation ---
@@ -38,12 +39,12 @@ export async function generateContractPDF(contract: Contract): Promise<jsPDF> {
     doc.text(title, 20, yPos);
     yPos += 2;
     doc.setLineWidth(0.2);
-    doc.line(20, 190, yPos, yPos);
+    doc.line(20, yPos, 190, yPos);
     yPos += 8;
     content();
   };
 
-  const addMetadata = (label: string, value: string | number | undefined) => {
+  const addMetadata = (label: string, value: string | number | undefined | null) => {
     if (value) {
       doc.setFontSize(11);
       doc.setFont('helvetica', 'bold');
@@ -89,7 +90,7 @@ export async function generateContractPDF(contract: Contract): Promise<jsPDF> {
   drawSection('Contract Details', () => {
     addMetadata('Contract ID:', contract.id);
     addMetadata('Status:', contract.status);
-    addMetadata('Contract Value:', formatCurrency(contract.value));
+    addMetadata('Contract Value:', `${formatCurrency(contract.value)} ${contract.currency || ''}`);
     addMetadata('Payment Terms:', contract.paymentTerms);
     addMetadata('Start Date:', format(new Date(contract.startDate), 'MMMM dd, yyyy'));
     addMetadata('End Date:', format(new Date(contract.endDate), 'MMMM dd, yyyy'));
@@ -123,6 +124,11 @@ export async function downloadContractPDF(contract: Contract) {
   const doc = await generateContractPDF(contract);
   const filename = `Contract-${contract.vendorName.replace(/\s+/g, '-')}-${contract.id}.pdf`;
   doc.save(filename);
+}
+
+export async function previewContractPDF(contract: Contract) {
+    const doc = await generateContractPDF(contract);
+    doc.output('dataurlnewwindow');
 }
 
 // --- Invoice PDF Generation ---
