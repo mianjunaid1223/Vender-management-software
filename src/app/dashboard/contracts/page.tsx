@@ -48,18 +48,42 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 export default function ContractsPage() {
   const [contracts, setContracts] = useState<Contract[]>([]);
+  const [vendors, setVendors] = useState<Vendor[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState("all");
   const { toast } = useToast();
 
   useEffect(() => {
-    loadContracts();
+    loadInitialData();
   }, []);
+
+  const loadInitialData = async () => {
+    try {
+      setLoading(true);
+      const [contractsData, vendorsData] = await Promise.all([
+        fetch('/api/contracts').then(res => {
+          if (!res.ok) throw new Error('Failed to fetch contracts');
+          return res.json();
+        }),
+        fetchVendors()
+      ]);
+      setContracts(contractsData);
+      setVendors(vendorsData);
+    } catch (err) {
+      console.error("Error loading initial data:", err);
+      toast({
+        title: "Error",
+        description: "Failed to load contracts or vendors.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const loadContracts = async () => {
     try {
-      setLoading(true);
       const response = await fetch('/api/contracts');
       if (!response.ok) {
         throw new Error('Failed to fetch contracts');
@@ -73,10 +97,9 @@ export default function ContractsPage() {
         description: "Failed to load contracts.",
         variant: "destructive",
       });
-    } finally {
-      setLoading(false);
     }
   };
+
 
   const handleContractAdded = () => {
     loadContracts();
@@ -164,7 +187,7 @@ export default function ContractsPage() {
             <Download className="h-4 w-4 mr-2" />
             Export CSV
           </Button>
-          <ContractOnboardingDialog />
+          <ContractOnboardingDialog vendors={vendors} onContractAdded={handleContractAdded}/>
         </div>
       </PageHeader>
 
@@ -233,6 +256,7 @@ export default function ContractsPage() {
         </div>
         <ContractsGrid 
           contracts={getFilteredContracts()} 
+          vendors={vendors}
           onContractDeleted={handleContractDeleted}
           onContractUpdated={(updatedContract) => {
             setContracts(prev => prev.map(c => c.id === updatedContract.id ? updatedContract : c))
@@ -245,10 +269,12 @@ export default function ContractsPage() {
 
 function ContractsGrid({ 
   contracts, 
+  vendors,
   onContractDeleted,
   onContractUpdated
 }: { 
   contracts: Contract[], 
+  vendors: Vendor[],
   onContractDeleted: (id: string) => void,
   onContractUpdated: (contract: Contract) => void 
 }) {
@@ -344,7 +370,7 @@ function ContractsGrid({
                 <Button 
                   variant="outline" 
                   size="sm" 
-                  onClick={() => {
+                  onClick={async () => {
                     setSelectedContract(contract);
                     setViewDialogOpen(true);
                   }}
@@ -453,6 +479,7 @@ function ContractsGrid({
         open={editDialogOpen} 
         onOpenChange={setEditDialogOpen} 
         onContractUpdated={onContractUpdated}
+        vendors={vendors}
       />
       
       {/* Delete Dialog */}
@@ -496,16 +523,17 @@ function EditContractDialog({
   contract, 
   open, 
   onOpenChange, 
-  onContractUpdated 
+  onContractUpdated,
+  vendors
 }: { 
   contract: Contract | null, 
   open: boolean, 
   onOpenChange: (open: boolean) => void,
-  onContractUpdated: (contract: Contract) => void 
+  onContractUpdated: (contract: Contract) => void,
+  vendors: Vendor[]
 }) {
   const [formData, setFormData] = useState<Partial<Contract>>({});
   const [isSaving, setIsSaving] = useState(false);
-  const [vendors, setVendors] = useState<Vendor[]>([]);
   const { toast } = useToast();
   const contractStatuses: ContractStatus[] = ['Draft', 'Active', 'Pending', 'Expired', 'Terminated', 'Suspended'];
 
@@ -518,12 +546,6 @@ function EditContractDialog({
       });
     }
   }, [contract]);
-
-  useEffect(() => {
-    if (open) {
-      fetchVendors().then(setVendors);
-    }
-  }, [open]);
 
   const handleInputChange = (field: keyof Contract, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -581,18 +603,18 @@ function EditContractDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>Edit Contract</DialogTitle>
           <DialogDescription>Update the details for "{contract.title}"</DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4 py-4">
-          <div>
+        <form onSubmit={handleSubmit} className="space-y-4 py-4 max-h-[70vh] overflow-y-auto pr-4">
+          <div className="space-y-2">
             <Label htmlFor="title">Title</Label>
             <Input id="title" value={formData.title || ''} onChange={(e) => handleInputChange('title', e.target.value)} />
           </div>
           
-          <div>
+          <div className="space-y-2">
             <Label htmlFor="vendor">Vendor</Label>
             <Select value={formData.vendorId} onValueChange={handleVendorChange}>
               <SelectTrigger id="vendor">
@@ -607,11 +629,11 @@ function EditContractDialog({
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <div>
+            <div className="space-y-2">
               <Label htmlFor="value">Value</Label>
               <Input id="value" type="number" value={formData.value || 0} onChange={(e) => handleInputChange('value', parseFloat(e.target.value))} />
             </div>
-            <div>
+            <div className="space-y-2">
               <Label htmlFor="status">Status</Label>
               <Select value={formData.status} onValueChange={(value) => handleInputChange('status', value)}>
                 <SelectTrigger id="status">
@@ -626,20 +648,20 @@ function EditContractDialog({
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <div>
+            <div className="space-y-2">
               <Label htmlFor="startDate">Start Date</Label>
               <Input id="startDate" type="date" value={formData.startDate || ''} onChange={(e) => handleInputChange('startDate', e.target.value)} />
             </div>
-            <div>
+            <div className="space-y-2">
               <Label htmlFor="endDate">End Date</Label>
               <Input id="endDate" type="date" value={formData.endDate || ''} onChange={(e) => handleInputChange('endDate', e.target.value)} />
             </div>
           </div>
-          <div>
+          <div className="space-y-2">
             <Label htmlFor="description">Description</Label>
             <Textarea id="description" value={formData.description || ''} onChange={(e) => handleInputChange('description', e.target.value)} />
           </div>
-          <div className="flex justify-end gap-2">
+          <div className="flex justify-end gap-2 pt-4">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
             <Button type="submit" disabled={isSaving}>
               {isSaving ? <Save className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}

@@ -33,7 +33,7 @@ import {
   ArrowRight,
   ArrowLeft
 } from "lucide-react";
-import { Contract, ContractType, ContractStatus } from "@/lib/types";
+import { Contract, ContractType, ContractStatus, Vendor } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { createContract } from "@/lib/data";
 import { cn } from "@/lib/utils";
@@ -76,7 +76,7 @@ const onboardingSteps = [
     title: "Basic Information",
     description: "Contract details and vendor information",
     icon: FileText,
-    fields: ["title", "vendorName", "type", "description"]
+    fields: ["title", "vendorId", "vendorName", "type"]
   },
   {
     id: 2,
@@ -90,7 +90,7 @@ const onboardingSteps = [
     title: "Duration & Terms",
     description: "Contract timeline and renewal settings",
     icon: Calendar,
-    fields: ["startDate", "endDate", "autoRenew", "renewalPeriod"]
+    fields: ["startDate", "endDate"]
   },
   {
     id: 4,
@@ -101,7 +101,12 @@ const onboardingSteps = [
   }
 ];
 
-export function ContractOnboardingDialog() {
+interface ContractOnboardingDialogProps {
+    vendors: Vendor[];
+    onContractAdded: () => void;
+}
+
+export function ContractOnboardingDialog({ vendors, onContractAdded }: ContractOnboardingDialogProps) {
   const [open, setOpen] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState<ContractFormData>(initialFormData);
@@ -110,6 +115,14 @@ export function ContractOnboardingDialog() {
 
   const handleInputChange = (field: keyof ContractFormData, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleVendorChange = (vendorId: string) => {
+    const selectedVendor = vendors.find(v => v.id === vendorId);
+    if (selectedVendor) {
+      handleInputChange("vendorId", selectedVendor.id);
+      handleInputChange("vendorName", selectedVendor.name);
+    }
   };
 
   const validateStep = (step: number): boolean => {
@@ -153,7 +166,7 @@ export function ContractOnboardingDialog() {
   };
 
   const handleSubmit = async () => {
-    if (!validateStep(currentStep - 1)) {
+    if (!validateStep(currentStep - 1) && currentStep < onboardingSteps.length) {
       toast({
         title: "Validation Error",
         description: "Please review all fields before submitting.",
@@ -180,9 +193,8 @@ export function ContractOnboardingDialog() {
       setOpen(false);
       setCurrentStep(1);
       setFormData(initialFormData);
+      onContractAdded();
       
-      // Refresh the page to show the new contract
-      window.location.reload();
     } catch (error) {
       console.error('Error creating contract:', error);
       toast({
@@ -210,13 +222,17 @@ export function ContractOnboardingDialog() {
               />
             </div>
             <div>
-              <Label htmlFor="vendorName">Vendor Name *</Label>
-              <Input
-                id="vendorName"
-                value={formData.vendorName}
-                onChange={(e) => handleInputChange("vendorName", e.target.value)}
-                placeholder="Enter vendor name"
-              />
+              <Label htmlFor="vendor">Vendor *</Label>
+              <Select value={formData.vendorId} onValueChange={handleVendorChange}>
+                <SelectTrigger id="vendor">
+                  <SelectValue placeholder="Select a vendor" />
+                </SelectTrigger>
+                <SelectContent>
+                  {vendors.map(vendor => (
+                    <SelectItem key={vendor.id} value={vendor.id}>{vendor.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <Label htmlFor="type">Contract Type *</Label>
