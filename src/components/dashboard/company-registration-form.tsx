@@ -170,7 +170,12 @@ export function CompanyRegistrationForm({ isEditing = false, company }: CompanyR
         description: "Could not fetch associated data to check for impact.",
         variant: "destructive",
       });
-      setIsSubmitting(false);
+    } finally {
+        // This was the missing piece. Now, if the above `try` fails,
+        // we still ensure the submitting state is reset if no dialog is shown.
+        if (!showImpactDialog) {
+            setIsSubmitting(false);
+        }
     }
   };
 
