@@ -76,7 +76,7 @@ export async function fetchCardData() {
 
         const totalSpendPromise = invoicesCollection.aggregate([
             { $match: { status: 'Paid' } },
-            { $group: { _id: null, total: { $sum: '$invoiceAmount' } } }
+            { $group: { _id: null, total: { $sum: '$totalAmount' } } }
         ]).toArray();
         
         const activeVendorsPromise = vendorsCollection.countDocuments();
@@ -144,7 +144,7 @@ export async function getUser(): Promise<User> {
             return JSON.parse(JSON.stringify({ ...defaultUser, id: defaultUser._id.toString() }));
         }
 
-        return JSON.parse(JSON.stringify(user));
+        return JSON.parse(JSON.stringify({ ...user, id: user._id.toString() }));
 
     } catch (error) {
         console.error('Database Error fetching user:', error);
@@ -268,7 +268,8 @@ export async function updateInvoice(id: string, updates: Partial<Invoice>): Prom
             throw new Error('Invoice not found');
         }
         
-        return JSON.parse(JSON.stringify(result));
+        const newDoc = { ...result, id: result._id.toString() };
+        return JSON.parse(JSON.stringify(newDoc));
     } catch (error) {
         console.error('Database Error:', error);
         if (error instanceof Error) {
@@ -363,7 +364,9 @@ export async function createCompany(company: Partial<Company>): Promise<Company>
         if (!newCompanyDoc) {
           throw new Error('Failed to retrieve newly created company.');
         }
-        return JSON.parse(JSON.stringify(newCompanyDoc));
+        
+        const { _id, ...rest } = newCompanyDoc;
+        return JSON.parse(JSON.stringify({ ...rest, id: _id.toString() }));
     } catch (error) {
         console.error('Database Error:', error);
         throw new Error('Failed to create company.');
@@ -373,26 +376,75 @@ export async function createCompany(company: Partial<Company>): Promise<Company>
 export async function updateCompany(id: string, updates: Partial<Company>): Promise<Company> {
     noStore();
     const db = await getDb();
-    
-    try {
-        const { id: idField, _id, ...updateData } = updates as any;
-        updateData.updatedAt = new Date().toISOString();
+    const session = (await clientPromise)!.startSession();
 
-        const result = await db.collection('companies').findOneAndUpdate(
-            { _id: new ObjectId(id) },
-            { $set: updateData },
-            { returnDocument: 'after' }
-        );
-        
-        if (!result) {
-            throw new Error('Company not found');
+    try {
+        let updatedCompany: Company | null = null;
+        await session.withTransaction(async () => {
+            const companiesCollection = db.collection('companies');
+            const contractsCollection = db.collection('contracts');
+            const invoicesCollection = db.collection('invoices');
+
+            const { id: idField, _id, ...updateData } = updates as any;
+            updateData.updatedAt = new Date().toISOString();
+            
+            const originalCompany = await companiesCollection.findOne({ _id: new ObjectId(id) }, { session });
+            if (!originalCompany) {
+                throw new Error('Company not found for update');
+            }
+
+            const result = await companiesCollection.findOneAndUpdate(
+                { _id: new ObjectId(id) },
+                { $set: updateData },
+                { returnDocument: 'after', session }
+            );
+            
+            if (!result) {
+                throw new Error('Company not found during update operation');
+            }
+            
+            const serializedResult = JSON.parse(JSON.stringify(result));
+            updatedCompany = { ...serializedResult, id: serializedResult._id.toString() } as Company;
+            
+            // If company name changed, propagate it to contracts and invoices
+            if (updateData.name && updateData.name !== originalCompany.name) {
+                await contractsCollection.updateMany(
+                    { "partyA.name": originalCompany.name, "partyA.id": 'company' },
+                    { $set: { "partyA.name": updateData.name } },
+                    { session }
+                );
+                await contractsCollection.updateMany(
+                    { "partyB.name": originalCompany.name, "partyB.id": 'company' },
+                    { $set: { "partyB.name": updateData.name } },
+                    { session }
+                );
+                await invoicesCollection.updateMany(
+                    { "seller.name": originalCompany.name },
+                    { $set: { "seller.name": updateData.name } },
+                    { session }
+                );
+                await invoicesCollection.updateMany(
+                    { "buyer.name": originalCompany.name },
+                    { $set: { "buyer.name": updateData.name } },
+                    { session }
+                );
+            }
+        });
+
+        if (!updatedCompany) {
+            throw new Error("Company update failed within transaction.");
         }
         
-        const { _id: newId, ...companyData } = result;
-        return JSON.parse(JSON.stringify({ ...companyData, id: newId.toString() }));
+        return updatedCompany;
+        
     } catch (error) {
         console.error('Database Error:', error);
-        throw new Error('Failed to update company.');
+        throw new Error('Failed to update company and associated data.');
+    } finally {
+        if (session.inTransaction()) {
+            await session.abortTransaction();
+        }
+        await session.endSession();
     }
 }
 
@@ -419,8 +471,10 @@ export async function createContract(contract: Partial<Contract>): Promise<Contr
         
         const result = await db.collection('contracts').insertOne(contractData);
         
-        const newContract = await db.collection('contracts').findOne({ _id: result.insertedId });
-        return JSON.parse(JSON.stringify(newContract));
+        const newContractDoc = await db.collection('contracts').findOne({ _id: result.insertedId });
+        if (!newContractDoc) throw new Error("Failed to retrieve new contract");
+        const { _id, ...rest} = newContractDoc;
+        return JSON.parse(JSON.stringify({...rest, id: _id.toString()}));
     } catch (error) {
         console.error('Database Error:', error);
         throw new Error('Failed to create contract.');
@@ -445,7 +499,8 @@ export async function updateContract(id: string, updates: Partial<Contract>): Pr
             throw new Error('Contract not found');
         }
         
-        return JSON.parse(JSON.stringify(result));
+        const newDoc = { ...result, id: result._id.toString() };
+        return JSON.parse(JSON.stringify(newDoc));
     } catch (error) {
         console.error('Database Error:', error);
         throw new Error('Failed to update contract.');
@@ -507,7 +562,7 @@ export async function fetchInvoicesByContract(contractId: string): Promise<Invoi
             .sort({ createdAt: -1 })
             .toArray();
 
-        return JSON.parse(JSON.stringify(invoices));
+        return JSON.parse(JSON.stringify(invoices.map(i => ({...i, id: i._id.toString()}))));
     } catch (error) {
         console.error('Database Error:', error);
         throw new Error('Failed to fetch invoices by contract.');
@@ -532,7 +587,7 @@ export async function fetchExpiringContracts(daysAhead: number = 30): Promise<Co
             .sort({ endDate: 1 })
             .toArray();
 
-        return JSON.parse(JSON.stringify(contracts));
+        return JSON.parse(JSON.stringify(contracts.map(c => ({...c, id: c._id.toString()}))));
     } catch (error) {
         console.error('Database Error:', error);
         throw new Error('Failed to fetch expiring contracts.');
@@ -553,8 +608,11 @@ export async function createVendor(vendor: Partial<Vendor>): Promise<Vendor> {
         
         const result = await db.collection('vendors').insertOne(vendorData);
         
-        const newVendor = await db.collection('vendors').findOne({ _id: result.insertedId });
-        return JSON.parse(JSON.stringify(newVendor));
+        const newVendorDoc = await db.collection('vendors').findOne({ _id: result.insertedId });
+        if (!newVendorDoc) throw new Error("Failed to retrieve new vendor");
+        const { _id, ...rest} = newVendorDoc;
+
+        return JSON.parse(JSON.stringify({...rest, id: _id.toString()}));
     } catch (error) {
         console.error('Database Error:', error);
         throw new Error('Failed to create vendor.');
@@ -575,6 +633,11 @@ export async function updateVendor(id: string, updates: Partial<Vendor>): Promis
 
             const { _id, ...updateData } = updates as any;
             updateData.updatedAt = new Date().toISOString();
+
+            const originalVendor = await vendorsCollection.findOne({ _id: new ObjectId(id) }, { session });
+             if (!originalVendor) {
+                throw new Error('Vendor not found for update');
+            }
             
             const result = await vendorsCollection.findOneAndUpdate(
                 { _id: new ObjectId(id) },
@@ -583,13 +646,13 @@ export async function updateVendor(id: string, updates: Partial<Vendor>): Promis
             );
             
             if (!result) {
-                throw new Error('Vendor not found');
+                throw new Error('Vendor not found during update operation');
             }
             
             const serializedResult = JSON.parse(JSON.stringify(result));
             updatedVendor = { ...serializedResult, id: serializedResult._id.toString() } as Vendor;
             
-            if (updates.name && updates.name !== result.name) {
+            if (updates.name && updates.name !== originalVendor.name) {
                 await contractsCollection.updateMany(
                     { "partyA.id": id },
                     { $set: { "partyA.name": updates.name } },
@@ -601,12 +664,12 @@ export async function updateVendor(id: string, updates: Partial<Vendor>): Promis
                     { session }
                 );
                 await invoicesCollection.updateMany(
-                    { "seller.id": id },
+                    { "seller.name": originalVendor.name },
                     { $set: { "seller.name": updates.name } },
                     { session }
                 );
                 await invoicesCollection.updateMany(
-                    { "buyer.id": id },
+                    { "buyer.name": originalVendor.name },
                     { $set: { "buyer.name": updates.name } },
                     { session }
                 );
@@ -709,7 +772,7 @@ export async function searchVendors(filters: SearchFilters): Promise<Vendor[]> {
             .sort({ name: 1 })
             .toArray();
 
-        return JSON.parse(JSON.stringify(vendors));
+        return JSON.parse(JSON.stringify(vendors.map(v => ({...v, id: v._id.toString()}))));
     } catch (error) {
         console.error('Database Error:', error);
         throw new Error('Failed to search vendors.');
@@ -836,7 +899,7 @@ export async function fetchAnalyticsData() {
                         year: { $year: { $dateFromString: { dateString: '$invoiceDate' } } },
                         month: { $month: { $dateFromString: { dateString: '$invoiceDate' } } }
                     },
-                    total: { $sum: '$invoiceAmount' },
+                    total: { $sum: '$totalAmount' },
                     count: { $sum: 1 }
                 }
             },

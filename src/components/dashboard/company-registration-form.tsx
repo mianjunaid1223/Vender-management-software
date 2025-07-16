@@ -46,7 +46,8 @@ import {
   FileText,
   Receipt,
   Trash2,
-  Star
+  Star,
+  Loader2,
 } from "lucide-react";
 import { Company, ContactInfo, InvoiceAddress, CompanyPreferences, Contract, Invoice } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
@@ -138,8 +139,7 @@ export function CompanyRegistrationForm({ isEditing = false, company }: CompanyR
         if (listName === 'contacts') {
              setFormData(prev => ({ ...prev, contacts: list as ContactInfo[] }));
         } else {
-            // Address logic can be simpler if we don't store `isPrimary` on it
-            // For now, let's assume `primaryAddress` is derived.
+             setFormData(prev => ({ ...prev, addresses: list as InvoiceAddress[] }));
         }
     };
 
@@ -149,33 +149,39 @@ export function CompanyRegistrationForm({ isEditing = false, company }: CompanyR
     setIsSubmitting(true);
     
     try {
-      const [contracts, invoices] = await Promise.all([
-        fetchContracts(),
-        fetchInvoices()
-      ]);
       const companyId = company?.id;
-      
-      const affectedContracts = companyId ? contracts.filter(c => c.partyA.id === companyId || c.partyB.id === companyId) : [];
-      const affectedInvoices = company?.name ? invoices.filter(i => i.seller?.name === company.name || i.buyer?.name === company.name) : [];
+      // Only fetch associated data if the name has changed
+      if (companyId && formData.name !== company.name) {
+          const [contracts, invoices] = await Promise.all([
+            fetchContracts(),
+            fetchInvoices()
+          ]);
+          
+          const affectedContracts = contracts.filter(c => 
+            (c.partyA.id === 'company' && c.partyA.name === company.name) || 
+            (c.partyB.id === 'company' && c.partyB.name === company.name)
+          );
+          const affectedInvoices = invoices.filter(i => 
+            (i.seller?.name === company.name) || 
+            (i.buyer?.name === company.name)
+          );
 
-      if (affectedContracts.length > 0 || affectedInvoices.length > 0) {
-        setImpactData({ contracts: affectedContracts, invoices: affectedInvoices });
-        setShowImpactDialog(true);
-      } else {
-        await saveChanges();
+          if (affectedContracts.length > 0 || affectedInvoices.length > 0) {
+            setImpactData({ contracts: affectedContracts, invoices: affectedInvoices });
+            setShowImpactDialog(true);
+            return; // Stop here and wait for user confirmation
+          }
       }
+      
+      // If no name change or no associated docs, save directly
+      await saveChanges();
     } catch (error) {
       toast({
         title: "Error",
         description: "Could not fetch associated data to check for impact.",
         variant: "destructive",
       });
-    } finally {
-        // This was the missing piece. Now, if the above `try` fails,
-        // we still ensure the submitting state is reset if no dialog is shown.
-        if (!showImpactDialog) {
-            setIsSubmitting(false);
-        }
+      setIsSubmitting(false);
     }
   };
 
@@ -184,13 +190,23 @@ export function CompanyRegistrationForm({ isEditing = false, company }: CompanyR
     try {
       // Ensure the ID is passed for updates
       const dataToSave = company?.id ? { ...formData, id: company.id } : formData;
-      await createOrUpdateCompanyAction(dataToSave);
-      toast({
-        title: "Success",
-        description: "Company profile saved successfully!",
-      });
-      setOpen(false);
-      window.location.reload();
+      const result = await createOrUpdateCompanyAction(dataToSave);
+      
+      if (result.success) {
+          toast({
+            title: "Success",
+            description: "Company profile saved successfully!",
+          });
+          setOpen(false);
+          // A full reload ensures all server components get the fresh data
+          window.location.reload(); 
+      } else {
+          toast({
+            title: "Error",
+            description: result.error || "Failed to save company profile.",
+            variant: "destructive",
+          });
+      }
     } catch (error) {
       console.error('Error saving company:', error);
       toast({
@@ -300,7 +316,7 @@ export function CompanyRegistrationForm({ isEditing = false, company }: CompanyR
                                     <CardContent className="space-y-4 pt-6">
                                         <div className="grid md:grid-cols-2 gap-4">
                                             <div><Label>Name</Label><Input value={contact.name} onChange={e => handleListChange('contacts', index, 'name', e.target.value)} /></div>
-                                            <div><Label>Role</Label><Input value={contact.role} onChange={e => handleListChange('contacts', index, 'role', e.target.value)} /></div>
+                                            <div><Label>Role</Label><Input value={contact.role || ''} onChange={e => handleListChange('contacts', index, 'role', e.target.value)} /></div>
                                         </div>
                                         <div className="grid md:grid-cols-2 gap-4">
                                             <div><Label>Email</Label><Input type="email" value={contact.email} onChange={e => handleListChange('contacts', index, 'email', e.target.value)} /></div>
@@ -328,7 +344,7 @@ export function CompanyRegistrationForm({ isEditing = false, company }: CompanyR
                                     <div className="grid md:grid-cols-3 gap-4">
                                         <div><Label>Default Payment Terms</Label><Input value={formData.preferences?.defaultPaymentTerms} onChange={e => handleInputChange('preferences.defaultPaymentTerms', e.target.value)} /></div>
                                         <div><Label>Default Currency</Label><Input value={formData.preferences?.defaultCurrency} onChange={e => handleInputChange('preferences.defaultCurrency', e.target.value)} /></div>
-                                        <div><Label>Default Tax Rate (%)</Label><Input type="number" value={formData.preferences?.defaultTaxRate} onChange={e => handleInputChange('preferences.defaultTaxRate', parseFloat(e.target.value))} /></div>
+                                        <div><Label>Default Tax Rate (%)</Label><Input type="number" value={formData.preferences?.defaultTaxRate || 0} onChange={e => handleInputChange('preferences.defaultTaxRate', parseFloat(e.target.value))} /></div>
                                     </div>
                                 </CardContent>
                             </Card>
@@ -339,6 +355,7 @@ export function CompanyRegistrationForm({ isEditing = false, company }: CompanyR
                 <div className="flex-shrink-0 flex justify-end space-x-2 pt-4 border-t">
                     <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
                     <Button type="submit" disabled={isSubmitting}>
+                        {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                         {isSubmitting ? "Saving..." : isEditing ? "Update Profile" : "Register Company"}
                     </Button>
                 </div>
@@ -351,7 +368,7 @@ export function CompanyRegistrationForm({ isEditing = false, company }: CompanyR
           <AlertDialogHeader>
             <AlertDialogTitle>Confirm Company Profile Update</AlertDialogTitle>
             <AlertDialogDescription>
-               This action will update your company details. This will reflect in all associated contracts and invoices. Please review before saving.
+               Changing the company name will update all associated contracts and invoices. Please review before saving.
             </AlertDialogDescription>
           </AlertDialogHeader>
            {(impactData.contracts.length > 0 || impactData.invoices.length > 0) && (
@@ -379,7 +396,7 @@ export function CompanyRegistrationForm({ isEditing = false, company }: CompanyR
                       {impactData.invoices.map(invoice => (
                         <li key={invoice.id} className="text-sm flex items-center gap-2">
                            <Receipt className="h-4 w-4 text-muted-foreground"/>
-                           <span>{invoice.invoiceNumber} - ${invoice.invoiceAmount}</span>
+                           <span>{invoice.invoiceNumber} - ${invoice.totalAmount}</span>
                         </li>
                       ))}
                     </ul>
