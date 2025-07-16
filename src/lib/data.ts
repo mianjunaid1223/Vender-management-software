@@ -32,7 +32,6 @@ export async function fetchInvoices(): Promise<Invoice[]> {
             .sort({ invoiceDate: -1 })
             .toArray();
         
-        // Ensure _id is mapped to id and properly serialized
         return JSON.parse(JSON.stringify(invoices.map(invoice => ({
             ...invoice,
             id: invoice._id.toString(),
@@ -55,11 +54,10 @@ export async function fetchVendors(): Promise<Vendor[]> {
             .sort({ name: 1 })
             .toArray();
 
-        // Map _id to id and ensure proper serialization
         return vendors.map(vendor => ({
             ...vendor,
             id: vendor._id.toString(),
-            _id: undefined, // remove _id to avoid confusion
+            _id: undefined,
         })) as Vendor[];
 
     } catch (error) {
@@ -170,7 +168,6 @@ export async function processAndFetchContracts(): Promise<Contract[]> {
   
         if (endDate < today) {
           if (contract.autoRenew) {
-            // Handle auto-renewal
             const renewalPeriod = contract.renewalPeriod || 12;
             const newStartDate = new Date(contract.endDate);
             newStartDate.setDate(newStartDate.getDate() + 1);
@@ -188,7 +185,6 @@ export async function processAndFetchContracts(): Promise<Contract[]> {
               }
             );
           } else {
-            // Expire the contract
             await contractsCollection.updateOne(
               { _id: contract._id },
               { $set: { status: 'Expired', updatedAt: new Date().toISOString() } }
@@ -197,7 +193,6 @@ export async function processAndFetchContracts(): Promise<Contract[]> {
         }
       }
   
-      // Fetch all contracts again after processing
       const allContracts = await contractsCollection.find({}).sort({ createdAt: -1 }).toArray();
       return JSON.parse(JSON.stringify(allContracts.map(c => ({...c, id: c._id.toString()}))));
   
@@ -342,7 +337,9 @@ export async function fetchCompany(): Promise<Company | null> {
             return null;
         }
         
-        return JSON.parse(JSON.stringify(company));
+        const { _id, ...companyData } = company;
+        return JSON.parse(JSON.stringify({ ...companyData, id: _id.toString() }));
+
     } catch (error) {
         console.error('Database Error:', error);
         throw new Error('Failed to fetch company from database.');
@@ -391,7 +388,8 @@ export async function updateCompany(id: string, updates: Partial<Company>): Prom
             throw new Error('Company not found');
         }
         
-        return JSON.parse(JSON.stringify(result));
+        const { _id: newId, ...companyData } = result;
+        return JSON.parse(JSON.stringify({ ...companyData, id: newId.toString() }));
     } catch (error) {
         console.error('Database Error:', error);
         throw new Error('Failed to update company.');
@@ -434,7 +432,7 @@ export async function updateContract(id: string, updates: Partial<Contract>): Pr
     const db = await getDb();
     
     try {
-        const { _id, ...updateData } = updates as any;
+        const { id: _, _id, ...updateData } = updates as any;
         updateData.updatedAt = new Date().toISOString();
         
         const result = await db.collection('contracts').findOneAndUpdate(
@@ -464,10 +462,8 @@ export async function deleteContract(id: string): Promise<void> {
             const contractsCollection = db.collection('contracts');
             const invoicesCollection = db.collection('invoices');
 
-            // Delete invoices associated with the contract
             await invoicesCollection.deleteMany({ contractId: id }, { session });
 
-            // Delete the contract itself
             const result = await contractsCollection.deleteOne({ _id: new ObjectId(id) }, { session });
             
             if (result.deletedCount === 0) {
@@ -650,17 +646,13 @@ export async function deleteVendor(id: string): Promise<void> {
             const contractsCollection = db.collection('contracts');
             const invoicesCollection = db.collection('invoices');
 
-            // Find all contracts associated with the vendor
             const contractsToDelete = await contractsCollection.find({ $or: [ { "partyA.id": id }, { "partyB.id": id } ] }, { session }).project({ _id: 1 }).toArray();
             const contractIdsToDelete = contractsToDelete.map(c => c._id.toString());
             
-            // Delete all invoices associated with the vendor's contracts OR directly to the vendor
             await invoicesCollection.deleteMany({ $or: [{ contractId: { $in: contractIdsToDelete } }, { vendorId: id }] }, { session });
             
-            // Delete all contracts associated with the vendor
             await contractsCollection.deleteMany({ $or: [ { "partyA.id": id }, { "partyB.id": id } ] }, { session });
             
-            // Delete the vendor itself
             const result = await vendorsCollection.deleteOne({ _id: new ObjectId(id) }, { session });
 
             if (result.deletedCount === 0) {
@@ -827,19 +819,16 @@ export async function fetchAnalyticsData() {
         const vendorsCollection = db.collection('vendors');
         const contractsCollection = db.collection('contracts');
 
-        // Contract analytics
         const activeContractsPromise = contractsCollection.countDocuments({ status: 'Active' });
         const expiringContractsPromise = contractsCollection.countDocuments({ 
             endDate: { $lte: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() },
             status: 'Active'
         });
         
-        // Vendor analytics
         const vendorsByStatusPromise = vendorsCollection.aggregate([
             { $group: { _id: '$status', count: { $sum: 1 } } }
         ]).toArray();
         
-        // Invoice analytics by month
         const invoicesByMonthPromise = invoicesCollection.aggregate([
             {
                 $group: {
