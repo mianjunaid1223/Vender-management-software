@@ -62,7 +62,7 @@ export function VendorEditDialog({ vendor, open, onOpenChange, onVendorUpdated }
     if (vendor) {
       setFormData(vendor);
     }
-  }, [vendor]);
+  }, [vendor, open]);
 
   const handleInputChange = (field: string, value: any) => {
     if (field.includes('.')) {
@@ -97,7 +97,9 @@ export function VendorEditDialog({ vendor, open, onOpenChange, onVendorUpdated }
     }));
   };
 
-  const checkForImpact = async () => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
     // Only check for impact if the name is changing
     if (formData.name && formData.name !== vendor.name) {
       try {
@@ -123,13 +125,9 @@ export function VendorEditDialog({ vendor, open, onOpenChange, onVendorUpdated }
         setIsSubmitting(false);
       }
     } else {
+      // If name hasn't changed, save directly
       await saveChanges();
     }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    await checkForImpact();
   };
 
   const saveChanges = async () => {
@@ -352,7 +350,7 @@ export function VendorEditDialog({ vendor, open, onOpenChange, onVendorUpdated }
       <AlertDialog open={showImpactDialog} onOpenChange={setShowImpactDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirm Vendor Name Change</AlertDialogTitle>
+            <AlertDialogTitle>Confirm Vendor Update</AlertDialogTitle>
             <AlertDialogDescription>
               Changing the vendor's name will also update the name on all associated records listed below. This action cannot be easily undone.
             </AlertDialogDescription>
@@ -382,7 +380,7 @@ export function VendorEditDialog({ vendor, open, onOpenChange, onVendorUpdated }
                       {impactData.invoices.map(invoice => (
                         <li key={invoice.id} className="text-sm flex items-center gap-2">
                            <Receipt className="h-4 w-4 text-muted-foreground"/>
-                          <span>{invoice.invoiceNumber} - ${invoice.invoiceAmount}</span>
+                           <span>{invoice.invoiceNumber} - ${invoice.invoiceAmount}</span>
                         </li>
                       ))}
                     </ul>
