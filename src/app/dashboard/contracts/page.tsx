@@ -371,7 +371,8 @@ function ContractsGrid({
     setEditDialogOpen(true);
   };
   
-  const getPartyInfo = (party: ContractParty) => {
+  const getPartyInfo = (party?: ContractParty) => {
+    if (!party) return null;
     return (
       <div className="flex items-center gap-2">
         <div className="flex items-center justify-center h-6 w-6 rounded-full bg-muted text-muted-foreground">
