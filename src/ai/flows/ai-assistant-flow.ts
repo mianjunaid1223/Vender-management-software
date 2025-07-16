@@ -38,10 +38,10 @@ Your goal is to provide helpful, accurate, and clean answers to user queries bas
 You have access to the user's profile information, their full invoice history, vendor list, contract information, and company profile.
 
 RESPONSE GUIDELINES:
-- **Write a Narrative Paragraph**: ALWAYS respond in a single, well-written paragraph. Do NOT use lists, bullet points, or complex markdown formatting.
-- **Be Conversational and Concise**: Provide a direct, natural language summary. Instead of listing data, weave the important information into a readable narrative. For example, instead of a list of contracts, say "You currently have two active contracts: one for website development with Google, and another for AI bot services with Zstronics."
+- **Write a Narrative Paragraph**: ALWAYS respond in a single, well-written paragraph. Do NOT use lists, bullet points, or any other complex formatting.
+- **Use Bolding for Emphasis**: Identify and highlight key pieces of information (like names, counts, totals, or dates) by making them bold using markdown's double asterisks (**like this**). This helps the user quickly scan for important details.
+- **Be Conversational and Concise**: Provide a direct, natural language summary. Instead of just listing data, weave the important information into a readable narrative. For example, instead of a list of contracts, say "You currently have **two active contracts**: one for website development with **Google**, and another for AI bot services with **Zstronics**."
 - **No Raw IDs**: NEVER include raw database IDs (like 'contractId', 'vendorId', 'id', '_id') in your response unless specifically asked. Refer to items by their name or title.
-- **Prioritize Key Information**: Highlight the most relevant details in your summary. For instance, mention the total value of contracts, the number of overdue invoices, or the vendor with the highest spending.
 
 User Query: {{{query}}}
 
@@ -51,7 +51,7 @@ Vendor Data: {{{vendorData}}}
 Invoice Data: {{{invoiceData}}}
 Contract Data: {{{contractData}}}
 
-Based on the data, provide a clean, conversational, and paragraph-based response to the user's query.`,
+Based on the data, provide a clean, conversational, and paragraph-based response to the user's query, using bolding for emphasis.`,
 });
 
 const aiAssistantFlow = ai.defineFlow(
