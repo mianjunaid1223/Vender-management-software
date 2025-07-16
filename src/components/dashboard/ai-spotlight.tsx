@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import {
   Dialog,
   DialogContent,
@@ -110,7 +112,7 @@ export function AISpotlight({
           title: `View ${vendor.name}`,
           description: `View details for ${vendor.name}`,
           href: `/dashboard/vendors?search=${encodeURIComponent(vendor.name)}`,
-          icon: <Eye className="h-4 w-4" />
+          icon: <Eye className="h-4 w-4" />,
         });
       }
     });
@@ -121,7 +123,7 @@ export function AISpotlight({
         title: 'View Overdue Invoices',
         description: 'Show all overdue invoices',
         href: '/dashboard/invoices?filter=overdue',
-        icon: <Receipt className="h-4 w-4" />
+        icon: <Receipt className="h-4 w-4" />,
       });
     }
 
@@ -131,7 +133,7 @@ export function AISpotlight({
         title: 'View Expiring Contracts',
         description: 'Show contracts expiring soon',
         href: '/dashboard/contracts?filter=expiring',
-        icon: <FileText className="h-4 w-4" />
+        icon: <FileText className="h-4 w-4" />,
       });
     }
 
@@ -141,7 +143,7 @@ export function AISpotlight({
         title: 'Manage Vendors',
         description: 'View and manage all vendors',
         href: '/dashboard/vendors',
-        icon: <Users className="h-4 w-4" />
+        icon: <Users className="h-4 w-4" />,
       });
     }
 
@@ -150,7 +152,7 @@ export function AISpotlight({
         title: 'View Invoices',
         description: 'View and manage invoices',
         href: '/dashboard/invoices',
-        icon: <Receipt className="h-4 w-4" />
+        icon: <Receipt className="h-4 w-4" />,
       });
     }
 
@@ -159,7 +161,7 @@ export function AISpotlight({
         title: 'View Contracts',
         description: 'View and manage contracts',
         href: '/dashboard/contracts',
-        icon: <FileText className="h-4 w-4" />
+        icon: <FileText className="h-4 w-4" />,
       });
     }
 
@@ -168,7 +170,7 @@ export function AISpotlight({
         title: 'Company Profile',
         description: 'Update company information',
         href: '/dashboard/company',
-        icon: <Building2 className="h-4 w-4" />
+        icon: <Building2 className="h-4 w-4" />,
       });
     }
 
@@ -179,7 +181,7 @@ export function AISpotlight({
           title: 'Add New Vendor',
           description: 'Create a new vendor',
           href: '/dashboard/vendors',
-          icon: <Plus className="h-4 w-4" />
+          icon: <Plus className="h-4 w-4" />,
         });
       }
       if (lowerResponse.includes('contract')) {
@@ -187,7 +189,7 @@ export function AISpotlight({
           title: 'Add New Contract',
           description: 'Create a new contract',
           href: '/dashboard/contracts',
-          icon: <Plus className="h-4 w-4" />
+          icon: <Plus className="h-4 w-4" />,
         });
       }
     }
@@ -300,9 +302,11 @@ export function AISpotlight({
                   )}
                   {response && !isLoading && (
                     <div className="space-y-4">
-                      <p className="text-sm text-foreground/90">
-                        {response}
-                      </p>
+                       <article className="prose prose-sm dark:prose-invert max-w-none markdown-body">
+                          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                            {response}
+                          </ReactMarkdown>
+                        </article>
                       {suggestedActions.length > 0 && (
                         <div className="space-y-2">
                           <h4 className="text-sm font-medium text-foreground/80">Quick Actions:</h4>
