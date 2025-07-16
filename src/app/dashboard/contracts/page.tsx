@@ -4,7 +4,7 @@
 import { useState, useEffect } from "react";
 import { PageHeader } from "@/components/page-header";
 import { ContractOnboardingDialog } from "@/components/dashboard/contract-onboarding-dialog";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,7 +25,6 @@ import {
   Edit,
   Trash2,
   Calendar,
-  Building,
   Save,
   Clock,
   Receipt,
@@ -33,10 +32,12 @@ import {
   Printer,
   ChevronDown,
   User,
+  Briefcase,
   Users,
-  Briefcase
+  FileClock,
+  RefreshCw,
 } from "lucide-react";
-import { fetchContracts, deleteContract, fetchInvoicesByContract, fetchVendors, fetchCompany, updateContract } from "@/lib/data";
+import { processAndFetchContracts, deleteContract, fetchInvoicesByContract, fetchVendors, fetchCompany, updateContract } from "@/lib/data";
 import { Contract, Invoice, ContractStatus, Vendor, Company, ContractParty, ContractType } from "@/lib/types";
 import { downloadContractPDF, previewContractPDF } from "@/lib/pdf-utils";
 import {
@@ -63,6 +64,8 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { format, formatDistanceToNow } from "date-fns";
+
 
 export default function ContractsPage() {
   const [contracts, setContracts] = useState<Contract[]>([]);
@@ -81,10 +84,7 @@ export default function ContractsPage() {
     try {
       setLoading(true);
       const [contractsData, vendorsData, companyData] = await Promise.all([
-        fetch('/api/contracts').then(res => {
-          if (!res.ok) throw new Error('Failed to fetch contracts');
-          return res.json();
-        }),
+        processAndFetchContracts(),
         fetchVendors(),
         fetchCompany()
       ]);
@@ -191,7 +191,7 @@ export default function ContractsPage() {
 
   const activeContracts = contracts.filter(c => c.status === 'Active');
   const draftContracts = contracts.filter(c => c.status === 'Draft');
-  const expiredContracts = contracts.filter(c => c.status === 'Expired');
+  const expiringSoonContracts = contracts.filter(c => c.status === 'Active' && new Date(c.endDate) < new Date(Date.now() + 30 * 24 * 60 * 60 * 1000));
 
   if (loading) return <ContractsPageSkeleton />;
 
@@ -234,21 +234,23 @@ export default function ContractsPage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Expired Contracts</CardTitle>
-            <AlertCircle className="h-4 w-4 text-red-600" />
+            <CardTitle className="text-sm font-medium">Expiring Soon</CardTitle>
+            <FileClock className="h-4 w-4 text-yellow-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{expiredContracts.length}</div>
+            <div className="text-2xl font-bold">{expiringSoonContracts.length}</div>
           </CardContent>
         </Card>
         
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending Contracts</CardTitle>
-            <Clock className="h-4 w-4 text-yellow-600" />
+            <CardTitle className="text-sm font-medium">Total Value</CardTitle>
+            <DollarSign className="h-4 w-4 text-purple-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{contracts.filter(c => c.status === 'Pending').length}</div>
+            <div className="text-2xl font-bold">
+              ${activeContracts.reduce((acc, c) => acc + c.value, 0).toLocaleString()}
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -259,7 +261,7 @@ export default function ContractsPage() {
             <TabsTrigger value="all">All ({contracts.length})</TabsTrigger>
             <TabsTrigger value="active">Active ({activeContracts.length})</TabsTrigger>
             <TabsTrigger value="draft">Draft ({draftContracts.length})</TabsTrigger>
-            <TabsTrigger value="expired">Expired ({expiredContracts.length})</TabsTrigger>
+            <TabsTrigger value="expired">Expired ({contracts.filter(c => c.status === 'Expired').length})</TabsTrigger>
           </TabsList>
           
           <div className="flex items-center gap-2">
@@ -378,29 +380,24 @@ function ContractsGrid({
   
   const getPartyInfo = (party?: ContractParty) => {
     if (!party) return null;
+    const Icon = party.role === 'Client' ? User : Briefcase;
     return (
       <div className="flex items-center gap-2">
-        <div className="flex items-center justify-center h-6 w-6 rounded-full bg-muted text-muted-foreground">
-            {party.role === 'Client' ? <User className="h-4 w-4"/> : <Briefcase className="h-4 w-4"/>}
-        </div>
-        <div>
-            <div className="text-sm font-medium">{party.name}</div>
-            <div className="text-xs text-muted-foreground">{party.role}</div>
-        </div>
+        <Icon className="h-4 w-4 text-muted-foreground" />
+        <div className="text-sm">{party.name}</div>
+        <Badge variant="outline" className="text-xs">{party.role}</Badge>
       </div>
     );
   };
 
   return (
     <>
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {contracts.map((contract) => (
-          <Card key={contract.id} className="flex flex-col">
-            <CardHeader className="pb-3">
+          <Card key={contract.id} className="flex flex-col hover:shadow-xl transition-shadow duration-300">
+             <CardHeader>
               <div className="flex items-start justify-between">
-                 <Badge variant="outline" className={cn("capitalize", getStatusColor(contract.status))}>
-                    {contract.status}
-                </Badge>
+                <CardTitle className="text-lg leading-snug">{contract.title}</CardTitle>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="h-8 w-8 p-0">
@@ -416,7 +413,7 @@ function ContractsGrid({
                     </DropdownMenuItem>
                     <DropdownMenuSub>
                         <DropdownMenuSubTrigger>
-                            <ChevronDown className="mr-2 h-4 w-4" /> Change Status
+                            <RefreshCw className="mr-2 h-4 w-4" /> Change Status
                         </DropdownMenuSubTrigger>
                         <DropdownMenuSubContent>
                             {contractStatuses.map(status => (
@@ -427,10 +424,10 @@ function ContractsGrid({
                         </DropdownMenuSubContent>
                     </DropdownMenuSub>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={async () => downloadContractPDF(await contract)}>
+                    <DropdownMenuItem onClick={() => downloadContractPDF(contract)}>
                       <Download className="mr-2 h-4 w-4" /> Download PDF
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={async () => previewContractPDF(await contract)}>
+                    <DropdownMenuItem onClick={() => previewContractPDF(contract)}>
                       <Printer className="mr-2 h-4 w-4" /> Preview PDF
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
@@ -440,24 +437,32 @@ function ContractsGrid({
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
-              <CardTitle className="text-lg pt-2">{contract.title}</CardTitle>
+              <CardDescription>
+                <Badge variant="outline" className={cn("capitalize font-medium", getStatusColor(contract.status))}>
+                    {contract.status}
+                </Badge>
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4 flex-grow">
-              <div className="space-y-3">
+              <div className="space-y-3 border-t pt-4">
                 {getPartyInfo(contract.partyA)}
                 {getPartyInfo(contract.partyB)}
               </div>
-              <div className="grid grid-cols-2 gap-4 text-sm pt-4 border-t">
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <span>{new Date(contract.startDate).toLocaleDateString()} - {new Date(contract.endDate).toLocaleDateString()}</span>
-                </div>
-                <div className="flex items-center gap-2 font-medium">
-                  <DollarSign className="h-4 w-4 text-muted-foreground" />
-                  <span>{contract.value?.toLocaleString() || 0} {contract.currency}</span>
-                </div>
-              </div>
             </CardContent>
+            <div className="p-6 pt-0 mt-auto">
+              <div className="grid grid-cols-2 gap-4 text-sm pt-4 border-t">
+                  <div className="flex items-center gap-2">
+                    <DollarSign className="h-4 w-4 text-muted-foreground" />
+                    <span className="font-semibold">{contract.value?.toLocaleString() || 0} {contract.currency}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-muted-foreground" />
+                    <span className="font-semibold">
+                      {formatDistanceToNow(new Date(contract.endDate), { addSuffix: true })}
+                    </span>
+                  </div>
+              </div>
+            </div>
           </Card>
         ))}
       </div>
@@ -504,11 +509,11 @@ function ContractsGrid({
               </div>
 
               <div className="flex justify-end pt-4 gap-2">
-                 <Button variant="outline" onClick={async () => downloadContractPDF(await selectedContract)}>
+                 <Button variant="outline" onClick={async () => downloadContractPDF(selectedContract)}>
                     <Download className="h-4 w-4 mr-2" />
                     Download PDF
                  </Button>
-                 <Button variant="outline" onClick={async () => previewContractPDF(await selectedContract)}>
+                 <Button variant="outline" onClick={async () => previewContractPDF(selectedContract)}>
                     <Printer className="h-4 w-4 mr-2" />
                     Preview PDF
                  </Button>
@@ -591,8 +596,8 @@ function EditContractDialog({
     if (contract) {
       setFormData({
         ...contract,
-        startDate: new Date(contract.startDate).toISOString().split('T')[0],
-        endDate: new Date(contract.endDate).toISOString().split('T')[0],
+        startDate: format(new Date(contract.startDate), 'yyyy-MM-dd'),
+        endDate: format(new Date(contract.endDate), 'yyyy-MM-dd'),
       });
     }
   }, [contract]);

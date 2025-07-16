@@ -4,6 +4,7 @@ import clientPromise from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
 import type { Invoice, Vendor, User, Contract, Company, Notification, ActionLog, SearchFilters } from '@/lib/types';
 import { unstable_noStore as noStore } from 'next/cache';
+import { add } from 'date-fns';
 
 export const getDb = async () => {
     if (!clientPromise) {
@@ -151,6 +152,59 @@ export async function getUser(): Promise<User> {
     }
 }
 
+export async function processAndFetchContracts(): Promise<Contract[]> {
+    noStore();
+    const db = await getDb();
+    const today = new Date();
+  
+    try {
+      const contractsCollection = db.collection('contracts');
+      const activeContracts = await contractsCollection
+        .find({ status: { $nin: ['Expired', 'Terminated'] } })
+        .toArray();
+  
+      for (const contract of activeContracts) {
+        const endDate = new Date(contract.endDate);
+  
+        if (endDate < today) {
+          if (contract.autoRenew) {
+            // Handle auto-renewal
+            const renewalPeriod = contract.renewalPeriod || 12;
+            const newStartDate = new Date(contract.endDate);
+            newStartDate.setDate(newStartDate.getDate() + 1);
+            
+            const newEndDate = add(newStartDate, { months: renewalPeriod });
+  
+            await contractsCollection.updateOne(
+              { _id: contract._id },
+              {
+                $set: {
+                  startDate: newStartDate.toISOString(),
+                  endDate: newEndDate.toISOString(),
+                  updatedAt: new Date().toISOString(),
+                },
+              }
+            );
+          } else {
+            // Expire the contract
+            await contractsCollection.updateOne(
+              { _id: contract._id },
+              { $set: { status: 'Expired', updatedAt: new Date().toISOString() } }
+            );
+          }
+        }
+      }
+  
+      // Fetch all contracts again after processing
+      const allContracts = await contractsCollection.find({}).sort({ createdAt: -1 }).toArray();
+      return JSON.parse(JSON.stringify(allContracts));
+  
+    } catch (error) {
+      console.error('Database Error processing contracts:', error);
+      throw new Error('Failed to process and fetch contracts.');
+    }
+}
+
 export async function fetchContracts(): Promise<Contract[]> {
     noStore();
     const db = await getDb();
@@ -162,7 +216,7 @@ export async function fetchContracts(): Promise<Contract[]> {
             .sort({ createdAt: -1 })
             .toArray();
 
-        return JSON.parse(JSON.stringify(contracts));
+        return JSON.parse(JSON.stringify(contracts.map(c => ({...c, id: c._id.toString()}))));
     } catch (error) {
         console.error('Database Error:', error);
         throw new Error('Failed to fetch contracts from database.');

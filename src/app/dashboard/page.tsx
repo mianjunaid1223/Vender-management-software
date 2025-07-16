@@ -5,13 +5,17 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { DollarSign, Receipt, Users, CreditCard } from "lucide-react";
-import { fetchCardData, fetchInvoices } from "@/lib/data";
+import { DollarSign, Receipt, Users, CreditCard, FileClock, AlertCircle } from "lucide-react";
+import { fetchCardData, fetchInvoices, fetchExpiringContracts } from "@/lib/data";
 import { updateInvoiceStatuses } from "@/lib/invoice-status-manager";
 import clientPromise from "@/lib/mongodb";
 import { DbConfigWarning } from "@/components/db-config-warning";
 import { RecentInvoices } from "@/components/dashboard/recent-invoices";
 import { DashboardAlertsWrapper } from "@/components/dashboard/dashboard-alerts-wrapper";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import { format } from "date-fns";
+import { Contract } from "@/lib/types";
 
 export default async function DashboardPage() {
     const isDbConfigured = clientPromise !== null;
@@ -36,16 +40,22 @@ export default async function DashboardPage() {
       );
     }
 
-    const { invoices, cardData, alerts } = await (async () => {
+    const { invoices, cardData, alerts, expiringContracts } = await (async () => {
         try {
           // Update invoice statuses and get alerts
           const statusUpdate = await updateInvoiceStatuses();
           
           const invoicesPromise = fetchInvoices();
           const cardDataPromise = fetchCardData();
-          const [invoices, cardData] = await Promise.all([invoicesPromise, cardDataPromise]);
+          const expiringContractsPromise = fetchExpiringContracts(30);
+
+          const [invoices, cardData, expiringContracts] = await Promise.all([
+              invoicesPromise, 
+              cardDataPromise, 
+              expiringContractsPromise
+            ]);
           
-          return { invoices, cardData, alerts: statusUpdate.alerts };
+          return { invoices, cardData, alerts: statusUpdate.alerts, expiringContracts };
         } catch (error) {
           console.error('Database error:', error);
           throw error;
@@ -108,10 +118,15 @@ export default async function DashboardPage() {
     <div className="flex flex-col gap-6 animate-fade-in">
       {!isDbConfigured && <DbConfigWarning />}
       
-      {/* Payment Alerts Section */}
-      {alerts.length > 0 && (
-        <DashboardAlertsWrapper alerts={alerts} />
-      )}
+      {/* Alerts Section */}
+      <div className="grid gap-6 md:grid-cols-2">
+        {alerts.length > 0 && (
+          <DashboardAlertsWrapper alerts={alerts} />
+        )}
+        {expiringContracts.length > 0 && (
+          <ExpiringContractsCard contracts={expiringContracts} />
+        )}
+      </div>
       
       <div className="grid gap-6">
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
@@ -131,5 +146,47 @@ export default async function DashboardPage() {
         <RecentInvoices data={invoices} />
       </div>
     </div>
+  );
+}
+
+
+function ExpiringContractsCard({ contracts }: { contracts: Contract[] }) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <AlertCircle className="h-5 w-5 text-yellow-500" />
+          Expiring Contracts
+        </CardTitle>
+        <CardDescription>
+          {contracts.length} contract(s) are expiring in the next 30 days.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          {contracts.slice(0, 3).map(contract => (
+            <div key={contract.id} className="flex items-center justify-between">
+              <div>
+                <p className="font-medium">{contract.title}</p>
+                <p className="text-sm text-muted-foreground">
+                  with {contract.partyB?.name}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-sm font-semibold">
+                  Expires {format(new Date(contract.endDate), "MMM dd, yyyy")}
+                </p>
+                <p className="text-xs text-yellow-600">
+                  {contract.autoRenew ? "Will Auto-Renew" : "Action Required"}
+                </p>
+              </div>
+            </div>
+          ))}
+          <Button asChild variant="outline" className="w-full">
+            <Link href="/dashboard/contracts">View All Contracts</Link>
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
