@@ -27,10 +27,11 @@ import {
   Building,
   Save,
   X,
-  Clock
+  Clock,
+  Receipt
 } from "lucide-react";
-import { fetchContracts, deleteContract as deleteContractAction } from "@/lib/data";
-import { Contract } from "@/lib/types";
+import { fetchContracts, deleteContract, fetchInvoicesByContract } from "@/lib/data";
+import { Contract, Invoice } from "@/lib/types";
 import { downloadContractPDF } from "@/lib/pdf-utils";
 import {
   AlertDialog,
@@ -42,6 +43,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 export default function ContractsPage() {
   const [contracts, setContracts] = useState<Contract[]>([]);
@@ -248,14 +250,26 @@ function ContractsGrid({
   onContractUpdated: () => void 
 }) {
   const [selectedContract, setSelectedContract] = useState<Contract | null>(null);
+  const [associatedInvoices, setAssociatedInvoices] = useState<Invoice[]>([]);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const { toast } = useToast();
 
-  const openDeleteDialog = (contract: Contract) => {
+  const openDeleteDialog = async (contract: Contract) => {
     setSelectedContract(contract);
+    try {
+      const invoices = await fetchInvoicesByContract(contract.id);
+      setAssociatedInvoices(invoices);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Could not fetch associated invoices.",
+        variant: "destructive",
+      });
+      setAssociatedInvoices([]);
+    }
     setDeleteDialogOpen(true);
   };
   
@@ -264,13 +278,10 @@ function ContractsGrid({
 
     setIsDeleting(true);
     try {
-      const response = await fetch(`/api/contracts/${selectedContract.id}`, { method: 'DELETE' });
-      if (!response.ok) {
-        throw new Error('Failed to delete');
-      }
+      await deleteContract(selectedContract.id);
       toast({
         title: "Success",
-        description: "Contract deleted successfully.",
+        description: "Contract and associated data deleted successfully.",
       });
       onContractDeleted(selectedContract.id);
       setDeleteDialogOpen(false);
@@ -447,9 +458,24 @@ function ContractsGrid({
           <AlertDialogHeader>
             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the contract "{selectedContract?.title}" from the database.
+              This action cannot be undone. This will permanently delete the contract "{selectedContract?.title}" and all associated data listed below.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {associatedInvoices.length > 0 && (
+            <div className="mt-4">
+              <h4 className="font-semibold mb-2">Associated Invoices to be Deleted:</h4>
+              <ScrollArea className="h-32 w-full rounded-md border p-2">
+                <ul className="space-y-1">
+                  {associatedInvoices.map(invoice => (
+                    <li key={invoice.id} className="text-sm flex items-center gap-2">
+                      <Receipt className="h-4 w-4 text-muted-foreground"/>
+                      <span>{invoice.invoiceNumber} - ${invoice.invoiceAmount}</span>
+                    </li>
+                  ))}
+                </ul>
+              </ScrollArea>
+            </div>
+          )}
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={confirmDelete} disabled={isDeleting} className="bg-red-600 hover:bg-red-700">
@@ -482,8 +508,8 @@ function EditContractDialog({
     if (contract) {
       setFormData({
         ...contract,
-        startDate: contract.startDate.split('T')[0],
-        endDate: contract.endDate.split('T')[0],
+        startDate: new Date(contract.startDate).toISOString().split('T')[0],
+        endDate: new Date(contract.endDate).toISOString().split('T')[0],
       });
     }
   }, [contract]);

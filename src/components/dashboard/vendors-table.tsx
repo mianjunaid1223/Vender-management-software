@@ -45,12 +45,15 @@ import {
   Building2, 
   Mail, 
   Phone, 
-  MapPin 
+  MapPin,
+  FileText,
+  Receipt
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { deleteVendor } from "@/lib/data";
-import type { Vendor } from "@/lib/types";
+import { deleteVendor, fetchContractsByVendor, fetchInvoicesByVendor } from "@/lib/data";
+import type { Vendor, Contract, Invoice } from "@/lib/types";
 import { VendorEditDialog } from "./vendor-edit-dialog";
+import { ScrollArea } from "../ui/scroll-area";
 
 interface VendorsTableProps {
   data: Vendor[];
@@ -60,6 +63,7 @@ export function VendorsTable({ data: initialData }: VendorsTableProps) {
   const [data, setData] = useState(initialData);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedVendor, setSelectedVendor] = useState<Vendor | null>(null);
+  const [associatedData, setAssociatedData] = useState<{contracts: Contract[], invoices: Invoice[]}>({contracts: [], invoices: []});
   const [showViewDialog, setShowViewDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -87,8 +91,22 @@ export function VendorsTable({ data: initialData }: VendorsTableProps) {
     setShowEditDialog(true);
   };
 
-  const handleDeleteVendor = (vendor: Vendor) => {
+  const handleDeleteVendor = async (vendor: Vendor) => {
     setSelectedVendor(vendor);
+    try {
+      const [contracts, invoices] = await Promise.all([
+        fetchContractsByVendor(vendor.id),
+        fetchInvoicesByVendor(vendor.id)
+      ]);
+      setAssociatedData({ contracts, invoices });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Could not fetch associated data for this vendor.",
+        variant: "destructive"
+      });
+      setAssociatedData({ contracts: [], invoices: [] });
+    }
     setShowDeleteDialog(true);
   };
 
@@ -101,7 +119,7 @@ export function VendorsTable({ data: initialData }: VendorsTableProps) {
       setData(prev => prev.filter(v => v.id !== selectedVendor.id));
       toast({
         title: "Success",
-        description: "Vendor deleted successfully.",
+        description: "Vendor and all associated data deleted successfully.",
       });
       setShowDeleteDialog(false);
       setSelectedVendor(null);
@@ -337,10 +355,43 @@ export function VendorsTable({ data: initialData }: VendorsTableProps) {
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the vendor
-              "{selectedVendor?.name}" and all associated data.
+              This will permanently delete the vendor "{selectedVendor?.name}" and all their associated data, as listed below. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {(associatedData.contracts.length > 0 || associatedData.invoices.length > 0) && (
+            <div className="mt-4 space-y-4">
+              {associatedData.contracts.length > 0 && (
+                <div>
+                  <h4 className="font-semibold mb-2">Associated Contracts to be Deleted:</h4>
+                  <ScrollArea className="h-24 w-full rounded-md border p-2">
+                    <ul className="space-y-1">
+                      {associatedData.contracts.map(contract => (
+                        <li key={contract.id} className="text-sm flex items-center gap-2">
+                          <FileText className="h-4 w-4 text-muted-foreground"/>
+                          <span>{contract.title}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </ScrollArea>
+                </div>
+              )}
+              {associatedData.invoices.length > 0 && (
+                <div>
+                  <h4 className="font-semibold mb-2">Associated Invoices to be Deleted:</h4>
+                  <ScrollArea className="h-24 w-full rounded-md border p-2">
+                    <ul className="space-y-1">
+                      {associatedData.invoices.map(invoice => (
+                        <li key={invoice.id} className="text-sm flex items-center gap-2">
+                           <Receipt className="h-4 w-4 text-muted-foreground"/>
+                          <span>{invoice.invoiceNumber} - ${invoice.invoiceAmount}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </ScrollArea>
+                </div>
+              )}
+            </div>
+          )}
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction

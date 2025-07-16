@@ -379,16 +379,28 @@ export async function updateContract(id: string, updates: Partial<Contract>): Pr
 export async function deleteContract(id: string): Promise<void> {
     noStore();
     const db = await getDb();
-    
+    const session = (await clientPromise)!.startSession();
+
     try {
-        const result = await db.collection('contracts').deleteOne({ _id: new ObjectId(id) });
-        
-        if (result.deletedCount === 0) {
-            throw new Error('Contract not found');
-        }
+        await session.withTransaction(async () => {
+            const contractsCollection = db.collection('contracts');
+            const invoicesCollection = db.collection('invoices');
+
+            // Delete invoices associated with the contract
+            await invoicesCollection.deleteMany({ contractId: id }, { session });
+
+            // Delete the contract itself
+            const result = await contractsCollection.deleteOne({ _id: new ObjectId(id) }, { session });
+            
+            if (result.deletedCount === 0) {
+                throw new Error('Contract not found during transaction.');
+            }
+        });
     } catch (error) {
-        console.error('Database Error:', error);
-        throw new Error('Failed to delete contract.');
+        console.error('Transaction Error deleting contract:', error);
+        throw new Error('Failed to delete contract and its associated data.');
+    } finally {
+        await session.endSession();
     }
 }
 
@@ -409,6 +421,25 @@ export async function fetchContractsByVendor(vendorId: string): Promise<Contract
         throw new Error('Failed to fetch contracts by vendor.');
     }
 }
+
+export async function fetchInvoicesByContract(contractId: string): Promise<Invoice[]> {
+    noStore();
+    const db = await getDb();
+    
+    try {
+        const invoices = await db
+            .collection('invoices')
+            .find({ contractId })
+            .sort({ createdAt: -1 })
+            .toArray();
+
+        return JSON.parse(JSON.stringify(invoices));
+    } catch (error) {
+        console.error('Database Error:', error);
+        throw new Error('Failed to fetch invoices by contract.');
+    }
+}
+
 
 export async function fetchExpiringContracts(daysAhead: number = 30): Promise<Contract[]> {
     noStore();
@@ -459,45 +490,108 @@ export async function createVendor(vendor: Partial<Vendor>): Promise<Vendor> {
 export async function updateVendor(id: string, updates: Partial<Vendor>): Promise<Vendor> {
     noStore();
     const db = await getDb();
-    
+    const session = (await clientPromise)!.startSession();
+
     try {
-        const { id: _, ...updateData } = updates;
+        let updatedVendor: Vendor | null = null;
+        await session.withTransaction(async () => {
+            const vendorsCollection = db.collection('vendors');
+            const contractsCollection = db.collection('contracts');
+            const invoicesCollection = db.collection('invoices');
+
+            const { id: _, ...updateData } = updates;
+            updateData.updatedAt = new Date().toISOString();
+            
+            const result = await vendorsCollection.findOneAndUpdate(
+                { _id: new ObjectId(id) },
+                { $set: updateData },
+                { returnDocument: 'after', session }
+            );
+            
+            if (!result) {
+                throw new Error('Vendor not found');
+            }
+            
+            const serializedResult = JSON.parse(JSON.stringify(result));
+            updatedVendor = { ...serializedResult, id: serializedResult._id.toString() } as Vendor;
+            
+            // Propagate vendor name change to associated contracts and invoices
+            if (updates.name) {
+                await contractsCollection.updateMany(
+                    { vendorId: id },
+                    { $set: { vendorName: updates.name } },
+                    { session }
+                );
+                await invoicesCollection.updateMany(
+                    { vendorId: id },
+                    { $set: { vendorName: updates.name } },
+                    { session }
+                );
+            }
+        });
         
-        const result = await db.collection('vendors').findOneAndUpdate(
-            { _id: new ObjectId(id) },
-            { $set: { ...updateData, updatedAt: new Date().toISOString() } },
-            { returnDocument: 'after' }
-        );
-        
-        if (!result) {
-            throw new Error('Vendor not found');
+        if (!updatedVendor) {
+            throw new Error("Vendor update failed within transaction.");
         }
         
-        const updatedVendor = { ...result, id: result._id.toString() };
-        delete updatedVendor._id;
+        return updatedVendor;
         
-        return updatedVendor as Vendor;
     } catch (error) {
         console.error('Database Error:', error);
-        throw new Error('Failed to update vendor.');
+        throw new Error('Failed to update vendor and associated data.');
+    } finally {
+        await session.endSession();
     }
 }
 
 export async function deleteVendor(id: string): Promise<void> {
     noStore();
     const db = await getDb();
-    
+    const session = (await clientPromise)!.startSession();
+
     try {
-        const result = await db.collection('vendors').deleteOne({ _id: new ObjectId(id) });
-        
-        if (result.deletedCount === 0) {
-            throw new Error('Vendor not found');
-        }
+        await session.withTransaction(async () => {
+            const vendorsCollection = db.collection('vendors');
+            const contractsCollection = db.collection('contracts');
+            const invoicesCollection = db.collection('invoices');
+
+            // Find all contracts associated with the vendor
+            const contractsToDelete = await contractsCollection.find({ vendorId: id }, { session }).project({ _id: 1 }).toArray();
+            const contractIdsToDelete = contractsToDelete.map(c => c._id.toString());
+            
+            // Delete all invoices associated with the vendor's contracts OR directly to the vendor
+            await invoicesCollection.deleteMany({ $or: [{ contractId: { $in: contractIdsToDelete } }, { vendorId: id }] }, { session });
+            
+            // Delete all contracts associated with the vendor
+            await contractsCollection.deleteMany({ vendorId: id }, { session });
+            
+            // Delete the vendor itself
+            const result = await vendorsCollection.deleteOne({ _id: new ObjectId(id) }, { session });
+
+            if (result.deletedCount === 0) {
+                throw new Error('Vendor not found during transaction.');
+            }
+        });
     } catch (error) {
-        console.error('Database Error:', error);
-        throw new Error('Failed to delete vendor.');
+        console.error('Transaction Error deleting vendor:', error);
+        throw new Error('Failed to delete vendor and its associated data.');
+    } finally {
+        await session.endSession();
     }
 }
+
+export async function fetchInvoicesByVendor(vendorId: string): Promise<Invoice[]> {
+    noStore();
+    const db = await getDb();
+    try {
+        const invoices = await db.collection('invoices').find({ vendorId }).toArray();
+        return JSON.parse(JSON.stringify(invoices));
+    } catch (error) {
+        console.error("Database Error fetching invoices by vendor:", error);
+        throw new Error('Failed to fetch invoices for vendor.');
+    }
+}
+
 
 export async function searchVendors(filters: SearchFilters): Promise<Vendor[]> {
     noStore();
