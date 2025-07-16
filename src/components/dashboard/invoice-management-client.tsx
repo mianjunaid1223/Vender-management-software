@@ -30,7 +30,6 @@ export function InvoiceManagementClient({
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
 
-  // Auto-refresh statuses every 5 minutes (300000ms)
   useEffect(() => {
     const interval = setInterval(async () => {
       try {
@@ -38,34 +37,19 @@ export function InvoiceManagementClient({
       } catch (error) {
         console.error('Auto-refresh failed:', error);
       }
-    }, 300000); // 5 minutes
+    }, 300000); 
 
     return () => clearInterval(interval);
   }, []);
 
   const handleInvoiceCreate = async (invoiceData: Partial<Invoice>) => {
     startTransition(async () => {
-      try {
-        const result = await createInvoiceAction(invoiceData);
-        if (result.success && result.data) {
-          setInvoices(prev => [result.data, ...prev]);
-          toast({
-            title: "Success",
-            description: "Invoice created successfully.",
-          });
-        } else {
-          toast({
-            title: "Error",
-            description: result.error || "Failed to create invoice.",
-            variant: "destructive",
-          });
-        }
-      } catch (error) {
-        toast({
-          title: "Error",
-          description: "An unexpected error occurred.",
-          variant: "destructive",
-        });
+      const result = await createInvoiceAction(invoiceData);
+      if (result.success && result.data) {
+        setInvoices(prev => [result.data, ...prev]);
+        toast({ title: "Success", description: "Invoice created successfully." });
+      } else {
+        toast({ title: "Error", description: result.error || "Failed to create invoice.", variant: "destructive" });
       }
     });
   };
@@ -73,152 +57,67 @@ export function InvoiceManagementClient({
   const handleInvoiceUpdate = async (invoiceData: Partial<Invoice>) => {
     if (!invoiceData.id) return;
     
-    const invoiceId = invoiceData.id;
-    
-    // Optimistic update
+    const originalInvoices = [...invoices];
     setInvoices(prev => prev.map(inv => 
-      inv.id === invoiceId ? { ...inv, ...invoiceData } : inv
+      inv.id === invoiceData.id ? { ...inv, ...invoiceData } : inv
     ));
     
     startTransition(async () => {
-      try {
-        const result = await updateInvoiceAction(invoiceId, invoiceData);
-        if (result.success && result.data) {
-          setInvoices(prev => prev.map(inv => 
-            inv.id === invoiceId ? result.data : inv
-          ));
-          toast({
-            title: "Success",
-            description: "Invoice updated successfully.",
-          });
-        } else {
-          // Revert optimistic update on error
-          setInvoices(prev => prev.map(inv => 
-            inv.id === invoiceId ? inv : inv
-          ));
-          toast({
-            title: "Error",
-            description: result.error || "Failed to update invoice.",
-            variant: "destructive",
-          });
-        }
-      } catch (error) {
-        // Revert optimistic update on error
+      const result = await updateInvoiceAction(invoiceData.id!, invoiceData);
+      if (result.success && result.data) {
         setInvoices(prev => prev.map(inv => 
-          inv.id === invoiceId ? inv : inv
+          inv.id === invoiceData.id ? result.data : inv
         ));
-        toast({
-          title: "Error",
-          description: "An unexpected error occurred.",
-          variant: "destructive",
-        });
+        toast({ title: "Success", description: "Invoice updated successfully." });
+      } else {
+        setInvoices(originalInvoices);
+        toast({ title: "Error", description: result.error || "Failed to update invoice.", variant: "destructive" });
       }
     });
   };
 
   const handleInvoiceDelete = async (invoiceId: string) => {
-    // Optimistic update
     const originalInvoices = invoices;
     setInvoices(prev => prev.filter(inv => inv.id !== invoiceId));
     
     startTransition(async () => {
-      try {
-        const result = await deleteInvoiceAction(invoiceId);
-        if (result.success) {
-          toast({
-            title: "Success",
-            description: "Invoice deleted successfully.",
-          });
-        } else {
-          // Revert optimistic update on error
-          setInvoices(originalInvoices);
-          toast({
-            title: "Error",
-            description: result.error || "Failed to delete invoice.",
-            variant: "destructive",
-          });
-        }
-      } catch (error) {
-        // Revert optimistic update on error
+      const result = await deleteInvoiceAction(invoiceId);
+      if (result.success) {
+        toast({ title: "Success", description: "Invoice deleted successfully." });
+      } else {
         setInvoices(originalInvoices);
-        toast({
-          title: "Error",
-          description: "An unexpected error occurred.",
-          variant: "destructive",
-        });
+        toast({ title: "Error", description: result.error || "Failed to delete invoice.", variant: "destructive" });
       }
     });
   };
 
   const handleStatusChange = async (invoiceId: string, status: Invoice['status']) => {
-    // Optimistic update
+    const originalInvoices = [...invoices];
     setInvoices(prev => prev.map(inv => 
       inv.id === invoiceId 
-        ? { 
-            ...inv, 
-            status,
-            paymentStatus: status === 'Paid' ? 'Paid' : status === 'Overdue' ? 'Overdue' : 'Pending'
-          }
+        ? { ...inv, status, paymentStatus: status === 'Paid' ? 'Paid' : 'Pending' }
         : inv
     ));
     
     startTransition(async () => {
-      try {
-        const result = await updateInvoiceStatusAction(invoiceId, status);
-        if (result.success) {
-          toast({
-            title: "Success",
-            description: `Invoice marked as ${status.toLowerCase()}.`,
-          });
-        } else {
-          // Revert optimistic update on error
-          setInvoices(prev => prev.map(inv => 
-            inv.id === invoiceId ? inv : inv
-          ));
-          toast({
-            title: "Error",
-            description: result.error || "Failed to update invoice status.",
-            variant: "destructive",
-          });
-        }
-      } catch (error) {
-        // Revert optimistic update on error
-        setInvoices(prev => prev.map(inv => 
-          inv.id === invoiceId ? inv : inv
-        ));
-        toast({
-          title: "Error",
-          description: "An unexpected error occurred.",
-          variant: "destructive",
-        });
+      const result = await updateInvoiceStatusAction(invoiceId, status);
+      if (!result.success) {
+        setInvoices(originalInvoices);
+        toast({ title: "Error", description: result.error || "Failed to update status.", variant: "destructive" });
+      } else {
+         toast({ title: "Success", description: `Invoice status updated to ${status}.` });
       }
     });
   };
 
   const handleRefreshStatuses = async () => {
     startTransition(async () => {
-      try {
-        const result = await refreshInvoiceStatusesAction();
-        if (result.success) {
-          // Refresh the page to get updated data
-          window.location.reload();
-          toast({
-            title: "Success",
-            description: result.message,
-          });
-        } else {
-          toast({
-            title: "Error",
-            description: result.message,
-            variant: "destructive",
-          });
-        }
-      } catch (error) {
-        toast({
-          title: "Error",
-          description: "Failed to refresh invoice statuses.",
-          variant: "destructive",
-        });
+      const result = await refreshInvoiceStatusesAction();
+      if (result.success) {
+        window.location.reload();
+        toast({ title: "Success", description: result.message });
+      } else {
+        toast({ title: "Error", description: result.message, variant: "destructive" });
       }
     });
   };
@@ -229,7 +128,7 @@ export function InvoiceManagementClient({
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Invoice Management</h2>
           <p className="text-muted-foreground">
-            Create, track, and manage all your vendor invoices with comprehensive business insights.
+            Create, track, and manage all your vendor invoices.
           </p>
         </div>
         <div className="flex gap-2">

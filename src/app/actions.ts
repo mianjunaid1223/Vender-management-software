@@ -3,10 +3,10 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { getDb, createInvoice, updateInvoice, deleteInvoice, updateInvoiceStatus } from "@/lib/data";
+import { getDb, createInvoice, updateInvoice, deleteInvoice, updateInvoiceStatus, createCompany, updateCompany } from "@/lib/data";
 import { sendPaymentConfirmation } from '@/lib/email-notifications';
 import { ObjectId } from 'mongodb';
-import { Invoice } from "@/lib/types";
+import { Invoice, Company } from "@/lib/types";
 
 const invoiceFormSchema = z.object({
   vendorName: z.string().min(1, "Vendor name is required."),
@@ -159,99 +159,51 @@ export async function updateUserProfile(values: z.infer<typeof profileFormSchema
 }
 
 // Enhanced Invoice Management Actions
-export async function createInvoiceAction(formData: FormData | Partial<Invoice>) {
+export async function createInvoiceAction(invoiceData: Partial<Invoice>) {
   try {
-    let invoiceData: Partial<Invoice>;
-    
-    if (formData instanceof FormData) {
-      // Handle FormData submission
-      invoiceData = {
-        invoiceNumber: formData.get('invoiceNumber') as string,
-        invoiceDate: formData.get('invoiceDate') as string,
-        invoiceDueDate: formData.get('invoiceDueDate') as string,
-        vendorName: formData.get('vendorName') as string,
-        invoiceAmount: parseFloat(formData.get('invoiceAmount') as string),
-        status: formData.get('status') as Invoice['status'],
-        // Add other fields as needed
-      };
-    } else {
-      // Handle object submission
-      invoiceData = formData;
-    }
-
     const invoice = await createInvoice(invoiceData);
     
     revalidatePath('/dashboard/invoices');
-    return { success: true, data: invoice };
+    return { success: true, data: JSON.parse(JSON.stringify(invoice)) };
   } catch (error) {
     console.error('Failed to create invoice:', error);
-    // Return success with mock data to avoid UI errors
-    const mockInvoice = {
-      ...formData,
-      id: `INV-${Date.now()}`,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    } as Invoice;
-    return { success: true, data: mockInvoice };
+    const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
+    return { success: false, error: errorMessage };
   }
 }
 
-export async function updateInvoiceAction(id: string, formData: FormData | Partial<Invoice>) {
+export async function updateInvoiceAction(id: string, invoiceData: Partial<Invoice>) {
   try {
-    let invoiceData: Partial<Invoice>;
-    
-    if (formData instanceof FormData) {
-      // Handle FormData submission
-      invoiceData = {
-        invoiceNumber: formData.get('invoiceNumber') as string,
-        invoiceDate: formData.get('invoiceDate') as string,
-        invoiceDueDate: formData.get('invoiceDueDate') as string,
-        vendorName: formData.get('vendorName') as string,
-        invoiceAmount: parseFloat(formData.get('invoiceAmount') as string),
-        status: formData.get('status') as Invoice['status'],
-        // Add other fields as needed
-      };
-    } else {
-      // Handle object submission
-      invoiceData = formData;
-    }
-
     const invoice = await updateInvoice(id, invoiceData);
     
     revalidatePath('/dashboard/invoices');
-    return { success: true, data: invoice };
+    return { success: true, data: JSON.parse(JSON.stringify(invoice)) };
   } catch (error) {
     console.error('Failed to update invoice:', error);
-    // Return success with updated data to avoid UI errors
-    const updatedInvoice = {
-      ...formData,
-      id,
-      updatedAt: new Date().toISOString(),
-    } as Invoice;
-    return { success: true, data: updatedInvoice };
+    const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
+    return { success: false, error: errorMessage };
   }
 }
 
 export async function deleteInvoiceAction(id: string) {
   try {
     await deleteInvoice(id);
-    
     revalidatePath('/dashboard/invoices');
     return { success: true };
   } catch (error) {
     console.error('Failed to delete invoice:', error);
-    // Return success to avoid UI errors in mock mode
-    return { success: true };
+    const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
+    return { success: false, error: errorMessage };
   }
 }
 
 export async function updateInvoiceStatusAction(
   invoiceId: string, 
   newStatus: Invoice['status']
-): Promise<{ success: boolean; message: string }> {
+): Promise<{ success: boolean; error?: string }> {
   const db = await getDb();
   if (!db) {
-    return { success: false, message: 'Database connection failed' };
+    return { success: false, error: 'Database connection failed' };
   }
 
   try {
@@ -260,7 +212,6 @@ export async function updateInvoiceStatusAction(
       lastStatusUpdate: new Date(),
     };
 
-    // Add paid date if marking as paid
     if (newStatus === 'Paid') {
       updateData.paidDate = new Date();
       updateData.paymentStatus = 'Paid';
@@ -272,10 +223,9 @@ export async function updateInvoiceStatusAction(
     );
 
     if (result.modifiedCount === 0) {
-      return { success: false, message: 'Invoice not found or not updated' };
+      return { success: false, error: 'Invoice not found or not updated' };
     }
 
-    // Process payment confirmation notification (in-app only)
     if (newStatus === 'Paid') {
       try {
         const invoice = await db.collection('invoices').findOne({ _id: new ObjectId(invoiceId) });
@@ -291,14 +241,30 @@ export async function updateInvoiceStatusAction(
     revalidatePath('/dashboard');
     revalidatePath('/dashboard/invoices');
 
-    return { 
-      success: true, 
-      message: `Invoice status updated to ${newStatus}` 
-    };
+    return { success: true };
 
   } catch (error) {
     console.error('Error updating invoice status:', error);
-    return { success: false, message: 'Failed to update invoice status' };
+    return { success: false, error: 'Failed to update invoice status' };
+  }
+}
+
+export async function createOrUpdateCompanyAction(companyData: Partial<Company>) {
+  try {
+    let result: Company;
+    if (companyData.id) {
+      result = await updateCompany(companyData.id, companyData);
+    } else {
+      result = await createCompany(companyData);
+    }
+    
+    revalidatePath('/dashboard/company');
+    revalidatePath('/dashboard');
+    
+    return { success: true, data: JSON.parse(JSON.stringify(result)) };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
+    return { success: false, error: errorMessage };
   }
 }
 
@@ -329,7 +295,6 @@ export async function bulkUpdateInvoiceStatusAction(
       { $set: updateData }
     );
 
-    // Process payment confirmation notifications (in-app only)
     if (newStatus === 'Paid' && result.modifiedCount > 0) {
       try {
         const invoices = await db.collection('invoices')
