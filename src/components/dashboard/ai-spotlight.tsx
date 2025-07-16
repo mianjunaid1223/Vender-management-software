@@ -232,7 +232,7 @@ export function AISpotlight({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <div className="relative group">
-            <div className="absolute -inset-0.5 bg-gradient-to-r from-apple-ai-pink via-apple-ai-blue to-apple-ai-purple rounded-lg blur-lg opacity-60 group-hover:opacity-80 transition duration-300"></div>
+            <div className="absolute -inset-0.5 bg-gradient-to-r from-purple-500 via-blue-500 to-pink-500 rounded-lg blur-lg opacity-60 group-hover:opacity-80 transition duration-300"></div>
           <button className="relative w-full max-w-sm flex items-center justify-start text-sm h-10 px-4 py-2 text-muted-foreground bg-background rounded-md border">
             <Search className="h-4 w-4 mr-2" />
             <span>Ask AI...</span>
@@ -250,9 +250,9 @@ export function AISpotlight({
            <div
             className={cn(
               'absolute -top-[5%] -left-[5%] h-[110%] w-[110%] -z-10 rounded-2xl',
-              'bg-gradient-to-r from-apple-ai-pink via-apple-ai-blue  to-apple-ai-purple',
-              '[background-size:100%_100%]',
-              'blur-3xl opacity-90 dark:opacity-80 transition-opacity',
+              'bg-gradient-to-r from-purple-500 via-blue-500 to-pink-500',
+              '[background-size:200%_200%]',
+              'blur-3xl opacity-80 dark:opacity-70 transition-opacity',
               isLoading && 'animate-gradient-shift'
             )}
           />
