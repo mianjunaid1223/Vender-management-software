@@ -30,8 +30,8 @@ import {
   Clock,
   Receipt
 } from "lucide-react";
-import { fetchContracts, deleteContract, fetchInvoicesByContract } from "@/lib/data";
-import { Contract, Invoice, ContractStatus } from "@/lib/types";
+import { fetchContracts, deleteContract, fetchInvoicesByContract, fetchVendors } from "@/lib/data";
+import { Contract, Invoice, ContractStatus, Vendor } from "@/lib/types";
 import { downloadContractPDF } from "@/lib/pdf-utils";
 import {
   AlertDialog,
@@ -234,7 +234,9 @@ export default function ContractsPage() {
         <ContractsGrid 
           contracts={getFilteredContracts()} 
           onContractDeleted={handleContractDeleted}
-          onContractUpdated={loadContracts}
+          onContractUpdated={(updatedContract) => {
+            setContracts(prev => prev.map(c => c.id === updatedContract.id ? updatedContract : c))
+          }}
         />
       </Tabs>
     </div>
@@ -248,7 +250,7 @@ function ContractsGrid({
 }: { 
   contracts: Contract[], 
   onContractDeleted: (id: string) => void,
-  onContractUpdated: () => void 
+  onContractUpdated: (contract: Contract) => void 
 }) {
   const [selectedContract, setSelectedContract] = useState<Contract | null>(null);
   const [associatedInvoices, setAssociatedInvoices] = useState<Invoice[]>([]);
@@ -499,10 +501,11 @@ function EditContractDialog({
   contract: Contract | null, 
   open: boolean, 
   onOpenChange: (open: boolean) => void,
-  onContractUpdated: () => void 
+  onContractUpdated: (contract: Contract) => void 
 }) {
   const [formData, setFormData] = useState<Partial<Contract>>({});
   const [isSaving, setIsSaving] = useState(false);
+  const [vendors, setVendors] = useState<Vendor[]>([]);
   const { toast } = useToast();
   const contractStatuses: ContractStatus[] = ['Draft', 'Active', 'Pending', 'Expired', 'Terminated', 'Suspended'];
 
@@ -516,8 +519,25 @@ function EditContractDialog({
     }
   }, [contract]);
 
+  useEffect(() => {
+    if (open) {
+      fetchVendors().then(setVendors);
+    }
+  }, [open]);
+
   const handleInputChange = (field: keyof Contract, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleVendorChange = (vendorId: string) => {
+    const selectedVendor = vendors.find(v => v.id === vendorId);
+    if (selectedVendor) {
+      setFormData(prev => ({
+        ...prev,
+        vendorId: selectedVendor.id,
+        vendorName: selectedVendor.name,
+      }));
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -533,19 +553,23 @@ function EditContractDialog({
       });
 
       if (!response.ok) {
-        throw new Error('Failed to update contract');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update contract');
       }
+
+      const updatedContract = await response.json();
 
       toast({
         title: "Success",
         description: "Contract updated successfully.",
       });
       onOpenChange(false);
-      onContractUpdated();
+      onContractUpdated(updatedContract);
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
       toast({
         title: "Error",
-        description: "Failed to update contract.",
+        description: `Failed to update contract: ${errorMessage}`,
         variant: "destructive",
       });
     } finally {
@@ -557,7 +581,7 @@ function EditContractDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit Contract</DialogTitle>
           <DialogDescription>Update the details for "{contract.title}"</DialogDescription>
@@ -567,6 +591,21 @@ function EditContractDialog({
             <Label htmlFor="title">Title</Label>
             <Input id="title" value={formData.title || ''} onChange={(e) => handleInputChange('title', e.target.value)} />
           </div>
+          
+          <div>
+            <Label htmlFor="vendor">Vendor</Label>
+            <Select value={formData.vendorId} onValueChange={handleVendorChange}>
+              <SelectTrigger id="vendor">
+                <SelectValue placeholder="Select vendor" />
+              </SelectTrigger>
+              <SelectContent>
+                {vendors.map((vendor) => (
+                  <SelectItem key={vendor.id} value={vendor.id}>{vendor.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label htmlFor="value">Value</Label>
@@ -603,7 +642,7 @@ function EditContractDialog({
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
             <Button type="submit" disabled={isSaving}>
-              {isSaving && <Save className="mr-2 h-4 w-4 animate-spin" />}
+              {isSaving ? <Save className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
               Save Changes
             </Button>
           </div>

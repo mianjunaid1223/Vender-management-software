@@ -2,6 +2,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Contract, Invoice } from './types';
 import { format } from 'date-fns';
+import { fetchCompany } from './data';
 
 // Helper to format currency
 const formatCurrency = (amount: number) => {
@@ -12,10 +13,13 @@ const formatCurrency = (amount: number) => {
 };
 
 // --- Contract PDF Generation ---
-export function generateContractPDF(contract: Contract): jsPDF {
+export async function generateContractPDF(contract: Contract): Promise<jsPDF> {
   const doc = new jsPDF();
   let yPos = 20;
 
+  const company = await fetchCompany();
+
+  // Header
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(24);
   doc.text('Contract Summary', 105, yPos, { align: 'center' });
@@ -34,12 +38,12 @@ export function generateContractPDF(contract: Contract): jsPDF {
     doc.text(title, 20, yPos);
     yPos += 2;
     doc.setLineWidth(0.2);
-    doc.line(20, yPos, 190, yPos);
+    doc.line(20, 190, yPos, yPos);
     yPos += 8;
     content();
   };
 
-  const addMetadata = (label: string, value: string | number) => {
+  const addMetadata = (label: string, value: string | number | undefined) => {
     if (value) {
       doc.setFontSize(11);
       doc.setFont('helvetica', 'bold');
@@ -53,27 +57,47 @@ export function generateContractPDF(contract: Contract): jsPDF {
     }
   };
 
-  drawSection('Vendor & Contract Information', () => {
-    addMetadata('Vendor Name:', contract.vendorName);
+  // Parties Section
+  drawSection('Parties Involved', () => {
+    if (company) {
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(50);
+        doc.text('Client:', 25, yPos);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(0);
+        doc.text(company.name, 70, yPos);
+        yPos += 5;
+        if(company.primaryAddress) {
+             doc.text(`${company.primaryAddress.street}, ${company.primaryAddress.city}, ${company.primaryAddress.state}`, 70, yPos);
+             yPos += 5;
+        }
+    }
+    yPos += 3;
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(50);
+    doc.text('Vendor:', 25, yPos);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(0);
+    doc.text(contract.vendorName, 70, yPos);
+    yPos += 7;
+  });
+  
+  yPos += 5;
+
+  drawSection('Contract Details', () => {
     addMetadata('Contract ID:', contract.id);
     addMetadata('Status:', contract.status);
-    yPos += 3;
-  });
-
-  drawSection('Financial Details', () => {
-    addMetadata('Contract Value:', `$${contract.value.toLocaleString()}`);
+    addMetadata('Contract Value:', formatCurrency(contract.value));
     addMetadata('Payment Terms:', contract.paymentTerms);
-    yPos += 3;
-  });
-
-  drawSection('Contract Timeline', () => {
     addMetadata('Start Date:', format(new Date(contract.startDate), 'MMMM dd, yyyy'));
     addMetadata('End Date:', format(new Date(contract.endDate), 'MMMM dd, yyyy'));
     yPos += 3;
   });
 
   if (contract.description) {
-    drawSection('Description', () => {
+    drawSection('Description / Scope of Work', () => {
       doc.setFontSize(11);
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(50);
@@ -95,8 +119,8 @@ export function generateContractPDF(contract: Contract): jsPDF {
   return doc;
 }
 
-export function downloadContractPDF(contract: Contract) {
-  const doc = generateContractPDF(contract);
+export async function downloadContractPDF(contract: Contract) {
+  const doc = await generateContractPDF(contract);
   const filename = `Contract-${contract.vendorName.replace(/\s+/g, '-')}-${contract.id}.pdf`;
   doc.save(filename);
 }
