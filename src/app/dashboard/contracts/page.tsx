@@ -595,15 +595,34 @@ function EditContractDialog({
   const handleInputChange = (field: keyof Contract, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
+  
+  const handleMyRoleChange = (myRole: 'Client' | 'Provider') => {
+      if (!formData.partyA || !formData.partyB) return;
 
-  const handlePartyRoleChange = (party: 'partyA' | 'partyB', newRole: 'Client' | 'Provider') => {
-    const otherParty = party === 'partyA' ? 'partyB' : 'partyA';
-    setFormData(prev => ({
-      ...prev,
-      [party]: { ...prev[party], role: newRole },
-      [otherParty]: { ...prev[otherParty], role: newRole === 'Client' ? 'Provider' : 'Client' }
-    }));
+      const otherRole = myRole === 'Client' ? 'Provider' : 'Client';
+
+      if(formData.partyA.id === 'company') {
+          setFormData(prev => ({
+              ...prev,
+              partyA: { ...prev.partyA!, role: myRole },
+              partyB: { ...prev.partyB!, role: otherRole }
+          }));
+      } else {
+          setFormData(prev => ({
+              ...prev,
+              partyB: { ...prev.partyB!, role: myRole },
+              partyA: { ...prev.partyA!, role: otherRole }
+          }));
+      }
   };
+
+  const getMyRole = (): 'Client' | 'Provider' | '' => {
+      if (!formData.partyA || !formData.partyB) return '';
+      if (formData.partyA.id === 'company') {
+          return formData.partyA.role;
+      }
+      return formData.partyB.role;
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -678,26 +697,22 @@ function EditContractDialog({
           {/* Parties */}
           <div className="space-y-4 p-4 border rounded-lg">
             <h3 className="font-medium">Parties</h3>
+             <div className="space-y-2">
+                <Label>My Role in this Contract</Label>
+                 <Select value={getMyRole()} onValueChange={(role: 'Client' | 'Provider') => handleMyRoleChange(role)}>
+                    <SelectTrigger><SelectValue placeholder="Select your role" /></SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="Client">I am the Client</SelectItem>
+                        <SelectItem value="Provider">I am the Provider/Vendor</SelectItem>
+                    </SelectContent>
+                </Select>
+            </div>
             <div className="grid grid-cols-2 gap-4">
               {formData.partyA && <div className="space-y-2">
-                  <Label>Party A: {formData.partyA.name}</Label>
-                   <Select value={formData.partyA.role} onValueChange={(role: 'Client' | 'Provider') => handlePartyRoleChange('partyA', role)}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="Client">Client</SelectItem>
-                            <SelectItem value="Provider">Provider</SelectItem>
-                        </SelectContent>
-                    </Select>
+                  <Label>Party A: {formData.partyA.name} ({formData.partyA.role})</Label>
               </div>}
               {formData.partyB && <div className="space-y-2">
-                  <Label>Party B: {formData.partyB.name}</Label>
-                   <Select value={formData.partyB.role} onValueChange={(role: 'Client' | 'Provider') => handlePartyRoleChange('partyB', role)}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="Client">Client</SelectItem>
-                            <SelectItem value="Provider">Provider</SelectItem>
-                        </SelectContent>
-                    </Select>
+                  <Label>Party B: {formData.partyB.name} ({formData.partyB.role})</Label>
               </div>}
             </div>
           </div>

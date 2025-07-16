@@ -117,23 +117,22 @@ export function ContractOnboardingDialog({ vendors, company, onContractAdded }: 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
-  const handlePartySelect = (party: 'partyA' | 'partyB', id: string) => {
-    const selectedEntity = id === 'company' 
-      ? { id: 'company', name: company?.name || 'Your Company' }
-      : vendors.find(v => v.id === id);
-    
-    if (selectedEntity) {
+  const handlePartyBSelect = (vendorId: string) => {
+    const selectedVendor = vendors.find(v => v.id === vendorId);
+    if(selectedVendor) {
         setFormData(prev => ({
             ...prev,
-            [party]: { ...prev[party], id: selectedEntity.id, name: selectedEntity.name }
-        }));
+            partyB: { ...prev.partyB, id: selectedVendor.id, name: selectedVendor.name }
+        }))
     }
-  };
+  }
 
-  const handleRoleChange = (party: 'partyA' | 'partyB', role: 'Client' | 'Provider') => {
+  const handleMyRoleChange = (myRole: 'Client' | 'Provider') => {
+      const otherRole = myRole === 'Client' ? 'Provider' : 'Client';
       setFormData(prev => ({
           ...prev,
-          [party]: { ...prev[party], role }
+          partyA: { ...prev.partyA, role: myRole },
+          partyB: { ...prev.partyB, role: otherRole }
       }));
   };
 
@@ -141,7 +140,6 @@ export function ContractOnboardingDialog({ vendors, company, onContractAdded }: 
     if (step === 1) {
         if (!formData.title || !formData.partyA.id || !formData.partyB.id) return false;
         if (formData.partyA.id === formData.partyB.id) return false;
-        if (formData.partyA.role === formData.partyB.role) return false;
     }
     if (step === 2 && (formData.value <= 0 || !formData.paymentTerms)) return false;
     if (step === 3 && (!formData.startDate || !formData.endDate || new Date(formData.startDate) >= new Date(formData.endDate))) return false;
@@ -199,7 +197,6 @@ export function ContractOnboardingDialog({ vendors, company, onContractAdded }: 
   };
 
   const renderStepContent = () => {
-    const partyOptions = [{id: 'company', name: company?.name || 'Your Company'}, ...vendors];
     switch (currentStep) {
       case 1:
         return (
@@ -213,42 +210,24 @@ export function ContractOnboardingDialog({ vendors, company, onContractAdded }: 
                 placeholder="e.g., Annual Marketing Retainer"
               />
             </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-                {/* Party A */}
-                <div className="space-y-2 rounded-md border p-4">
-                    <Label className="font-semibold">Party A</Label>
-                    <Select value={formData.partyA.id} onValueChange={(id) => handlePartySelect('partyA', id)}>
-                        <SelectTrigger><SelectValue placeholder="Select Party A" /></SelectTrigger>
-                        <SelectContent>
-                            {partyOptions.map(opt => <SelectItem key={opt.id} value={opt.id}>{opt.name}</SelectItem>)}
-                        </SelectContent>
-                    </Select>
-                    <Select value={formData.partyA.role} onValueChange={(role: 'Client' | 'Provider') => handleRoleChange('partyA', role)}>
-                        <SelectTrigger><SelectValue placeholder="Select Role" /></SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="Client">Client</SelectItem>
-                            <SelectItem value="Provider">Provider</SelectItem>
-                        </SelectContent>
-                    </Select>
-                </div>
-                {/* Party B */}
-                <div className="space-y-2 rounded-md border p-4">
-                    <Label className="font-semibold">Party B</Label>
-                    <Select value={formData.partyB.id} onValueChange={(id) => handlePartySelect('partyB', id)}>
-                        <SelectTrigger><SelectValue placeholder="Select Party B" /></SelectTrigger>
-                        <SelectContent>
-                            {partyOptions.map(opt => <SelectItem key={opt.id} value={opt.id}>{opt.name}</SelectItem>)}
-                        </SelectContent>
-                    </Select>
-                    <Select value={formData.partyB.role} onValueChange={(role: 'Client' | 'Provider') => handleRoleChange('partyB', role)}>
-                        <SelectTrigger><SelectValue placeholder="Select Role" /></SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="Client">Client</SelectItem>
-                            <SelectItem value="Provider">Provider</SelectItem>
-                        </SelectContent>
-                    </Select>
-                </div>
+             <div className="space-y-2">
+                <Label>Vendor (Party B) *</Label>
+                <Select value={formData.partyB.id} onValueChange={handlePartyBSelect}>
+                    <SelectTrigger><SelectValue placeholder="Select Vendor" /></SelectTrigger>
+                    <SelectContent>
+                        {vendors.map(vendor => <SelectItem key={vendor.id} value={vendor.id}>{vendor.name}</SelectItem>)}
+                    </SelectContent>
+                </Select>
+            </div>
+             <div className="space-y-2">
+                <Label>My Role in this Contract *</Label>
+                 <Select value={formData.partyA.role} onValueChange={(role: 'Client' | 'Provider') => handleMyRoleChange(role)}>
+                    <SelectTrigger><SelectValue placeholder="Select your role" /></SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="Client">I am the Client</SelectItem>
+                        <SelectItem value="Provider">I am the Provider/Vendor</SelectItem>
+                    </SelectContent>
+                </Select>
             </div>
             <div>
               <Label htmlFor="type">Contract Type *</Label>
