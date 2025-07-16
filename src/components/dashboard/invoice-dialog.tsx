@@ -16,7 +16,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { CalendarIcon, Plus, Minus, Upload, FileText, Eye, Edit, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import type { Invoice, InvoiceItem, InvoiceEntity, Vendor, Contract, CustomField } from "@/lib/types";
+import type { Invoice, InvoiceItem, InvoiceEntity, Vendor, Contract, CustomField, Company } from "@/lib/types";
+import { fetchCompany } from "@/lib/data";
 
 interface InvoiceDialogProps {
   invoice?: Invoice;
@@ -44,6 +45,19 @@ export function InvoiceDialog({
   const [selectedVendor, setSelectedVendor] = useState<Vendor | null>(null);
   const [selectedContract, setSelectedContract] = useState<Contract | null>(null);
   const [activeTab, setActiveTab] = useState("basic");
+  const [companyData, setCompanyData] = useState<Company | null>(null);
+
+  useEffect(() => {
+    async function loadCompanyData() {
+        if (mode === 'create') {
+            const company = await fetchCompany();
+            setCompanyData(company);
+        }
+    }
+    if (open) {
+        loadCompanyData();
+    }
+  }, [open, mode]);
 
   useEffect(() => {
     if (invoice) {
@@ -51,15 +65,23 @@ export function InvoiceDialog({
       setItems(invoice.items || []);
       setCustomFields(invoice.customFields || []);
       
-      // Find and set selected vendor
       const vendor = vendors.find(v => v.id === invoice.vendorId);
       if (vendor) setSelectedVendor(vendor);
       
-      // Find and set selected contract
       const contract = contracts.find(c => c.id === invoice.contractId);
       if (contract) setSelectedContract(contract);
     } else {
-      // Initialize with default values
+      const defaultSeller = companyData ? {
+        name: companyData.name,
+        address: companyData.primaryAddress || { street: '', city: '', state: '', zipCode: '', country: 'US' },
+        email: companyData.primaryContact?.email,
+        phone: companyData.primaryContact?.phone,
+        taxId: companyData.taxId
+      } : {
+          name: 'Your Company',
+          address: { street: '', city: '', state: '', zipCode: '', country: 'US' }
+      };
+
       setFormData({
         invoiceNumber: generateInvoiceNumber(),
         invoiceDate: new Date().toISOString().split('T')[0],
@@ -76,31 +98,16 @@ export function InvoiceDialog({
         discountType: 'percentage',
         subtotal: 0,
         totalAmount: 0,
-        seller: {
-          name: 'Your Company',
-          address: {
-            street: '',
-            city: '',
-            state: '',
-            zipCode: '',
-            country: 'US'
-          }
-        },
+        seller: defaultSeller,
         buyer: {
           name: '',
-          address: {
-            street: '',
-            city: '',
-            state: '',
-            zipCode: '',
-            country: 'US'
-          }
+          address: { street: '', city: '', state: '', zipCode: '', country: 'US' }
         }
       });
       setItems([createEmptyItem()]);
       setCustomFields([]);
     }
-  }, [invoice, vendors, contracts]);
+  }, [invoice, vendors, contracts, companyData]);
 
   const generateInvoiceNumber = () => {
     const date = new Date();
@@ -140,7 +147,6 @@ export function InvoiceDialog({
   const calculateTotals = () => {
     const subtotal = items.reduce((sum, item) => sum + item.total, 0);
     
-    // Calculate tax amount
     let taxAmount = 0;
     if (formData.taxType === 'percentage' && formData.taxRate) {
       taxAmount = (subtotal * formData.taxRate) / 100;
@@ -148,7 +154,6 @@ export function InvoiceDialog({
       taxAmount = formData.taxes || 0;
     }
     
-    // Calculate discount amount
     let discountAmount = 0;
     if (formData.discountType === 'percentage' && formData.discountRate) {
       discountAmount = (subtotal * formData.discountRate) / 100;
@@ -161,11 +166,9 @@ export function InvoiceDialog({
     return { subtotal, totalAmount, taxAmount, discountAmount };
   };
 
-  // Use useMemo to calculate totals and update formData when dependencies change
   const totals = useMemo(() => {
     const calculated = calculateTotals();
     
-    // Update formData with calculated amounts (only if values have changed)
     setFormData(prev => {
       if (
         prev.subtotal !== calculated.subtotal ||
@@ -255,7 +258,7 @@ export function InvoiceDialog({
       customFields,
       subtotal: totals.subtotal,
       totalAmount: totals.totalAmount,
-      invoiceAmount: totals.totalAmount, // For backward compatibility
+      invoiceAmount: totals.totalAmount, 
       updatedAt: new Date().toISOString(),
       createdAt: invoice?.createdAt || new Date().toISOString(),
       createdBy: invoice?.createdBy || 'current-user'

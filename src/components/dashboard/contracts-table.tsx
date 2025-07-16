@@ -53,6 +53,7 @@ import {
 } from "lucide-react";
 import { Contract, ContractStatus } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { ContractOnboardingDialog } from "./contract-onboarding-dialog";
 
 interface ContractsTableProps {
   contracts: Contract[];
@@ -120,10 +121,15 @@ export function ContractsTable({ contracts }: ContractsTableProps) {
       {/* Search and Filter */}
       <Card>
         <CardHeader>
-          <CardTitle>Contracts</CardTitle>
-          <CardDescription>
-            Manage and track all your vendor contracts
-          </CardDescription>
+          <div className="flex justify-between items-center">
+            <div>
+              <CardTitle>Contracts</CardTitle>
+              <CardDescription>
+                Manage and track all your vendor contracts
+              </CardDescription>
+            </div>
+            <ContractOnboardingDialog />
+          </div>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col sm:flex-row gap-4 mb-4">
