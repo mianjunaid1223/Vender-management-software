@@ -18,8 +18,6 @@ export async function generateContractPDF(contract: Contract): Promise<jsPDF> {
   const doc = new jsPDF();
   let yPos = 20;
 
-  const company = await fetchCompany();
-
   // Header
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(24);
@@ -60,28 +58,25 @@ export async function generateContractPDF(contract: Contract): Promise<jsPDF> {
 
   // Parties Section
   drawSection('Parties Involved', () => {
-    if (company) {
-        doc.setFontSize(11);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(50);
-        doc.text('Client:', 25, yPos);
-        doc.setFont('helvetica', 'normal');
-        doc.setTextColor(0);
-        doc.text(company.name, 70, yPos);
-        yPos += 5;
-        if(company.primaryAddress) {
-             doc.text(`${company.primaryAddress.street}, ${company.primaryAddress.city}, ${company.primaryAddress.state}`, 70, yPos);
-             yPos += 5;
-        }
-    }
-    yPos += 3;
+    const client = contract.partyA.role === 'Client' ? contract.partyA : contract.partyB;
+    const provider = contract.partyA.role === 'Provider' ? contract.partyA : contract.partyB;
+
     doc.setFontSize(11);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(50);
-    doc.text('Vendor:', 25, yPos);
+    doc.text('Client:', 25, yPos);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(0);
-    doc.text(contract.vendorName, 70, yPos);
+    doc.text(client.name, 70, yPos);
+    yPos += 8;
+
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(50);
+    doc.text('Provider:', 25, yPos);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(0);
+    doc.text(provider.name, 70, yPos);
     yPos += 7;
   });
   
@@ -122,7 +117,8 @@ export async function generateContractPDF(contract: Contract): Promise<jsPDF> {
 
 export async function downloadContractPDF(contract: Contract) {
   const doc = await generateContractPDF(contract);
-  const filename = `Contract-${contract.vendorName.replace(/\s+/g, '-')}-${contract.id}.pdf`;
+  const providerName = contract.partyA.role === 'Provider' ? contract.partyA.name : contract.partyB.name;
+  const filename = `Contract-${providerName.replace(/\s+/g, '-')}-${contract.id}.pdf`;
   doc.save(filename);
 }
 
