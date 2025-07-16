@@ -33,10 +33,10 @@ export async function fetchInvoices(): Promise<Invoice[]> {
             .toArray();
         
         // Ensure _id is mapped to id and properly serialized
-        return invoices.map(invoice => ({
+        return JSON.parse(JSON.stringify(invoices.map(invoice => ({
             ...invoice,
             id: invoice._id.toString(),
-        })) as Invoice[];
+        }))));
 
     } catch (error) {
         console.error('Database Error:', error);
@@ -362,8 +362,11 @@ export async function createCompany(company: Partial<Company>): Promise<Company>
         
         const result = await db.collection('companies').insertOne(companyData);
         
-        const newCompany = await db.collection('companies').findOne({ _id: result.insertedId });
-        return JSON.parse(JSON.stringify(newCompany));
+        const newCompanyDoc = await db.collection('companies').findOne({ _id: result.insertedId });
+        if (!newCompanyDoc) {
+          throw new Error('Failed to retrieve newly created company.');
+        }
+        return JSON.parse(JSON.stringify(newCompanyDoc));
     } catch (error) {
         console.error('Database Error:', error);
         throw new Error('Failed to create company.');
@@ -375,7 +378,7 @@ export async function updateCompany(id: string, updates: Partial<Company>): Prom
     const db = await getDb();
     
     try {
-        const { id: _, ...updateData } = updates;
+        const { id: idField, _id, ...updateData } = updates as any;
         updateData.updatedAt = new Date().toISOString();
 
         const result = await db.collection('companies').findOneAndUpdate(
@@ -392,6 +395,15 @@ export async function updateCompany(id: string, updates: Partial<Company>): Prom
     } catch (error) {
         console.error('Database Error:', error);
         throw new Error('Failed to update company.');
+    }
+}
+
+export async function createOrUpdateCompany(companyData: Partial<Company>): Promise<Company> {
+    noStore();
+    if (companyData.id) {
+        return updateCompany(companyData.id, companyData);
+    } else {
+        return createCompany(companyData);
     }
 }
 

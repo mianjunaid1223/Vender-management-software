@@ -4,7 +4,7 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { getDb, createInvoice, updateInvoice, deleteInvoice, updateInvoiceStatus, createCompany, updateCompany } from "@/lib/data";
+import { getDb, createInvoice, updateInvoice, deleteInvoice, updateInvoiceStatus, createCompany, updateCompany, createOrUpdateCompany } from "@/lib/data";
 import { sendPaymentConfirmation } from '@/lib/email-notifications';
 import { ObjectId } from 'mongodb';
 import { Invoice, Company } from "@/lib/types";
@@ -252,13 +252,7 @@ export async function updateInvoiceStatusAction(
 
 export async function createOrUpdateCompanyAction(companyData: Partial<Company>) {
   try {
-    let result: Company;
-    if (companyData.id) {
-      result = await updateCompany(companyData.id, companyData);
-    } else {
-      result = await createCompany(companyData);
-    }
-    
+    const result = await createOrUpdateCompany(companyData);
     revalidatePath('/dashboard/company');
     revalidatePath('/dashboard');
     
