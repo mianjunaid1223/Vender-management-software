@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
@@ -290,11 +291,13 @@ export function InvoiceDialog({
                 </div>
                 <div className="space-y-2">
                     <Label>Contract (Optional)</Label>
-                    <Select value={formData.contractId || ''} onValueChange={handleContractSelect} disabled={mode === 'view'}>
+                    <Select value={formData.contractId || ''} onValueChange={handleContractSelect} disabled={mode === 'view' || !formData.vendorId}>
                         <SelectTrigger><SelectValue placeholder="Select contract" /></SelectTrigger>
                         <SelectContent>
-                            {contracts.filter(c => c.vendorId === formData.vendorId).map(contract => (
-                                <SelectItem key={contract.id} value={contract.id}>{contract.title}</SelectItem>
+                            {contracts
+                                .filter(c => c.partyA.id === formData.vendorId || c.partyB.id === formData.vendorId)
+                                .map(contract => (
+                                    <SelectItem key={contract.id} value={contract.id}>{contract.title}</SelectItem>
                             ))}
                         </SelectContent>
                     </Select>

@@ -1,3 +1,4 @@
+
 export type Vendor = {
   id: string;
   name: string;
@@ -56,7 +57,7 @@ export type CustomField = {
   id: string;
   name: string;
   type: 'text' | 'number' | 'date' | 'select' | 'textarea';
-  value: string;
+  value: any;
   required?: boolean;
   options?: string[]; // For select type
 };
@@ -120,6 +121,7 @@ export type User = {
     name: string;
     email: string;
     image?: string;
+    role?: string;
 }
 
 export type ContractParty = {

@@ -1,3 +1,4 @@
+
 import { PageHeader } from "@/components/page-header";
 import { InvoiceManagementClient } from "@/components/dashboard/invoice-management-client";
 import { fetchInvoices, fetchVendors, fetchContracts } from "@/lib/data";
