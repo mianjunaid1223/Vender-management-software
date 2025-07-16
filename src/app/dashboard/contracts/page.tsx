@@ -478,8 +478,8 @@ function ContractsGrid({
               <div className="grid grid-cols-2 gap-4">
                 <div><Label>Title</Label><p className="text-sm mt-1">{selectedContract.title}</p></div>
                 <div><Label>Status</Label><div className="mt-1"><Badge variant={selectedContract.status === 'Active' ? 'default' : selectedContract.status === 'Draft' ? 'secondary' : 'destructive'}>{selectedContract.status}</Badge></div></div>
-                <div><Label>Party A ({selectedContract.partyA.role})</Label><p className="text-sm mt-1">{selectedContract.partyA.name}</p></div>
-                <div><Label>Party B ({selectedContract.partyB.role})</Label><p className="text-sm mt-1">{selectedContract.partyB.name}</p></div>
+                {selectedContract.partyA && <div><Label>Party A ({selectedContract.partyA.role})</Label><p className="text-sm mt-1">{selectedContract.partyA.name}</p></div>}
+                {selectedContract.partyB && <div><Label>Party B ({selectedContract.partyB.role})</Label><p className="text-sm mt-1">{selectedContract.partyB.name}</p></div>}
                 <div><Label>Value</Label><p className="text-sm font-medium mt-1">${selectedContract.value?.toLocaleString() || 0} {selectedContract.currency}</p></div>
                 <div><Label>Contract Type</Label><p className="text-sm mt-1">{selectedContract.type}</p></div>
                 <div><Label>Start Date</Label><p className="text-sm mt-1">{new Date(selectedContract.startDate).toLocaleDateString()}</p></div>
@@ -752,3 +752,4 @@ function ContractsPageSkeleton() {
     </div>
   );
 }
+
