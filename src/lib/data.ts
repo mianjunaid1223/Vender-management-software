@@ -408,23 +408,27 @@ export async function updateCompany(id: string, updates: Partial<Company>): Prom
             
             // If company name changed, propagate it to contracts and invoices
             if (updateData.name && updateData.name !== originalCompany.name) {
+                // Update contracts where company is Party A
                 await contractsCollection.updateMany(
-                    { "partyA.name": originalCompany.name, "partyA.id": 'company' },
+                    { "partyA.id": 'company' },
                     { $set: { "partyA.name": updateData.name } },
                     { session }
                 );
+                // Update contracts where company is Party B
                 await contractsCollection.updateMany(
-                    { "partyB.name": originalCompany.name, "partyB.id": 'company' },
+                    { "partyB.id": 'company' },
                     { $set: { "partyB.name": updateData.name } },
                     { session }
                 );
+                // Update invoices where company is seller
                 await invoicesCollection.updateMany(
-                    { "seller.name": originalCompany.name },
+                    { "seller.name": originalCompany.name }, // This assumes the name was the identifier
                     { $set: { "seller.name": updateData.name } },
                     { session }
                 );
+                 // Update invoices where company is buyer
                 await invoicesCollection.updateMany(
-                    { "buyer.name": originalCompany.name },
+                    { "buyer.name": originalCompany.name }, // This assumes the name was the identifier
                     { $set: { "buyer.name": updateData.name } },
                     { session }
                 );
