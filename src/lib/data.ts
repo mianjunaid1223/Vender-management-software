@@ -385,6 +385,7 @@ export async function updateCompany(id: string, updates: Partial<Company>): Prom
             const contractsCollection = db.collection('contracts');
             const invoicesCollection = db.collection('invoices');
 
+            // Exclude both id and _id from the direct update payload
             const { id: idField, _id, ...updateData } = updates as any;
             updateData.updatedAt = new Date().toISOString();
             
@@ -408,28 +409,27 @@ export async function updateCompany(id: string, updates: Partial<Company>): Prom
             
             // If company name changed, propagate it to contracts and invoices
             if (updateData.name && updateData.name !== originalCompany.name) {
-                // Update contracts where company is Party A
+                const newName = updateData.name;
+                // Update contracts where company is Party A or Party B
                 await contractsCollection.updateMany(
                     { "partyA.id": 'company' },
-                    { $set: { "partyA.name": updateData.name } },
+                    { $set: { "partyA.name": newName } },
                     { session }
                 );
-                // Update contracts where company is Party B
                 await contractsCollection.updateMany(
                     { "partyB.id": 'company' },
-                    { $set: { "partyB.name": updateData.name } },
+                    { $set: { "partyB.name": newName } },
                     { session }
                 );
-                // Update invoices where company is seller
+                // Update invoices where company is seller or buyer
                 await invoicesCollection.updateMany(
-                    { "seller.name": originalCompany.name }, // This assumes the name was the identifier
-                    { $set: { "seller.name": updateData.name } },
+                    { "seller.name": originalCompany.name }, 
+                    { $set: { "seller.name": newName } },
                     { session }
                 );
-                 // Update invoices where company is buyer
                 await invoicesCollection.updateMany(
-                    { "buyer.name": originalCompany.name }, // This assumes the name was the identifier
-                    { $set: { "buyer.name": updateData.name } },
+                    { "buyer.name": originalCompany.name }, 
+                    { $set: { "buyer.name": newName } },
                     { session }
                 );
             }
