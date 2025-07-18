@@ -376,79 +376,26 @@ export async function createCompany(company: Partial<Company>): Promise<Company>
 export async function updateCompany(id: string, updates: Partial<Company>): Promise<Company> {
     noStore();
     const db = await getDb();
-    const session = (await clientPromise)!.startSession();
-
+    
     try {
-        let updatedCompany: Company | null = null;
-        await session.withTransaction(async () => {
-            const companiesCollection = db.collection('companies');
-            const contractsCollection = db.collection('contracts');
-            const invoicesCollection = db.collection('invoices');
-
-            // Exclude both id and _id from the direct update payload
-            const { id: idField, _id, ...updateData } = updates as any;
-            updateData.updatedAt = new Date().toISOString();
-            
-            const originalCompany = await companiesCollection.findOne({ _id: new ObjectId(id) }, { session });
-            if (!originalCompany) {
-                throw new Error('Company not found for update');
-            }
-
-            const result = await companiesCollection.findOneAndUpdate(
-                { _id: new ObjectId(id) },
-                { $set: updateData },
-                { returnDocument: 'after', session }
-            );
-            
-            if (!result) {
-                throw new Error('Company not found during update operation');
-            }
-            
-            const serializedResult = JSON.parse(JSON.stringify(result));
-            updatedCompany = { ...serializedResult, id: serializedResult._id.toString() } as Company;
-            
-            // If company name changed, propagate it to contracts and invoices
-            if (updateData.name && updateData.name !== originalCompany.name) {
-                const newName = updateData.name;
-                // Update contracts where company is Party A or Party B
-                await contractsCollection.updateMany(
-                    { "partyA.id": 'company' },
-                    { $set: { "partyA.name": newName } },
-                    { session }
-                );
-                await contractsCollection.updateMany(
-                    { "partyB.id": 'company' },
-                    { $set: { "partyB.name": newName } },
-                    { session }
-                );
-                // Update invoices where company is seller or buyer
-                await invoicesCollection.updateMany(
-                    { "seller.name": originalCompany.name }, 
-                    { $set: { "seller.name": newName } },
-                    { session }
-                );
-                await invoicesCollection.updateMany(
-                    { "buyer.name": originalCompany.name }, 
-                    { $set: { "buyer.name": newName } },
-                    { session }
-                );
-            }
-        });
-
-        if (!updatedCompany) {
-            throw new Error("Company update failed within transaction.");
+        const { id: _, _id, ...updateData } = updates as any;
+        updateData.updatedAt = new Date().toISOString();
+        
+        const result = await db.collection('companies').findOneAndUpdate(
+            { _id: new ObjectId(id) },
+            { $set: updateData },
+            { returnDocument: 'after' }
+        );
+        
+        if (!result) {
+            throw new Error('Company not found during update operation');
         }
         
-        return updatedCompany;
-        
+        const updatedDoc = { ...result, id: result._id.toString() };
+        return JSON.parse(JSON.stringify(updatedDoc));
     } catch (error) {
         console.error('Database Error:', error);
-        throw new Error('Failed to update company and associated data.');
-    } finally {
-        if (session.inTransaction()) {
-            await session.abortTransaction();
-        }
-        await session.endSession();
+        throw new Error('Failed to update company.');
     }
 }
 
@@ -626,79 +573,27 @@ export async function createVendor(vendor: Partial<Vendor>): Promise<Vendor> {
 export async function updateVendor(id: string, updates: Partial<Vendor>): Promise<Vendor> {
     noStore();
     const db = await getDb();
-    const session = (await clientPromise)!.startSession();
-
+    
     try {
-        let updatedVendor: Vendor | null = null;
-        await session.withTransaction(async () => {
-            const vendorsCollection = db.collection('vendors');
-            const contractsCollection = db.collection('contracts');
-            const invoicesCollection = db.collection('invoices');
+        const { _id, ...updateData } = updates as any;
+        updateData.updatedAt = new Date().toISOString();
 
-            const { _id, ...updateData } = updates as any;
-            updateData.updatedAt = new Date().toISOString();
-
-            const originalVendor = await vendorsCollection.findOne({ _id: new ObjectId(id) }, { session });
-             if (!originalVendor) {
-                throw new Error('Vendor not found for update');
-            }
-            
-            const result = await vendorsCollection.findOneAndUpdate(
-                { _id: new ObjectId(id) },
-                { $set: updateData },
-                { returnDocument: 'after', session }
-            );
-            
-            if (!result) {
-                throw new Error('Vendor not found during update operation');
-            }
-            
-            const serializedResult = JSON.parse(JSON.stringify(result));
-            updatedVendor = { ...serializedResult, id: serializedResult._id.toString() } as Vendor;
-            
-            if (updates.name && updates.name !== originalVendor.name) {
-                await contractsCollection.updateMany(
-                    { "partyA.id": id },
-                    { $set: { "partyA.name": updates.name } },
-                    { session }
-                );
-                await contractsCollection.updateMany(
-                    { "partyB.id": id },
-                    { $set: { "partyB.name": updates.name } },
-                    { session }
-                );
-                await invoicesCollection.updateMany(
-                    { "seller.name": originalVendor.name },
-                    { $set: { "seller.name": updates.name } },
-                    { session }
-                );
-                await invoicesCollection.updateMany(
-                    { "buyer.name": originalVendor.name },
-                    { $set: { "buyer.name": updates.name } },
-                    { session }
-                );
-                await invoicesCollection.updateMany(
-                    { vendorId: id },
-                    { $set: { vendorName: updates.name } },
-                    { session }
-                );
-            }
-        });
+        const result = await db.collection('vendors').findOneAndUpdate(
+            { _id: new ObjectId(id) },
+            { $set: updateData },
+            { returnDocument: 'after' }
+        );
         
-        if (!updatedVendor) {
-            throw new Error("Vendor update failed within transaction.");
+        if (!result) {
+            throw new Error('Vendor not found during update operation');
         }
         
-        return updatedVendor;
+        const updatedDoc = { ...result, id: result._id.toString() };
+        return JSON.parse(JSON.stringify(updatedDoc));
         
     } catch (error) {
         console.error('Database Error:', error);
-        throw new Error('Failed to update vendor and associated data.');
-    } finally {
-        if (session.inTransaction()) {
-            await session.abortTransaction();
-        }
-        await session.endSession();
+        throw new Error('Failed to update vendor.');
     }
 }
 

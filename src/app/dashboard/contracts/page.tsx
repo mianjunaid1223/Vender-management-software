@@ -551,7 +551,7 @@ function ContractsGrid({
                   {associatedInvoices.map(invoice => (
                     <li key={invoice.id} className="text-sm flex items-center gap-2">
                       <Receipt className="h-4 w-4 text-muted-foreground"/>
-                      <span>{invoice.invoiceNumber} - ${invoice.invoiceAmount}</span>
+                      <span>{invoice.invoiceNumber} - ${invoice.totalAmount}</span>
                     </li>
                   ))}
                 </ul>
@@ -588,8 +588,6 @@ function EditContractDialog({
 }) {
   const [formData, setFormData] = useState<Partial<Contract>>({});
   const [isSaving, setIsSaving] = useState(false);
-  const [showImpactDialog, setShowImpactDialog] = useState(false);
-  const [impactData, setImpactData] = useState<{ invoices: Invoice[] }>({ invoices: [] });
   const { toast } = useToast();
   const contractStatuses: ContractStatus[] = ['Draft', 'Active', 'Pending', 'Expired', 'Terminated', 'Suspended'];
   const contractTypes: ContractType[] = ['Service', 'Product', 'Subscription', 'One-time', 'Framework'];
@@ -638,30 +636,6 @@ function EditContractDialog({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!contract) return;
-
-    try {
-        setIsSaving(true);
-        const invoices = await fetchInvoicesByContract(contract.id);
-        
-        if (invoices.length > 0) {
-            setImpactData({ invoices });
-            setShowImpactDialog(true);
-        } else {
-            await saveChanges();
-        }
-    } catch (error) {
-        toast({
-            title: "Error",
-            description: "Could not fetch associated data to check for impact.",
-            variant: "destructive",
-        });
-    } finally {
-        setIsSaving(false);
-    }
-  };
-  
-  const saveChanges = async () => {
     if (!contract || !formData.id) return;
     
     setIsSaving(true);
@@ -684,7 +658,6 @@ function EditContractDialog({
       });
     } finally {
       setIsSaving(false);
-      setShowImpactDialog(false);
     }
   };
 
@@ -692,7 +665,7 @@ function EditContractDialog({
 
   return (
     <>
-    <Dialog open={open && !showImpactDialog} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl">
         <DialogHeader>
           <DialogTitle>Edit Contract</DialogTitle>
@@ -822,38 +795,6 @@ function EditContractDialog({
         </form>
       </DialogContent>
     </Dialog>
-
-    <AlertDialog open={showImpactDialog} onOpenChange={setShowImpactDialog}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Confirm Contract Update</AlertDialogTitle>
-          <AlertDialogDescription>
-            Updating this contract may affect the following associated records. Please review before saving.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        {impactData.invoices.length > 0 && (
-          <div className="mt-4">
-            <h4 className="font-semibold mb-2">Affected Invoices ({impactData.invoices.length}):</h4>
-            <ScrollArea className="h-32 w-full rounded-md border p-2">
-              <ul className="space-y-1">
-                {impactData.invoices.map(invoice => (
-                  <li key={invoice.id} className="text-sm flex items-center gap-2">
-                    <Receipt className="h-4 w-4 text-muted-foreground"/>
-                    <span>{invoice.invoiceNumber} - ${invoice.invoiceAmount}</span>
-                  </li>
-                ))}
-              </ul>
-            </ScrollArea>
-          </div>
-        )}
-        <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={saveChanges} disabled={isSaving}>
-            {isSaving ? "Saving..." : "Confirm and Save"}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
     </>
   );
 }

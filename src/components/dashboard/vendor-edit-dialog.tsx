@@ -14,16 +14,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { 
   Select,
   SelectContent,
@@ -35,13 +25,10 @@ import {
   Edit, 
   X,
   Loader2,
-  FileText,
-  Receipt
 } from "lucide-react";
-import { Vendor, Contract, Invoice } from "@/lib/types";
+import { Vendor } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
-import { updateVendor, fetchContractsByVendor, fetchInvoicesByVendor } from "@/lib/data";
-import { ScrollArea } from "../ui/scroll-area";
+import { updateVendor } from "@/lib/data";
 
 interface VendorEditDialogProps {
   vendor: Vendor;
@@ -54,8 +41,6 @@ export function VendorEditDialog({ vendor, open, onOpenChange, onVendorUpdated }
   const [formData, setFormData] = useState<Partial<Vendor>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [newTag, setNewTag] = useState("");
-  const [showImpactDialog, setShowImpactDialog] = useState(false);
-  const [impactData, setImpactData] = useState<{ contracts: Contract[], invoices: Invoice[] }>({ contracts: [], invoices: [] });
   const { toast } = useToast();
 
   useEffect(() => {
@@ -99,32 +84,6 @@ export function VendorEditDialog({ vendor, open, onOpenChange, onVendorUpdated }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    try {
-        setIsSubmitting(true);
-        const [contracts, invoices] = await Promise.all([
-          fetchContractsByVendor(vendor.id),
-          fetchInvoicesByVendor(vendor.id)
-        ]);
-        
-        if (contracts.length > 0 || invoices.length > 0) {
-          setImpactData({ contracts, invoices });
-          setShowImpactDialog(true);
-        } else {
-          await saveChanges();
-        }
-    } catch (error) {
-        toast({
-          title: "Error",
-          description: "Could not fetch associated data to check for impact.",
-          variant: "destructive",
-        });
-    } finally {
-        setIsSubmitting(false);
-    }
-  };
-
-  const saveChanges = async () => {
     setIsSubmitting(true);
     
     try {
@@ -147,13 +106,12 @@ export function VendorEditDialog({ vendor, open, onOpenChange, onVendorUpdated }
       });
     } finally {
       setIsSubmitting(false);
-      setShowImpactDialog(false);
     }
   };
 
   return (
     <>
-      <Dialog open={open && !showImpactDialog} onOpenChange={onOpenChange}>
+      <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Edit Vendor</DialogTitle>
@@ -339,58 +297,6 @@ export function VendorEditDialog({ vendor, open, onOpenChange, onVendorUpdated }
           </form>
         </DialogContent>
       </Dialog>
-      
-      {/* Impact Confirmation Dialog */}
-      <AlertDialog open={showImpactDialog} onOpenChange={setShowImpactDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirm Vendor Update</AlertDialogTitle>
-            <AlertDialogDescription>
-               This action will update the vendor details. This may affect associated records. Please review before saving.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          {(impactData.contracts.length > 0 || impactData.invoices.length > 0) && (
-            <div className="mt-4 space-y-4">
-              {impactData.contracts.length > 0 && (
-                <div>
-                  <h4 className="font-semibold mb-2">Affected Contracts ({impactData.contracts.length}):</h4>
-                  <ScrollArea className="h-24 w-full rounded-md border p-2">
-                    <ul className="space-y-1">
-                      {impactData.contracts.map(contract => (
-                        <li key={contract.id} className="text-sm flex items-center gap-2">
-                          <FileText className="h-4 w-4 text-muted-foreground"/>
-                          <span>{contract.title}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </ScrollArea>
-                </div>
-              )}
-              {impactData.invoices.length > 0 && (
-                <div>
-                  <h4 className="font-semibold mb-2">Affected Invoices ({impactData.invoices.length}):</h4>
-                  <ScrollArea className="h-24 w-full rounded-md border p-2">
-                    <ul className="space-y-1">
-                      {impactData.invoices.map(invoice => (
-                        <li key={invoice.id} className="text-sm flex items-center gap-2">
-                           <Receipt className="h-4 w-4 text-muted-foreground"/>
-                           <span>{invoice.invoiceNumber} - ${invoice.invoiceAmount}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </ScrollArea>
-                </div>
-              )}
-            </div>
-          )}
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setShowImpactDialog(false)}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={saveChanges} disabled={isSubmitting}>
-              {isSubmitting ? "Saving..." : "Confirm and Save"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </>
   );
 }

@@ -22,16 +22,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { 
   Building, 
   Plus, 
@@ -52,7 +42,6 @@ import {
 import { Company, ContactInfo, InvoiceAddress, CompanyPreferences, Contract, Invoice } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { createOrUpdateCompanyAction } from "@/app/actions";
-import { fetchContracts, fetchInvoices } from "@/lib/data";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -80,8 +69,6 @@ export function CompanyRegistrationForm({ isEditing = false, company }: CompanyR
   const [open, setOpen] = useState(false);
   const [formData, setFormData] = useState<Partial<Company>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showImpactDialog, setShowImpactDialog] = useState(false);
-  const [impactData, setImpactData] = useState<{ contracts: Contract[], invoices: Invoice[] }>({ contracts: [], invoices: [] });
   const { toast } = useToast();
 
   useEffect(() => {
@@ -149,46 +136,6 @@ export function CompanyRegistrationForm({ isEditing = false, company }: CompanyR
     setIsSubmitting(true);
     
     try {
-      const companyId = company?.id;
-      // Only fetch associated data if the name has changed
-      if (companyId && formData.name !== company.name) {
-          const [contracts, invoices] = await Promise.all([
-            fetchContracts(),
-            fetchInvoices()
-          ]);
-          
-          const affectedContracts = contracts.filter(c => 
-            (c.partyA?.id === 'company' && c.partyA?.name === company.name) || 
-            (c.partyB?.id === 'company' && c.partyB?.name === company.name)
-          );
-          const affectedInvoices = invoices.filter(i => 
-            (i.seller?.name === company.name) || 
-            (i.buyer?.name === company.name)
-          );
-
-          if (affectedContracts.length > 0 || affectedInvoices.length > 0) {
-            setImpactData({ contracts: affectedContracts, invoices: affectedInvoices });
-            setShowImpactDialog(true);
-            setIsSubmitting(false); // Stop loading here and wait for user confirmation
-            return;
-          }
-      }
-      
-      // If no name change or no associated docs, save directly
-      await saveChanges();
-    } catch (error) {
-      toast({
-        title: "Error checking for impact",
-        description: "Could not fetch associated data. Please try again.",
-        variant: "destructive",
-      });
-      setIsSubmitting(false);
-    }
-  };
-
-  const saveChanges = async () => {
-    setIsSubmitting(true);
-    try {
       // Ensure the ID is passed for updates
       const dataToSave = company?.id ? { ...formData, id: company.id } : formData;
       const result = await createOrUpdateCompanyAction(dataToSave);
@@ -217,7 +164,6 @@ export function CompanyRegistrationForm({ isEditing = false, company }: CompanyR
       });
     } finally {
       setIsSubmitting(false);
-      setShowImpactDialog(false);
     }
   };
 
@@ -364,57 +310,6 @@ export function CompanyRegistrationForm({ isEditing = false, company }: CompanyR
             </form>
         </DialogContent>
       </Dialog>
-      
-      <AlertDialog open={showImpactDialog} onOpenChange={setShowImpactDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirm Company Profile Update</AlertDialogTitle>
-            <AlertDialogDescription>
-               Changing the company name will update all associated contracts and invoices. Please review before saving.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-           {(impactData.contracts.length > 0 || impactData.invoices.length > 0) && (
-            <div className="mt-4 space-y-4 max-h-[300px] overflow-y-auto pr-2">
-              {impactData.contracts.length > 0 && (
-                <div>
-                  <h4 className="font-semibold mb-2">Affected Contracts ({impactData.contracts.length}):</h4>
-                  <ScrollArea className="h-24 w-full rounded-md border p-2">
-                    <ul className="space-y-1">
-                      {impactData.contracts.map(contract => (
-                        <li key={contract.id} className="text-sm flex items-center gap-2">
-                          <FileText className="h-4 w-4 text-muted-foreground"/>
-                          <span>{contract.title}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </ScrollArea>
-                </div>
-              )}
-              {impactData.invoices.length > 0 && (
-                <div>
-                  <h4 className="font-semibold mb-2">Affected Invoices ({impactData.invoices.length}):</h4>
-                  <ScrollArea className="h-24 w-full rounded-md border p-2">
-                    <ul className="space-y-1">
-                      {impactData.invoices.map(invoice => (
-                        <li key={invoice.id} className="text-sm flex items-center gap-2">
-                           <Receipt className="h-4 w-4 text-muted-foreground"/>
-                           <span>{invoice.invoiceNumber} - ${invoice.totalAmount}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </ScrollArea>
-                </div>
-              )}
-            </div>
-          )}
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={saveChanges} disabled={isSubmitting}>
-              {isSubmitting ? "Saving..." : "Confirm and Save"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </>
   );
 }
