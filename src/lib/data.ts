@@ -7,6 +7,7 @@ import { ObjectId } from 'mongodb';
 import type { Invoice, Vendor, User, Contract, Company, Notification, ActionLog, SearchFilters } from '@/lib/types';
 import { unstable_noStore as noStore } from 'next/cache';
 import { add } from 'date-fns';
+import { requireAuth, getSession } from '@/lib/auth';
 
 export const getDb = async () => {
     if (!clientPromise) {
@@ -21,14 +22,21 @@ export const getDb = async () => {
     }
 }
 
+// ================================
+// SECURE DATA FETCHING WITH BUSINESS ISOLATION
+// ================================
+
 export async function fetchInvoices(): Promise<Invoice[]> {
     noStore();
+    const session = await requireAuth();
     const db = await getDb();
 
     try {
         const invoices = await db
             .collection('invoices')
-            .find({})
+            .find({ 
+                businessId: session.businessId || session.userId // Strict tenant isolation
+            })
             .sort({ invoiceDate: -1 })
             .toArray();
         
@@ -45,20 +53,25 @@ export async function fetchInvoices(): Promise<Invoice[]> {
 
 export async function fetchVendors(): Promise<Vendor[]> {
     noStore();
+    const session = await requireAuth();
     const db = await getDb();
     
     try {
         const vendors = await db
             .collection('vendors')
-            .find({})
+            .find({ 
+                businessId: session.businessId || session.userId // Strict tenant isolation
+            })
             .sort({ name: 1 })
             .toArray();
 
-        return vendors.map(vendor => ({
-            ...vendor,
-            id: vendor._id.toString(),
-            _id: undefined,
-        })) as Vendor[];
+        return vendors.map(vendor => {
+            const { _id, ...rest } = vendor;
+            return {
+                ...rest,
+                id: _id.toString(),
+            } as Vendor;
+        });
 
     } catch (error) {
         console.error('Database Error:', error);
@@ -68,24 +81,28 @@ export async function fetchVendors(): Promise<Vendor[]> {
 
 export async function fetchCardData() {
     noStore();
+    const session = await requireAuth();
     const db = await getDb();
 
     try {
+        const businessFilter = { businessId: session.businessId || session.userId };
         const invoicesCollection = db.collection('invoices');
         const vendorsCollection = db.collection('vendors');
 
         const totalSpendPromise = invoicesCollection.aggregate([
-            { $match: { status: 'Paid' } },
+            { $match: { ...businessFilter, status: 'Paid' } },
             { $group: { _id: null, total: { $sum: '$totalAmount' } } }
         ]).toArray();
         
-        const activeVendorsPromise = vendorsCollection.countDocuments();
+        const activeVendorsPromise = vendorsCollection.countDocuments(businessFilter);
         
         const unpaidInvoicesPromise = invoicesCollection.countDocuments({ 
+          ...businessFilter,
           status: { $in: ['Unpaid', 'Pending', 'Overdue'] } 
         });
         
         const nextPaymentDuePromise = invoicesCollection.find({ 
+          ...businessFilter,
           status: { $in: ['Unpaid', 'Pending', 'Overdue'] } 
         })
             .sort({ invoiceDueDate: 1 })
@@ -126,25 +143,33 @@ export async function fetchCardData() {
 
 export async function getUser(): Promise<User> {
     noStore();
+    const session = await getSession();
+    
+    // If no session, return a mock user for backwards compatibility
+    if (!session) {
+        return {
+            id: 'guest',
+            name: 'Guest User',
+            email: 'guest@example.com',
+            image: 'https://placehold.co/100x100.png'
+        };
+    }
+    
     const db = await getDb();
-
-    const defaultUser = {
-        _id: new ObjectId(),
-        name: 'Alicia Cook',
-        email: 'alicia@example.com',
-        image: 'https://placehold.co/100x100.png'
-    };
 
     try {
         const usersCollection = db.collection('users');
-        const user = await usersCollection.findOne({});
+        const user = await usersCollection.findOne({ _id: new ObjectId(session.userId) });
 
         if (!user) {
-            await usersCollection.insertOne(defaultUser);
-            return JSON.parse(JSON.stringify({ ...defaultUser, id: defaultUser._id.toString() }));
+            throw new Error('User not found');
         }
 
-        return JSON.parse(JSON.stringify({ ...user, id: user._id.toString() }));
+        return JSON.parse(JSON.stringify({ 
+            ...user, 
+            id: user._id.toString(),
+            _id: undefined
+        }));
 
     } catch (error) {
         console.error('Database Error fetching user:', error);
@@ -154,13 +179,15 @@ export async function getUser(): Promise<User> {
 
 export async function processAndFetchContracts(): Promise<Contract[]> {
     noStore();
+    const session = await requireAuth();
     const db = await getDb();
     const today = new Date();
   
     try {
+      const businessFilter = { businessId: session.businessId || session.userId };
       const contractsCollection = db.collection('contracts');
       const activeContracts = await contractsCollection
-        .find({ status: { $nin: ['Expired', 'Terminated'] } })
+        .find({ ...businessFilter, status: { $nin: ['Expired', 'Terminated'] } })
         .toArray();
   
       for (const contract of activeContracts) {
@@ -204,12 +231,13 @@ export async function processAndFetchContracts(): Promise<Contract[]> {
 
 export async function fetchContracts(): Promise<Contract[]> {
     noStore();
+    const session = await requireAuth();
     const db = await getDb();
     
     try {
         const contracts = await db
             .collection('contracts')
-            .find({})
+            .find({ businessId: session.businessId || session.userId })
             .sort({ createdAt: -1 })
             .toArray();
 
@@ -222,11 +250,14 @@ export async function fetchContracts(): Promise<Contract[]> {
 
 export async function createInvoice(invoice: Partial<Invoice>): Promise<Invoice> {
     noStore();
+    const session = await requireAuth();
     const db = await getDb();
     
     try {
         const invoiceData = {
             ...invoice,
+            businessId: session.businessId || session.userId,
+            createdBy: session.userId,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
         };
@@ -281,13 +312,17 @@ export async function updateInvoice(id: string, updates: Partial<Invoice>): Prom
 
 export async function deleteInvoice(id: string): Promise<void> {
     noStore();
+    const session = await requireAuth();
     const db = await getDb();
     
     try {
-        const result = await db.collection('invoices').deleteOne({ _id: new ObjectId(id) });
+        const result = await db.collection('invoices').deleteOne({ 
+            _id: new ObjectId(id),
+            businessId: session.businessId || session.userId // Ensure user can only delete their own invoices
+        });
         
         if (result.deletedCount === 0) {
-            throw new Error('Invoice not found');
+            throw new Error('Invoice not found or access denied');
         }
     } catch (error) {
         console.error('Database Error:', error);
@@ -300,6 +335,7 @@ export async function deleteInvoice(id: string): Promise<void> {
 
 export async function updateInvoiceStatus(id: string, status: Invoice['status']): Promise<void> {
     noStore();
+    const session = await requireAuth();
     const db = await getDb();
     
     try {
@@ -310,12 +346,15 @@ export async function updateInvoiceStatus(id: string, status: Invoice['status'])
         };
         
         const result = await db.collection('invoices').updateOne(
-            { _id: new ObjectId(id) },
+            { 
+                _id: new ObjectId(id),
+                businessId: session.businessId || session.userId // Ensure user can only update their own invoices
+            },
             { $set: updateData }
         );
         
         if (result.matchedCount === 0) {
-            throw new Error('Invoice not found');
+            throw new Error('Invoice not found or access denied');
         }
     } catch (error) {
         console.error('Database Error:', error);
@@ -548,11 +587,14 @@ export async function fetchExpiringContracts(daysAhead: number = 30): Promise<Co
 // Enhanced Vendor Operations
 export async function createVendor(vendor: Partial<Vendor>): Promise<Vendor> {
     noStore();
+    const session = await requireAuth();
     const db = await getDb();
     
     try {
         const vendorData = {
             ...vendor,
+            businessId: session.businessId || session.userId,
+            createdBy: session.userId,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
         };
@@ -572,6 +614,7 @@ export async function createVendor(vendor: Partial<Vendor>): Promise<Vendor> {
 
 export async function updateVendor(id: string, updates: Partial<Vendor>): Promise<Vendor> {
     noStore();
+    const session = await requireAuth();
     const db = await getDb();
     
     try {
@@ -579,13 +622,16 @@ export async function updateVendor(id: string, updates: Partial<Vendor>): Promis
         updateData.updatedAt = new Date().toISOString();
 
         const result = await db.collection('vendors').findOneAndUpdate(
-            { _id: new ObjectId(id) },
+            { 
+                _id: new ObjectId(id),
+                businessId: session.businessId || session.userId // Ensure user can only update their own vendors
+            },
             { $set: updateData },
             { returnDocument: 'after' }
         );
         
         if (!result) {
-            throw new Error('Vendor not found during update operation');
+            throw new Error('Vendor not found or access denied');
         }
         
         const updatedDoc = { ...result, id: result._id.toString() };
@@ -599,23 +645,41 @@ export async function updateVendor(id: string, updates: Partial<Vendor>): Promis
 
 export async function deleteVendor(id: string): Promise<void> {
     noStore();
+    const session = await requireAuth();
     const db = await getDb();
-    const session = (await clientPromise)!.startSession();
+    const clientSession = (await clientPromise)!.startSession();
 
     try {
-        await session.withTransaction(async () => {
+        await clientSession.withTransaction(async () => {
+            const businessFilter = { businessId: session.businessId || session.userId };
             const vendorsCollection = db.collection('vendors');
             const contractsCollection = db.collection('contracts');
             const invoicesCollection = db.collection('invoices');
 
-            const contractsToDelete = await contractsCollection.find({ $or: [ { "partyA.id": id }, { "partyB.id": id } ] }, { session }).project({ _id: 1 }).toArray();
+            // Find contracts related to this vendor within the business
+            const contractsToDelete = await contractsCollection.find({ 
+                ...businessFilter,
+                $or: [ { "partyA.id": id }, { "partyB.id": id } ] 
+            }, { session: clientSession }).project({ _id: 1 }).toArray();
             const contractIdsToDelete = contractsToDelete.map(c => c._id.toString());
             
-            await invoicesCollection.deleteMany({ $or: [{ contractId: { $in: contractIdsToDelete } }, { vendorId: id }] }, { session });
+            // Delete invoices related to contracts and vendor within the business
+            await invoicesCollection.deleteMany({ 
+                ...businessFilter,
+                $or: [{ contractId: { $in: contractIdsToDelete } }, { vendorId: id }] 
+            }, { session: clientSession });
             
-            await contractsCollection.deleteMany({ $or: [ { "partyA.id": id }, { "partyB.id": id } ] }, { session });
+            // Delete contracts within the business
+            await contractsCollection.deleteMany({ 
+                ...businessFilter,
+                $or: [ { "partyA.id": id }, { "partyB.id": id } ] 
+            }, { session: clientSession });
             
-            const result = await vendorsCollection.deleteOne({ _id: new ObjectId(id) }, { session });
+            // Delete the vendor within the business
+            const result = await vendorsCollection.deleteOne({ 
+                _id: new ObjectId(id),
+                ...businessFilter
+            }, { session: clientSession });
 
             if (result.deletedCount === 0) {
                 throw new Error('Vendor not found during transaction.');
@@ -625,15 +689,19 @@ export async function deleteVendor(id: string): Promise<void> {
         console.error('Transaction Error deleting vendor:', error);
         throw new Error('Failed to delete vendor and its associated data.');
     } finally {
-        await session.endSession();
+        await clientSession.endSession();
     }
 }
 
 export async function fetchInvoicesByVendor(vendorId: string): Promise<Invoice[]> {
     noStore();
+    const session = await requireAuth();
     const db = await getDb();
     try {
-        const invoices = await db.collection('invoices').find({ vendorId }).toArray();
+        const invoices = await db.collection('invoices').find({ 
+            vendorId,
+            businessId: session.businessId || session.userId
+        }).toArray();
         return JSON.parse(JSON.stringify(invoices.map(i => ({...i, id: i._id.toString()}))));
     } catch (error) {
         console.error("Database Error fetching invoices by vendor:", error);

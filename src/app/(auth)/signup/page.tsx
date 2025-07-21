@@ -18,6 +18,7 @@ const formSchema = z.object({
   fullName: z.string().min(2, { message: "Name must be at least 2 characters." }),
   email: z.string().email({ message: "Please enter a valid email." }),
   password: z.string().min(6, { message: "Password must be at least 6 characters." }),
+  companyName: z.string().min(2, { message: "Company name must be at least 2 characters." }).optional(),
 });
 
 export default function SignupPage() {
@@ -30,6 +31,7 @@ export default function SignupPage() {
       fullName: "",
       email: "",
       password: "",
+      companyName: "",
     },
   });
 
@@ -64,6 +66,19 @@ export default function SignupPage() {
                   <FormLabel>Full name</FormLabel>
                   <FormControl>
                     <Input placeholder="John Doe" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="companyName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Company name (optional)</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Acme Inc." {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

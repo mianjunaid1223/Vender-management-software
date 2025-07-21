@@ -14,6 +14,7 @@ import {
 import { User, LogOut, Settings } from "lucide-react"
 import Link from "next/link"
 import type { User as UserType } from "@/lib/types"
+import { logout } from "@/app/actions"
 
 export function UserNav({ user }: { user: UserType }) {
   // Get first letter of name for fallback, handle edge cases
@@ -80,11 +81,12 @@ export function UserNav({ user }: { user: UserType }) {
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuItem asChild>
-          <Link href="/" className="flex items-center">
-            <LogOut className="mr-2 h-4 w-4" />
-            <span>Log out</span>
-          </Link>
+        <DropdownMenuItem 
+          onClick={() => logout()}
+          className="flex items-center cursor-pointer"
+        >
+          <LogOut className="mr-2 h-4 w-4" />
+          <span>Log out</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

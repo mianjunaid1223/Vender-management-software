@@ -6,6 +6,10 @@ export type Vendor = {
   phone: string;
   service: string;
   
+  // Business isolation - CRITICAL for data security
+  businessId: string; // REQUIRED: Every vendor belongs to a business
+  createdBy: string;   // REQUIRED: Track who created this vendor
+  
   // Enhanced vendor fields
   address?: InvoiceAddress;
   taxId?: string;
@@ -68,6 +72,10 @@ export type Invoice = {
   invoiceDate: string;
   invoiceDueDate: string;
   
+  // Business isolation - CRITICAL for data security
+  businessId: string; // REQUIRED: Every invoice belongs to a business
+  createdBy: string;   // REQUIRED: Track who created this invoice
+  
   // Entity information
   seller: InvoiceEntity;
   buyer: InvoiceEntity;
@@ -109,7 +117,6 @@ export type Invoice = {
   // Metadata
   createdAt: string;
   updatedAt: string;
-  createdBy: string;
   
   // Legacy fields for backward compatibility
   vendorName: string;
@@ -122,6 +129,9 @@ export type User = {
     email: string;
     image?: string;
     role?: string;
+    businessId?: string; // Link user to their business/tenant
+    createdAt?: string;
+    updatedAt?: string;
 }
 
 export type ContractParty = {
@@ -133,6 +143,10 @@ export type ContractParty = {
 export type Contract = {
   id: string;
   title: string;
+  
+  // Business isolation - CRITICAL for data security
+  businessId: string; // REQUIRED: Every contract belongs to a business
+  createdBy: string;   // REQUIRED: Track who created this contract
   
   // Bi-directional party system
   partyA: ContractParty;
@@ -165,7 +179,6 @@ export type Contract = {
   // Metadata
   createdAt: string;
   updatedAt: string;
-  createdBy?: string;
   signedAt?: string;
   signedBy?: string;
 

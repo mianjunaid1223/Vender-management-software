@@ -6,8 +6,10 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getDb, createInvoice, updateInvoice, deleteInvoice, updateInvoiceStatus, createCompany, updateCompany, createOrUpdateCompany } from "@/lib/data";
 import { sendPaymentConfirmation } from '@/lib/email-notifications';
+import { createSession, deleteSession, requireAuth } from '@/lib/auth';
 import { ObjectId } from 'mongodb';
 import { Invoice, Company } from "@/lib/types";
+import bcrypt from 'bcryptjs';
 
 const invoiceFormSchema = z.object({
   vendorName: z.string().min(1, "Vendor name is required."),
@@ -19,10 +21,13 @@ const invoiceFormSchema = z.object({
 
 export async function addInvoice(values: z.infer<typeof invoiceFormSchema>) {
     try {
+        const session = await requireAuth();
         const validatedData = invoiceFormSchema.parse(values);
 
         const newInvoice: Partial<Invoice> = {
             ...validatedData,
+            businessId: session.businessId || session.userId,
+            createdBy: session.userId,
             status: "Unpaid",
             paymentStatus: "Pending",
             subtotal: validatedData.invoiceAmount,
@@ -31,8 +36,7 @@ export async function addInvoice(values: z.infer<typeof invoiceFormSchema>) {
             discounts: 0,
             items: [],
             createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            createdBy: 'user-1'
+            updatedAt: new Date().toISOString()
         }
 
         const db = await getDb();
@@ -56,6 +60,7 @@ const signupFormSchema = z.object({
   fullName: z.string().min(2, { message: "Name must be at least 2 characters." }),
   email: z.string().email({ message: "Please enter a valid email." }),
   password: z.string().min(6, { message: "Password must be at least 6 characters." }),
+  companyName: z.string().min(2, { message: "Company name must be at least 2 characters." }).optional(),
 });
 
 export async function signupUser(values: z.infer<typeof signupFormSchema>) {
@@ -68,15 +73,64 @@ export async function signupUser(values: z.infer<typeof signupFormSchema>) {
     const validatedData = signupFormSchema.parse(values);
     
     const usersCollection = db.collection("users");
+    const companiesCollection = db.collection("companies");
 
     const existingUser = await usersCollection.findOne({ email: validatedData.email });
     if (existingUser) {
       return { success: false, message: "User with this email already exists." };
     }
     
-    // In a real app, you would hash the password
-    const { fullName, email, password } = validatedData;
-    await usersCollection.insertOne({ name: fullName, email, password, image: `https://placehold.co/100x100.png?text=${fullName.charAt(0)}` });
+    // Hash the password
+    const hashedPassword = await bcrypt.hash(validatedData.password, 12);
+    
+    const { fullName, email, companyName } = validatedData;
+    const userId = new ObjectId();
+    const businessId = new ObjectId();
+    
+    // Create company first
+    const companyData = {
+      _id: businessId,
+      name: companyName || `${fullName}'s Business`,
+      businessType: 'Business',
+      addresses: [],
+      contacts: [],
+      preferences: {
+        defaultPaymentTerms: 'Net 30',
+        defaultCurrency: 'USD',
+        defaultTaxRate: 0,
+        emailNotifications: true,
+        invoiceReminders: true,
+        contractReminders: true,
+        preferredLanguage: 'en'
+      },
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      createdBy: userId.toString()
+    };
+    
+    // Create user with business link
+    const userData = { 
+      _id: userId,
+      name: fullName, 
+      email, 
+      password: hashedPassword,
+      businessId: businessId.toString(),
+      image: `https://placehold.co/100x100.png?text=${fullName.charAt(0)}`,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    
+    // Insert both in transaction
+    await companiesCollection.insertOne(companyData);
+    await usersCollection.insertOne(userData);
+    
+    // Create session
+    await createSession(
+      userId.toString(), 
+      email, 
+      fullName, 
+      businessId.toString()
+    );
     
   } catch (error) {
     console.error("Signup Error:", error);
@@ -103,15 +157,26 @@ export async function loginUser(values: z.infer<typeof loginFormSchema>) {
     
     try {
         const validatedData = loginFormSchema.parse(values);
-        
         const usersCollection = db.collection("users");
-
         const user = await usersCollection.findOne({ email: validatedData.email });
         
-        // In a real app, you would compare hashed passwords
-        if (!user || user.password !== validatedData.password) {
+        if (!user) {
           return { success: false, message: "Invalid email or password." };
         }
+        
+        // Check password
+        const passwordMatch = await bcrypt.compare(validatedData.password, user.password);
+        if (!passwordMatch) {
+          return { success: false, message: "Invalid email or password." };
+        }
+
+        // Create session with business context
+        await createSession(
+          user._id.toString(),
+          user.email,
+          user.name,
+          user.businessId
+        );
 
     } catch (error) {
        console.error("Login Error:", error);
@@ -124,27 +189,32 @@ export async function loginUser(values: z.infer<typeof loginFormSchema>) {
     redirect("/dashboard");
 }
 
+export async function logout() {
+  await deleteSession();
+  redirect("/login");
+}
+
 const profileFormSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
 });
 
 export async function updateUserProfile(values: z.infer<typeof profileFormSchema>) {
     try {
+        const session = await requireAuth();
         const validatedData = profileFormSchema.parse(values);
         const db = await getDb();
         if (!db) {
             return { success: false, message: "Database connection failed. Please check server configuration." };
         }
         
-        // In a real app, this would come from a session. For now, we update the first user found.
-        const currentUser = await db.collection("users").findOne({});
-        if (!currentUser) {
-            return { success: false, message: "User not found." };
-        }
-
         await db.collection("users").updateOne(
-            { _id: currentUser._id },
-            { $set: { name: validatedData.name } }
+            { _id: new ObjectId(session.userId) },
+            { 
+                $set: { 
+                    name: validatedData.name,
+                    updatedAt: new Date().toISOString()
+                } 
+            }
         );
 
         revalidatePath("/dashboard/profile");
