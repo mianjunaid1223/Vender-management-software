@@ -8,6 +8,7 @@ import { getDb, createInvoice, updateInvoice, deleteInvoice, updateInvoiceStatus
 import { sendPaymentConfirmation } from '@/lib/email-notifications';
 import { ObjectId } from 'mongodb';
 import { Invoice, Company } from "@/lib/types";
+import { createSession, deleteSession } from "@/lib/session";
 
 const invoiceFormSchema = z.object({
   vendorName: z.string().min(1, "Vendor name is required."),
@@ -76,7 +77,20 @@ export async function signupUser(values: z.infer<typeof signupFormSchema>) {
     
     // In a real app, you would hash the password
     const { fullName, email, password } = validatedData;
-    await usersCollection.insertOne({ name: fullName, email, password, image: `https://placehold.co/100x100.png?text=${fullName.charAt(0)}` });
+    
+    // Create a unique company ID for the new user (in a real app, this might be more sophisticated)
+    const companyId = `company-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    
+    const result = await usersCollection.insertOne({ 
+      name: fullName, 
+      email, 
+      password, 
+      companyId, // Assign company ID to ensure multi-tenant isolation
+      image: `https://placehold.co/100x100.png?text=${fullName.charAt(0)}` 
+    });
+
+    // Create session for the new user
+    await createSession(result.insertedId.toString());
     
   } catch (error) {
     console.error("Signup Error:", error);
@@ -94,6 +108,11 @@ const loginFormSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email." }),
   password: z.string().min(1, { message: "Password is required." }),
 });
+
+export async function logoutUser() {
+  await deleteSession();
+  redirect("/");
+}
 
 export async function loginUser(values: z.infer<typeof loginFormSchema>) {
     const db = await getDb();
@@ -113,6 +132,9 @@ export async function loginUser(values: z.infer<typeof loginFormSchema>) {
           return { success: false, message: "Invalid email or password." };
         }
 
+        // Create session for the authenticated user
+        await createSession(user._id.toString());
+        
     } catch (error) {
        console.error("Login Error:", error);
       if (error instanceof z.ZodError) {

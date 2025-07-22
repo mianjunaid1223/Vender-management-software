@@ -6,6 +6,9 @@ export type Vendor = {
   phone: string;
   service: string;
   
+  // Multi-tenant field
+  companyId: string;
+  
   // Enhanced vendor fields
   address?: InvoiceAddress;
   taxId?: string;
@@ -68,6 +71,9 @@ export type Invoice = {
   invoiceDate: string;
   invoiceDueDate: string;
   
+  // Multi-tenant field
+  companyId: string;
+  
   // Entity information
   seller: InvoiceEntity;
   buyer: InvoiceEntity;
@@ -122,6 +128,7 @@ export type User = {
     email: string;
     image?: string;
     role?: string;
+    companyId: string; // Multi-tenant field - User belongs to a company
 }
 
 export type ContractParty = {
@@ -133,6 +140,9 @@ export type ContractParty = {
 export type Contract = {
   id: string;
   title: string;
+  
+  // Multi-tenant field
+  companyId: string;
   
   // Bi-directional party system
   partyA: ContractParty;
@@ -253,6 +263,8 @@ export type ActionLog = {
   module: string;
   timestamp: string;
   details?: Record<string, any>;
+  // Multi-tenant field
+  companyId: string;
 };
 
 // Enhanced Contract Types
@@ -344,6 +356,8 @@ export type Notification = {
     type: 'invoice' | 'contract' | 'vendor';
     id: string;
   };
+  // Multi-tenant field
+  companyId: string;
 };
 
 export type NotificationAction = {

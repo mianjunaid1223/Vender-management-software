@@ -7,6 +7,7 @@ import { ObjectId } from 'mongodb';
 import type { Invoice, Vendor, User, Contract, Company, Notification, ActionLog, SearchFilters } from '@/lib/types';
 import { unstable_noStore as noStore } from 'next/cache';
 import { add } from 'date-fns';
+import { getCurrentUserCompanyId, getCurrentUser } from '@/lib/auth';
 
 export const getDb = async () => {
     if (!clientPromise) {
@@ -24,11 +25,16 @@ export const getDb = async () => {
 export async function fetchInvoices(): Promise<Invoice[]> {
     noStore();
     const db = await getDb();
+    const companyId = await getCurrentUserCompanyId();
+    
+    if (!companyId) {
+        throw new Error('User not authenticated or no company associated');
+    }
 
     try {
         const invoices = await db
             .collection('invoices')
-            .find({})
+            .find({ companyId }) // Only get invoices for the current user's company
             .sort({ invoiceDate: -1 })
             .toArray();
         
@@ -46,19 +52,23 @@ export async function fetchInvoices(): Promise<Invoice[]> {
 export async function fetchVendors(): Promise<Vendor[]> {
     noStore();
     const db = await getDb();
+    const companyId = await getCurrentUserCompanyId();
+    
+    if (!companyId) {
+        throw new Error('User not authenticated or no company associated');
+    }
     
     try {
         const vendors = await db
             .collection('vendors')
-            .find({})
+            .find({ companyId }) // Only get vendors for the current user's company
             .sort({ name: 1 })
             .toArray();
 
-        return vendors.map(vendor => ({
+        return JSON.parse(JSON.stringify(vendors.map(vendor => ({
             ...vendor,
             id: vendor._id.toString(),
-            _id: undefined,
-        })) as Vendor[];
+        }))));
 
     } catch (error) {
         console.error('Database Error:', error);
@@ -69,24 +79,31 @@ export async function fetchVendors(): Promise<Vendor[]> {
 export async function fetchCardData() {
     noStore();
     const db = await getDb();
+    const companyId = await getCurrentUserCompanyId();
+    
+    if (!companyId) {
+        throw new Error('User not authenticated or no company associated');
+    }
 
     try {
         const invoicesCollection = db.collection('invoices');
         const vendorsCollection = db.collection('vendors');
 
         const totalSpendPromise = invoicesCollection.aggregate([
-            { $match: { status: 'Paid' } },
+            { $match: { status: 'Paid', companyId } }, // Scope by company
             { $group: { _id: null, total: { $sum: '$totalAmount' } } }
         ]).toArray();
         
-        const activeVendorsPromise = vendorsCollection.countDocuments();
+        const activeVendorsPromise = vendorsCollection.countDocuments({ companyId }); // Scope by company
         
         const unpaidInvoicesPromise = invoicesCollection.countDocuments({ 
-          status: { $in: ['Unpaid', 'Pending', 'Overdue'] } 
+          status: { $in: ['Unpaid', 'Pending', 'Overdue'] },
+          companyId // Scope by company
         });
         
         const nextPaymentDuePromise = invoicesCollection.find({ 
-          status: { $in: ['Unpaid', 'Pending', 'Overdue'] } 
+          status: { $in: ['Unpaid', 'Pending', 'Overdue'] },
+          companyId // Scope by company
         })
             .sort({ invoiceDueDate: 1 })
             .limit(1)
@@ -126,41 +143,32 @@ export async function fetchCardData() {
 
 export async function getUser(): Promise<User> {
     noStore();
-    const db = await getDb();
-
-    const defaultUser = {
-        _id: new ObjectId(),
-        name: 'Alicia Cook',
-        email: 'alicia@example.com',
-        image: 'https://placehold.co/100x100.png'
-    };
-
-    try {
-        const usersCollection = db.collection('users');
-        const user = await usersCollection.findOne({});
-
-        if (!user) {
-            await usersCollection.insertOne(defaultUser);
-            return JSON.parse(JSON.stringify({ ...defaultUser, id: defaultUser._id.toString() }));
-        }
-
-        return JSON.parse(JSON.stringify({ ...user, id: user._id.toString() }));
-
-    } catch (error) {
-        console.error('Database Error fetching user:', error);
-        throw new Error('Failed to fetch user from database.');
+    const user = await getCurrentUser();
+    
+    if (!user) {
+        throw new Error('User not authenticated');
     }
+
+    return user;
 }
 
 export async function processAndFetchContracts(): Promise<Contract[]> {
     noStore();
     const db = await getDb();
+    const companyId = await getCurrentUserCompanyId();
     const today = new Date();
+  
+    if (!companyId) {
+        throw new Error('User not authenticated or no company associated');
+    }
   
     try {
       const contractsCollection = db.collection('contracts');
       const activeContracts = await contractsCollection
-        .find({ status: { $nin: ['Expired', 'Terminated'] } })
+        .find({ 
+            status: { $nin: ['Expired', 'Terminated'] },
+            companyId // Only get contracts for the current user's company
+        })
         .toArray();
   
       for (const contract of activeContracts) {
@@ -175,7 +183,7 @@ export async function processAndFetchContracts(): Promise<Contract[]> {
             const newEndDate = add(newStartDate, { months: renewalPeriod });
   
             await contractsCollection.updateOne(
-              { _id: contract._id },
+              { _id: contract._id, companyId }, // Ensure company scoping even in updates
               {
                 $set: {
                   startDate: newStartDate.toISOString(),
@@ -186,14 +194,14 @@ export async function processAndFetchContracts(): Promise<Contract[]> {
             );
           } else {
             await contractsCollection.updateOne(
-              { _id: contract._id },
+              { _id: contract._id, companyId }, // Ensure company scoping even in updates
               { $set: { status: 'Expired', updatedAt: new Date().toISOString() } }
             );
           }
         }
       }
   
-      const allContracts = await contractsCollection.find({}).sort({ createdAt: -1 }).toArray();
+      const allContracts = await contractsCollection.find({ companyId }).sort({ createdAt: -1 }).toArray(); // Scope by company
       return JSON.parse(JSON.stringify(allContracts.map(c => ({...c, id: c._id.toString()}))));
   
     } catch (error) {
@@ -205,11 +213,15 @@ export async function processAndFetchContracts(): Promise<Contract[]> {
 export async function fetchContracts(): Promise<Contract[]> {
     noStore();
     const db = await getDb();
+    const companyId = await getCurrentUserCompanyId();
     
+    if (!companyId) {
+        throw new Error('User not authenticated or no company associated');
+    }
     try {
         const contracts = await db
             .collection('contracts')
-            .find({})
+            .find({ companyId }) // Only get contracts for the current user's company
             .sort({ createdAt: -1 })
             .toArray();
 
@@ -223,10 +235,16 @@ export async function fetchContracts(): Promise<Contract[]> {
 export async function createInvoice(invoice: Partial<Invoice>): Promise<Invoice> {
     noStore();
     const db = await getDb();
+    const companyId = await getCurrentUserCompanyId();
+    
+    if (!companyId) {
+        throw new Error('User not authenticated or no company associated');
+    }
     
     try {
         const invoiceData = {
             ...invoice,
+            companyId, // Ensure the invoice belongs to the current user's company
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
         };
@@ -253,19 +271,24 @@ export async function createInvoice(invoice: Partial<Invoice>): Promise<Invoice>
 export async function updateInvoice(id: string, updates: Partial<Invoice>): Promise<Invoice> {
     noStore();
     const db = await getDb();
+    const companyId = await getCurrentUserCompanyId();
+    
+    if (!companyId) {
+        throw new Error('User not authenticated or no company associated');
+    }
     
     try {
         const { id: _, _id, ...updateData } = updates as any;
         updateData.updatedAt = new Date().toISOString();
         
         const result = await db.collection('invoices').findOneAndUpdate(
-            { _id: new ObjectId(id) },
+            { _id: new ObjectId(id), companyId }, // Ensure only own company's invoices can be updated
             { $set: updateData },
             { returnDocument: 'after' }
         );
         
         if (!result) {
-            throw new Error('Invoice not found');
+            throw new Error('Invoice not found or access denied');
         }
         
         const newDoc = { ...result, id: result._id.toString() };
@@ -282,12 +305,20 @@ export async function updateInvoice(id: string, updates: Partial<Invoice>): Prom
 export async function deleteInvoice(id: string): Promise<void> {
     noStore();
     const db = await getDb();
+    const companyId = await getCurrentUserCompanyId();
+    
+    if (!companyId) {
+        throw new Error('User not authenticated or no company associated');
+    }
     
     try {
-        const result = await db.collection('invoices').deleteOne({ _id: new ObjectId(id) });
+        const result = await db.collection('invoices').deleteOne({ 
+            _id: new ObjectId(id), 
+            companyId // Ensure only own company's invoices can be deleted
+        });
         
         if (result.deletedCount === 0) {
-            throw new Error('Invoice not found');
+            throw new Error('Invoice not found or access denied');
         }
     } catch (error) {
         console.error('Database Error:', error);
@@ -301,6 +332,11 @@ export async function deleteInvoice(id: string): Promise<void> {
 export async function updateInvoiceStatus(id: string, status: Invoice['status']): Promise<void> {
     noStore();
     const db = await getDb();
+    const companyId = await getCurrentUserCompanyId();
+    
+    if (!companyId) {
+        throw new Error('User not authenticated or no company associated');
+    }
     
     try {
         const updateData = {
@@ -310,7 +346,7 @@ export async function updateInvoiceStatus(id: string, status: Invoice['status'])
         };
         
         const result = await db.collection('invoices').updateOne(
-            { _id: new ObjectId(id) },
+            { _id: new ObjectId(id), companyId }, // Ensure only own company's invoices can be updated
             { $set: updateData }
         );
         
@@ -330,9 +366,25 @@ export async function updateInvoiceStatus(id: string, status: Invoice['status'])
 export async function fetchCompany(): Promise<Company | null> {
     noStore();
     const db = await getDb();
+    const companyId = await getCurrentUserCompanyId();
+    
+    if (!companyId) {
+        return null; // No user logged in or no company associated
+    }
     
     try {
-        const company = await db.collection('companies').findOne({});
+        // Try to find company by the user's companyId (which could be stored as 'id' field)
+        let company = await db.collection('companies').findOne({ id: companyId });
+        
+        // If not found, also try to find by the companyId field
+        if (!company) {
+            company = await db.collection('companies').findOne({ companyId: companyId });
+        }
+        
+        // If still not found, try to find by _id in case companyId is an ObjectId
+        if (!company && ObjectId.isValid(companyId)) {
+            company = await db.collection('companies').findOne({ _id: new ObjectId(companyId) });
+        }
         
         if (!company) {
             return null;
@@ -350,13 +402,34 @@ export async function fetchCompany(): Promise<Company | null> {
 export async function createCompany(company: Partial<Company>): Promise<Company> {
     noStore();
     const db = await getDb();
+    const currentUser = await getCurrentUser();
+    
+    if (!currentUser) {
+        throw new Error('User not authenticated');
+    }
     
     try {
         const companyData = {
             ...company,
+            id: currentUser.companyId, // Link the company to the user's companyId
+            companyId: currentUser.companyId, // Also store as companyId for consistency
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
+            createdBy: currentUser.id, // Track who created the company
         };
+        
+        // First, check if a company with this companyId already exists
+        const existingCompany = await db.collection('companies').findOne({ 
+            $or: [
+                { id: currentUser.companyId },
+                { companyId: currentUser.companyId }
+            ]
+        });
+        
+        if (existingCompany) {
+            // Update the existing company instead of creating a new one
+            return updateCompany(existingCompany._id.toString(), companyData);
+        }
         
         const result = await db.collection('companies').insertOne(companyData);
         
@@ -412,10 +485,16 @@ export async function createOrUpdateCompany(companyData: Partial<Company>): Prom
 export async function createContract(contract: Partial<Contract>): Promise<Contract> {
     noStore();
     const db = await getDb();
+    const companyId = await getCurrentUserCompanyId();
+    
+    if (!companyId) {
+        throw new Error('User not authenticated or no company associated');
+    }
     
     try {
         const contractData = {
             ...contract,
+            companyId, // Ensure the contract belongs to the current user's company
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
         };
@@ -435,19 +514,24 @@ export async function createContract(contract: Partial<Contract>): Promise<Contr
 export async function updateContract(id: string, updates: Partial<Contract>): Promise<Contract> {
     noStore();
     const db = await getDb();
+    const companyId = await getCurrentUserCompanyId();
+    
+    if (!companyId) {
+        throw new Error('User not authenticated or no company associated');
+    }
     
     try {
         const { id: _, _id, ...updateData } = updates as any;
         updateData.updatedAt = new Date().toISOString();
         
         const result = await db.collection('contracts').findOneAndUpdate(
-            { _id: new ObjectId(id) },
+            { _id: new ObjectId(id), companyId }, // Ensure only own company's contracts can be updated
             { $set: updateData },
             { returnDocument: 'after' }
         );
         
         if (!result) {
-            throw new Error('Contract not found');
+            throw new Error('Contract not found or access denied');
         }
         
         const newDoc = { ...result, id: result._id.toString() };
@@ -461,16 +545,28 @@ export async function updateContract(id: string, updates: Partial<Contract>): Pr
 export async function deleteContract(id: string): Promise<void> {
     noStore();
     const db = await getDb();
+    const companyId = await getCurrentUserCompanyId();
     const session = (await clientPromise)!.startSession();
+    
+    if (!companyId) {
+        throw new Error('User not authenticated or no company associated');
+    }
 
     try {
         await session.withTransaction(async () => {
             const contractsCollection = db.collection('contracts');
             const invoicesCollection = db.collection('invoices');
 
-            await invoicesCollection.deleteMany({ contractId: id }, { session });
+            // Delete only invoices belonging to this company and contract
+            await invoicesCollection.deleteMany({ 
+                contractId: id, 
+                companyId 
+            }, { session });
 
-            const result = await contractsCollection.deleteOne({ _id: new ObjectId(id) }, { session });
+            const result = await contractsCollection.deleteOne({ 
+                _id: new ObjectId(id), 
+                companyId // Ensure only own company's contracts can be deleted
+            }, { session });
             
             if (result.deletedCount === 0) {
                 throw new Error('Contract not found during transaction.');
@@ -487,11 +583,19 @@ export async function deleteContract(id: string): Promise<void> {
 export async function fetchContractsByVendor(vendorId: string): Promise<Contract[]> {
     noStore();
     const db = await getDb();
+    const companyId = await getCurrentUserCompanyId();
+    
+    if (!companyId) {
+        throw new Error('User not authenticated or no company associated');
+    }
     
     try {
         const contracts = await db
             .collection('contracts')
-            .find({ $or: [ { "partyA.id": vendorId }, { "partyB.id": vendorId } ]})
+            .find({ 
+                companyId, // Only get contracts for the current user's company
+                $or: [ { "partyA.id": vendorId }, { "partyB.id": vendorId } ]
+            })
             .sort({ createdAt: -1 })
             .toArray();
 
@@ -505,11 +609,19 @@ export async function fetchContractsByVendor(vendorId: string): Promise<Contract
 export async function fetchInvoicesByContract(contractId: string): Promise<Invoice[]> {
     noStore();
     const db = await getDb();
+    const companyId = await getCurrentUserCompanyId();
+    
+    if (!companyId) {
+        throw new Error('User not authenticated or no company associated');
+    }
     
     try {
         const invoices = await db
             .collection('invoices')
-            .find({ contractId })
+            .find({ 
+                contractId, 
+                companyId // Only get invoices for the current user's company
+            })
             .sort({ createdAt: -1 })
             .toArray();
 
@@ -524,6 +636,11 @@ export async function fetchInvoicesByContract(contractId: string): Promise<Invoi
 export async function fetchExpiringContracts(daysAhead: number = 30): Promise<Contract[]> {
     noStore();
     const db = await getDb();
+    const companyId = await getCurrentUserCompanyId();
+    
+    if (!companyId) {
+        throw new Error('User not authenticated or no company associated');
+    }
     
     try {
         const futureDate = new Date();
@@ -532,6 +649,7 @@ export async function fetchExpiringContracts(daysAhead: number = 30): Promise<Co
         const contracts = await db
             .collection('contracts')
             .find({ 
+                companyId, // Only get contracts for the current user's company
                 endDate: { $lte: futureDate.toISOString() },
                 status: { $in: ['Active', 'Pending'] }
             })
@@ -549,10 +667,16 @@ export async function fetchExpiringContracts(daysAhead: number = 30): Promise<Co
 export async function createVendor(vendor: Partial<Vendor>): Promise<Vendor> {
     noStore();
     const db = await getDb();
+    const companyId = await getCurrentUserCompanyId();
+    
+    if (!companyId) {
+        throw new Error('User not authenticated or no company associated');
+    }
     
     try {
         const vendorData = {
             ...vendor,
+            companyId, // Ensure the vendor belongs to the current user's company
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
         };
@@ -573,19 +697,24 @@ export async function createVendor(vendor: Partial<Vendor>): Promise<Vendor> {
 export async function updateVendor(id: string, updates: Partial<Vendor>): Promise<Vendor> {
     noStore();
     const db = await getDb();
+    const companyId = await getCurrentUserCompanyId();
+    
+    if (!companyId) {
+        throw new Error('User not authenticated or no company associated');
+    }
     
     try {
         const { _id, ...updateData } = updates as any;
         updateData.updatedAt = new Date().toISOString();
 
         const result = await db.collection('vendors').findOneAndUpdate(
-            { _id: new ObjectId(id) },
+            { _id: new ObjectId(id), companyId }, // Ensure only own company's vendors can be updated
             { $set: updateData },
             { returnDocument: 'after' }
         );
         
         if (!result) {
-            throw new Error('Vendor not found during update operation');
+            throw new Error('Vendor not found or access denied');
         }
         
         const updatedDoc = { ...result, id: result._id.toString() };
@@ -600,7 +729,12 @@ export async function updateVendor(id: string, updates: Partial<Vendor>): Promis
 export async function deleteVendor(id: string): Promise<void> {
     noStore();
     const db = await getDb();
+    const companyId = await getCurrentUserCompanyId();
     const session = (await clientPromise)!.startSession();
+    
+    if (!companyId) {
+        throw new Error('User not authenticated or no company associated');
+    }
 
     try {
         await session.withTransaction(async () => {
@@ -608,17 +742,30 @@ export async function deleteVendor(id: string): Promise<void> {
             const contractsCollection = db.collection('contracts');
             const invoicesCollection = db.collection('invoices');
 
-            const contractsToDelete = await contractsCollection.find({ $or: [ { "partyA.id": id }, { "partyB.id": id } ] }, { session }).project({ _id: 1 }).toArray();
+            // Only work with data belonging to the current user's company
+            const contractsToDelete = await contractsCollection.find({ 
+                companyId,
+                $or: [ { "partyA.id": id }, { "partyB.id": id } ] 
+            }, { session }).project({ _id: 1 }).toArray();
             const contractIdsToDelete = contractsToDelete.map(c => c._id.toString());
             
-            await invoicesCollection.deleteMany({ $or: [{ contractId: { $in: contractIdsToDelete } }, { vendorId: id }] }, { session });
+            await invoicesCollection.deleteMany({ 
+                companyId,
+                $or: [{ contractId: { $in: contractIdsToDelete } }, { vendorId: id }] 
+            }, { session });
             
-            await contractsCollection.deleteMany({ $or: [ { "partyA.id": id }, { "partyB.id": id } ] }, { session });
+            await contractsCollection.deleteMany({ 
+                companyId,
+                $or: [ { "partyA.id": id }, { "partyB.id": id } ] 
+            }, { session });
             
-            const result = await vendorsCollection.deleteOne({ _id: new ObjectId(id) }, { session });
+            const result = await vendorsCollection.deleteOne({ 
+                _id: new ObjectId(id), 
+                companyId // Ensure only own company's vendors can be deleted
+            }, { session });
 
             if (result.deletedCount === 0) {
-                throw new Error('Vendor not found during transaction.');
+                throw new Error('Vendor not found or access denied.');
             }
         });
     } catch (error) {
@@ -682,10 +829,16 @@ export async function searchVendors(filters: SearchFilters): Promise<Vendor[]> {
 export async function createNotification(notification: Partial<Notification>): Promise<Notification> {
     noStore();
     const db = await getDb();
+    const companyId = await getCurrentUserCompanyId();
+    
+    if (!companyId) {
+        throw new Error('User not authenticated or no company associated');
+    }
     
     try {
         const notificationData = {
             ...notification,
+            companyId, // Ensure notification belongs to the current user's company
             createdAt: new Date().toISOString(),
             isRead: false,
         };
@@ -703,11 +856,19 @@ export async function createNotification(notification: Partial<Notification>): P
 export async function fetchNotifications(userId: string): Promise<Notification[]> {
     noStore();
     const db = await getDb();
+    const companyId = await getCurrentUserCompanyId();
+    
+    if (!companyId) {
+        return []; // Return empty array if no company context
+    }
     
     try {
         const notifications = await db
             .collection('notifications')
-            .find({ userId })
+            .find({ 
+                userId, 
+                companyId // Only get notifications for the current user's company
+            })
             .sort({ createdAt: -1 })
             .limit(50)
             .toArray();
@@ -722,10 +883,18 @@ export async function fetchNotifications(userId: string): Promise<Notification[]
 export async function markNotificationAsRead(id: string): Promise<void> {
     noStore();
     const db = await getDb();
+    const companyId = await getCurrentUserCompanyId();
+    
+    if (!companyId) {
+        throw new Error('User not authenticated or no company associated');
+    }
     
     try {
         await db.collection('notifications').updateOne(
-            { _id: new ObjectId(id) },
+            { 
+                _id: new ObjectId(id), 
+                companyId // Ensure only own company's notifications can be marked as read
+            },
             { $set: { isRead: true } }
         );
     } catch (error) {
@@ -738,10 +907,16 @@ export async function markNotificationAsRead(id: string): Promise<void> {
 export async function logAction(action: Partial<ActionLog>): Promise<void> {
     noStore();
     const db = await getDb();
+    const companyId = await getCurrentUserCompanyId();
+    
+    if (!companyId) {
+        return; // Skip logging if no company context
+    }
     
     try {
         const actionData = {
             ...action,
+            companyId, // Ensure action log belongs to the current user's company
             timestamp: new Date().toISOString(),
         };
         
@@ -755,11 +930,19 @@ export async function logAction(action: Partial<ActionLog>): Promise<void> {
 export async function fetchRecentActions(userId: string, limit: number = 10): Promise<ActionLog[]> {
     noStore();
     const db = await getDb();
+    const companyId = await getCurrentUserCompanyId();
+    
+    if (!companyId) {
+        return []; // Return empty array if no company context
+    }
     
     try {
         const actions = await db
             .collection('action_logs')
-            .find({ userId })
+            .find({ 
+                userId, 
+                companyId // Only get actions for the current user's company
+            })
             .sort({ timestamp: -1 })
             .limit(limit)
             .toArray();
@@ -775,23 +958,34 @@ export async function fetchRecentActions(userId: string, limit: number = 10): Pr
 export async function fetchAnalyticsData() {
     noStore();
     const db = await getDb();
+    const companyId = await getCurrentUserCompanyId();
+    
+    if (!companyId) {
+        throw new Error('User not authenticated or no company associated');
+    }
 
     try {
         const invoicesCollection = db.collection('invoices');
         const vendorsCollection = db.collection('vendors');
         const contractsCollection = db.collection('contracts');
 
-        const activeContractsPromise = contractsCollection.countDocuments({ status: 'Active' });
+        const activeContractsPromise = contractsCollection.countDocuments({ 
+            status: 'Active',
+            companyId // Scope by company
+        });
         const expiringContractsPromise = contractsCollection.countDocuments({ 
             endDate: { $lte: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() },
-            status: 'Active'
+            status: 'Active',
+            companyId // Scope by company
         });
         
         const vendorsByStatusPromise = vendorsCollection.aggregate([
+            { $match: { companyId } }, // Scope by company
             { $group: { _id: '$status', count: { $sum: 1 } } }
         ]).toArray();
         
         const invoicesByMonthPromise = invoicesCollection.aggregate([
+            { $match: { companyId } }, // Scope by company
             {
                 $group: {
                     _id: {

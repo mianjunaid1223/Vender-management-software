@@ -9,8 +9,12 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { getUser, fetchInvoices, fetchVendors, processAndFetchContracts, fetchCompany } from "@/lib/data";
 import { DashboardNav } from "@/components/dashboard-nav";
 import { AISpotlight } from "@/components/dashboard/ai-spotlight";
+import { requireAuth } from "@/lib/session";
 
 export default async function DashboardLayout({ children }: { children: ReactNode }) {
+    // Ensure user is authenticated
+    await requireAuth();
+
     // Fetch all data in parallel
     const [user, invoices, vendors, contracts, company] = await Promise.all([
         getUser(),
