@@ -359,3 +359,102 @@ export async function refreshInvoiceStatusesAction(): Promise<{ success: boolean
     return { success: false, message: 'Failed to refresh invoice statuses' };
   }
 }
+
+const companyRegistrationSchema = z.object({
+  companyName: z.string().min(2, { message: "Company name must be at least 2 characters." }),
+  industry: z.string().min(1, { message: "Please select an industry." }),
+  businessType: z.string().min(1, { message: "Please select a business type." }),
+  taxId: z.string().min(1, { message: "Tax ID is required." }),
+  legalId: z.string().min(1, { message: "Legal ID is required." }),
+  primaryAddress: z.object({
+    street: z.string().min(1, { message: "Street address is required." }),
+    city: z.string().min(1, { message: "City is required." }),
+    state: z.string().min(1, { message: "State is required." }),
+    zipCode: z.string().min(1, { message: "ZIP code is required." }),
+    country: z.string().min(1, { message: "Country is required." }),
+  }),
+  additionalAddresses: z.array(z.object({
+    label: z.string().min(1, { message: "Address label is required." }),
+    street: z.string().min(1, { message: "Street address is required." }),
+    city: z.string().min(1, { message: "City is required." }),
+    state: z.string().min(1, { message: "State is required." }),
+    zipCode: z.string().min(1, { message: "ZIP code is required." }),
+    country: z.string().min(1, { message: "Country is required." }),
+  })).optional(),
+  websiteUrl: z.string().url({ message: "Please enter a valid URL." }).optional().or(z.literal("")),
+  primaryContactEmail: z.string().email({ message: "Please enter a valid email." }),
+  primaryContactPhone: z.string().min(1, { message: "Phone number is required." }),
+  aiOptIn: z.boolean().default(false),
+  // User account fields
+  userFullName: z.string().min(2, { message: "Full name must be at least 2 characters." }),
+  userPassword: z.string().min(6, { message: "Password must be at least 6 characters." }),
+});
+
+export async function registerCompany(values: z.infer<typeof companyRegistrationSchema>) {
+  const db = await getDb();
+  if (!db) {
+      return { success: false, message: "Database connection failed. Please check server configuration." };
+  }
+  
+  try {
+    const validatedData = companyRegistrationSchema.parse(values);
+    
+    const usersCollection = db.collection("users");
+    const companiesCollection = db.collection("companies");
+
+    // Check if user already exists
+    const existingUser = await usersCollection.findOne({ email: validatedData.primaryContactEmail });
+    if (existingUser) {
+      return { success: false, message: "User with this email already exists." };
+    }
+    
+    // Create a unique company ID
+    const companyId = `company-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    
+    // Create company record
+    const companyData = {
+      companyId,
+      name: validatedData.companyName,
+      industry: validatedData.industry,
+      businessType: validatedData.businessType,
+      taxId: validatedData.taxId,
+      legalId: validatedData.legalId,
+      primaryAddress: validatedData.primaryAddress,
+      additionalAddresses: validatedData.additionalAddresses || [],
+      websiteUrl: validatedData.websiteUrl || "",
+      primaryContactEmail: validatedData.primaryContactEmail,
+      primaryContactPhone: validatedData.primaryContactPhone,
+      aiOptIn: validatedData.aiOptIn,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      status: "active"
+    };
+
+    await companiesCollection.insertOne(companyData);
+    
+    // Create user record
+    const userData = {
+      name: validatedData.userFullName,
+      email: validatedData.primaryContactEmail,
+      password: validatedData.userPassword, // In production, hash this password
+      companyId,
+      image: `https://placehold.co/100x100.png?text=${validatedData.userFullName.charAt(0)}`,
+      role: "admin",
+      createdAt: new Date().toISOString()
+    };
+
+    const userResult = await usersCollection.insertOne(userData);
+
+    // Create session for the new user
+    await createSession(userResult.insertedId.toString());
+    
+  } catch (error) {
+    console.error("Company Registration Error:", error);
+    if (error instanceof z.ZodError) {
+      return { success: false, message: "Validation failed.", issues: error.flatten() };
+    }
+    return { success: false, message: "An unexpected error occurred during registration." };
+  }
+
+  redirect("/dashboard");
+}

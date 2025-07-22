@@ -18,7 +18,7 @@ export default async function AuthCheck() {
           {session ? (
             <div className="space-y-4">
               <div className="flex items-center gap-2">
-                <Badge variant="success" className="bg-green-100 text-green-800">
+                <Badge variant="default" className="bg-green-100 text-green-800">
                   Authenticated
                 </Badge>
               </div>

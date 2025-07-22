@@ -4,6 +4,9 @@
 
 body {
   font-family: 'Inter', sans-serif;
+  text-wrap: balance;
+  scroll-behavior: smooth;
+  transition: all 0.3s ease-in-out;
 }
 
 @layer base {

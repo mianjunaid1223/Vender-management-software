@@ -81,7 +81,10 @@ export async function getSession() {
     return {
       ...user,
       id: user._id.toString(),
-      _id: undefined
+      _id: undefined,
+      name: user.name,
+      email: user.email,
+      companyId: user.companyId
     } as User
 
   } catch (error) {
