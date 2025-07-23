@@ -412,7 +412,7 @@ export async function registerCompany(values: z.infer<typeof companyRegistration
     const companyId = `company-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     
     // Create company record
-    const companyData: Partial<Company> & { companyId: string } = {
+    const companyData: Partial<Company> = {
       id: companyId,
       companyId,
       name: validatedData.companyName,

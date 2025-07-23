@@ -373,7 +373,7 @@ export async function fetchCompany(): Promise<Company | null> {
     }
     
     try {
-        const company = await db.collection('companies').findOne({ companyId: companyId });
+        const company = await db.collection('companies').findOne({ companyId });
         
         if (!company) {
             return null;
@@ -1006,3 +1006,5 @@ export async function fetchAnalyticsData() {
         throw new Error('Failed to fetch analytics data.');
     }
 }
+
+    
