@@ -373,18 +373,7 @@ export async function fetchCompany(): Promise<Company | null> {
     }
     
     try {
-        // Try to find company by the user's companyId (which could be stored as 'id' field)
-        let company = await db.collection('companies').findOne({ id: companyId });
-        
-        // If not found, also try to find by the companyId field
-        if (!company) {
-            company = await db.collection('companies').findOne({ companyId: companyId });
-        }
-        
-        // If still not found, try to find by _id in case companyId is an ObjectId
-        if (!company && ObjectId.isValid(companyId)) {
-            company = await db.collection('companies').findOne({ _id: new ObjectId(companyId) });
-        }
+        const company = await db.collection('companies').findOne({ companyId: companyId });
         
         if (!company) {
             return null;
