@@ -18,7 +18,7 @@ export default function AuthLayout({
        <div className="absolute top-4 right-4">
         <ThemeToggle />
        </div>
-       <div className="w-full max-w-sm space-y-4">
+       <div className="w-full">
         {!isDbConfigured && <DbConfigWarning />}
         {children}
        </div>
