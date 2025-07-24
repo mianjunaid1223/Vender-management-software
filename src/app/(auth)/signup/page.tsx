@@ -127,7 +127,7 @@ export default function CompanyRegistrationPage() {
     <TooltipProvider>
       <div className="min-h-screen w-full bg-background dark:bg-background py-12 px-4">
         <div className="mx-auto max-w-6xl w-full">
-          <Card className="shadow-xl border-0 bg-background dark:bg-background backdrop-blur-sm">
+          <Card className="shadow-xl border-0 bg-background/80 dark:bg-background/50 backdrop-blur-sm">
             <CardHeader className="space-y-6 pb-8">
               <div className="text-center space-y-2">
                 <CardTitle className="text-3xl font-bold tracking-tight text-foreground">
@@ -424,7 +424,7 @@ export default function CompanyRegistrationPage() {
                     </div>
                     
                     {fields.map((field, index) => (
-                      <Card key={field.id} className="p-6 border border-gray-200 bg-gray-50/50">
+                      <Card key={field.id} className="p-6 border border-border bg-background/50">
                         <div className="flex items-center justify-between mb-4">
                           <h4 className="text-sm font-medium ">Additional Address {index + 1}</h4>
                           <Button
@@ -432,7 +432,7 @@ export default function CompanyRegistrationPage() {
                             variant="ghost"
                             size="sm"
                             onClick={() => remove(index)}
-                            className="h-8 w-8 p-0 text-gray-400 hover:text-red-600"
+                            className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>

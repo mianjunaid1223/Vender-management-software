@@ -11,15 +11,19 @@ export default function AuthLayout({
   const isDbConfigured = clientPromise !== null;
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-muted/40 p-4">
-       <div className="absolute top-4 left-4">
+    <div className="relative min-h-screen w-full">
+       <div className="absolute top-4 left-4 z-10">
          <Logo isLanding />
        </div>
-       <div className="absolute top-4 right-4">
+       <div className="absolute top-4 right-4 z-10">
         <ThemeToggle />
        </div>
        <div className="w-full">
-        {!isDbConfigured && <DbConfigWarning />}
+        {!isDbConfigured && (
+            <div className="absolute top-20 left-1/2 -translate-x-1/2 w-full max-w-4xl p-4 z-10">
+                <DbConfigWarning />
+            </div>
+        )}
         {children}
        </div>
     </div>
