@@ -6,7 +6,7 @@ import { ObjectId } from 'mongodb';
 import type { Invoice, Vendor, User, Contract, Company, Notification, ActionLog, SearchFilters } from '@/lib/types';
 import { unstable_noStore as noStore } from 'next/cache';
 import { add } from 'date-fns';
-import { getSession } from '@/lib/session';
+import { getSession } from '@/lib/auth';
 
 export const getDb = async () => {
     if (!clientPromise) {
