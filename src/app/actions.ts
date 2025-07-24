@@ -59,12 +59,12 @@ const loginFormSchema = z.object({
 });
 
 export async function loginUser(values: z.infer<typeof loginFormSchema>) {
-    const db = await getDb();
-    if (!db) {
-        return { success: false, message: "Database connection failed." };
-    }
-    
     try {
+        const db = await getDb();
+        if (!db) {
+            return { success: false, message: "Database connection failed." };
+        }
+        
         const validatedData = loginFormSchema.parse(values);
         const user = await db.collection("users").findOne({ email: validatedData.email });
         
@@ -72,13 +72,16 @@ export async function loginUser(values: z.infer<typeof loginFormSchema>) {
           return { success: false, message: "Invalid email or password." };
         }
 
-        // CORRECT: Use the user's MongoDB _id for the session
         await createSession(user._id.toString());
         
     } catch (error) {
        console.error("Login Error:", error);
       if (error instanceof z.ZodError) {
         return { success: false, message: "Validation failed.", issues: error.flatten() };
+      }
+      // Re-throw other errors to be handled by Next.js, including redirects
+      if (error && typeof error === 'object' && 'message' in error && typeof error.message === 'string' && error.message.includes('NEXT_REDIRECT')) {
+        throw error;
       }
       return { success: false, message: "An unexpected error occurred during login." };
     }
@@ -334,12 +337,12 @@ const companyRegistrationSchema = z.object({
 });
 
 export async function registerCompany(values: z.infer<typeof companyRegistrationSchema>) {
-  const db = await getDb();
-  if (!db) {
-      return { success: false, message: "Database connection failed." };
-  }
-  
   try {
+    const db = await getDb();
+    if (!db) {
+        return { success: false, message: "Database connection failed." };
+    }
+    
     const validatedData = companyRegistrationSchema.parse(values);
     
     const usersCollection = db.collection("users");
@@ -408,6 +411,10 @@ export async function registerCompany(values: z.infer<typeof companyRegistration
     if (error instanceof z.ZodError) {
       return { success: false, message: "Validation failed.", issues: error.flatten() };
     }
+     // Re-throw other errors to be handled by Next.js, including redirects
+     if (error && typeof error === 'object' && 'message' in error && typeof error.message === 'string' && error.message.includes('NEXT_REDIRECT')) {
+        throw error;
+     }
     return { success: false, message: "An unexpected error occurred during registration." };
   }
 
