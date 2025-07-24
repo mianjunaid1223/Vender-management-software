@@ -1,6 +1,7 @@
 
 import { type ReactNode } from "react";
 import { PanelLeft } from "lucide-react";
+import { redirect } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetTrigger, SheetContent, SheetTitle } from "@/components/ui/sheet";
@@ -10,10 +11,18 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { fetchInvoices, fetchVendors, processAndFetchContracts, fetchCompany } from "@/lib/data";
 import { DashboardNav } from "@/components/dashboard-nav";
 import { AISpotlight } from "@/components/dashboard/ai-spotlight";
-import { requireAuth } from "@/lib/auth";
+import { getSession } from "@/lib/auth";
 
 export default async function DashboardLayout({ children }: { children: ReactNode }) {
-    const user = await requireAuth();
+    // Middleware ensures only authenticated users reach this page
+    const user = await getSession();
+    
+    console.log('Dashboard Layout - User session:', user);
+    
+    // If no user session, redirect to login
+    if (!user) {
+        redirect('/login');
+    }
 
     const [invoices, vendors, contracts, company] = await Promise.all([
         fetchInvoices(),

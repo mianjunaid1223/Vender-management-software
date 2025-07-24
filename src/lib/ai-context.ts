@@ -41,7 +41,7 @@ export class AIContextManager {
             ]);
 
             const context: AIContext = {
-                user,
+                user: user!,
                 company: company || await this.createDefaultCompany(userId),
                 recentInvoices: recentInvoices.slice(0, 10),
                 activeVendors: activeVendors.filter(v => v.status === 'Active'),
@@ -66,6 +66,7 @@ export class AIContextManager {
     private async createDefaultCompany(userId: string): Promise<Company> {
         return {
             id: 'default',
+            companyId: 'default',
             name: 'Your Company',
             businessType: 'Business',
             addresses: [],

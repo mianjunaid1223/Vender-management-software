@@ -15,13 +15,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Datalist } from "@/components/ui/datalist";
 import { 
   Plus, 
   User, 
@@ -280,16 +274,13 @@ export function VendorOnboardingDialog() {
             </div>
             <div>
               <Label htmlFor="service">Service/Industry *</Label>
-              <Select value={formData.service} onValueChange={(value) => handleInputChange("service", value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select service type" />
-                </SelectTrigger>
-                <SelectContent>
-                  {commonServices.map(service => (
-                    <SelectItem key={service} value={service}>{service}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Datalist 
+                id="service"
+                options={commonServices}
+                value={formData.service}
+                onChange={(e) => handleInputChange("service", e.target.value)}
+                placeholder="Select or type service type"
+              />
             </div>
             <div>
               <Label htmlFor="contactPerson">Primary Contact Person *</Label>
@@ -347,21 +338,25 @@ export function VendorOnboardingDialog() {
               </div>
               <div>
                 <Label htmlFor="country">Country *</Label>
-                <Select value={formData.address.country} onValueChange={(value) => handleInputChange("address.country", value)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select country" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="US">United States</SelectItem>
-                    <SelectItem value="CA">Canada</SelectItem>
-                    <SelectItem value="GB">United Kingdom</SelectItem>
-                    <SelectItem value="AU">Australia</SelectItem>
-                    <SelectItem value="DE">Germany</SelectItem>
-                    <SelectItem value="FR">France</SelectItem>
-                    <SelectItem value="JP">Japan</SelectItem>
-                    <SelectItem value="OTHER">Other</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Datalist 
+                  id="country"
+                  options={["United States", "Canada", "United Kingdom", "Australia", "Germany", "France", "Japan", "Other"]}
+                  value={formData.address.country === "US" ? "United States" : formData.address.country === "CA" ? "Canada" : formData.address.country === "GB" ? "United Kingdom" : formData.address.country === "AU" ? "Australia" : formData.address.country === "DE" ? "Germany" : formData.address.country === "FR" ? "France" : formData.address.country === "JP" ? "Japan" : "Other"}
+                  onChange={(e) => {
+                    const countryMap: {[key: string]: string} = {
+                      "United States": "US",
+                      "Canada": "CA", 
+                      "United Kingdom": "GB",
+                      "Australia": "AU",
+                      "Germany": "DE",
+                      "France": "FR",
+                      "Japan": "JP",
+                      "Other": "OTHER"
+                    };
+                    handleInputChange("address.country", countryMap[e.target.value] || e.target.value);
+                  }}
+                  placeholder="Select or type country"
+                />
               </div>
             </div>
           </div>
@@ -381,32 +376,23 @@ export function VendorOnboardingDialog() {
             </div>
             <div>
               <Label htmlFor="paymentTerms">Payment Terms *</Label>
-              <Select value={formData.paymentTerms} onValueChange={(value) => handleInputChange("paymentTerms", value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select payment terms" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Net 15">Net 15</SelectItem>
-                  <SelectItem value="Net 30">Net 30</SelectItem>
-                  <SelectItem value="Net 45">Net 45</SelectItem>
-                  <SelectItem value="Net 60">Net 60</SelectItem>
-                  <SelectItem value="Advance">Advance</SelectItem>
-                  <SelectItem value="COD">COD</SelectItem>
-                </SelectContent>
-              </Select>
+              <Datalist 
+                id="paymentTerms"
+                options={["Net 15", "Net 30", "Net 45", "Net 60", "Advance", "COD"]}
+                value={formData.paymentTerms}
+                onChange={(e) => handleInputChange("paymentTerms", e.target.value)}
+                placeholder="Select or type payment terms"
+              />
             </div>
             <div>
               <Label htmlFor="status">Status *</Label>
-              <Select value={formData.status} onValueChange={(value) => handleInputChange("status", value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select vendor status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Active">Active</SelectItem>
-                  <SelectItem value="Pending">Pending</SelectItem>
-                  <SelectItem value="Inactive">Inactive</SelectItem>
-                </SelectContent>
-              </Select>
+              <Datalist 
+                id="status"
+                options={["Active", "Pending", "Inactive"]}
+                value={formData.status}
+                onChange={(e) => handleInputChange("status", e.target.value)}
+                placeholder="Select or type vendor status"
+              />
             </div>
           </div>
         );

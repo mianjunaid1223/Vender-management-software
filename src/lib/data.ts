@@ -21,6 +21,18 @@ export const getDb = async () => {
     }
 }
 
+export const getClient = async () => {
+    if (!clientPromise) {
+        throw new Error('MongoDB client not configured. Please check your MONGODB_URI environment variable.');
+    }
+    try {
+        return await clientPromise;
+    } catch (error) {
+        console.error('Database connection failed:', error);
+        throw new Error('Failed to connect to database. Please check your MongoDB connection.');
+    }
+}
+
 async function getCurrentUserCompanyId(): Promise<string | null> {
     const user = await getSession();
     return user?.companyId || null;
@@ -112,7 +124,8 @@ export async function fetchCardData() {
         
         const nextPaymentDuePromise = invoicesCollection.find({ 
           status: { $in: ['Unpaid', 'Pending', 'Overdue'] },
-          companyId
+          companyId,
+          invoiceDueDate: { $exists: true }
         })
             .sort({ invoiceDueDate: 1 })
             .limit(1)

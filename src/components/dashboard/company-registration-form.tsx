@@ -15,13 +15,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Datalist } from "@/components/ui/datalist";
 import { 
   Building, 
   Plus, 
@@ -207,19 +201,25 @@ export function CompanyRegistrationForm({ isEditing = false, company }: CompanyR
                                     </div>
                                     <div>
                                         <Label htmlFor="businessType">Business Type *</Label>
-                                        <Select value={formData.businessType || ''} onValueChange={(value) => handleInputChange("businessType", value)}>
-                                        <SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger>
-                                        <SelectContent>{businessTypes.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectContent>
-                                        </Select>
+                                        <Datalist 
+                                          id="businessType"
+                                          options={businessTypes}
+                                          value={formData.businessType || ''}
+                                          onChange={(e) => handleInputChange("businessType", e.target.value)}
+                                          placeholder="Select or type business type"
+                                        />
                                     </div>
                                     </div>
                                     <div className="grid md:grid-cols-2 gap-4">
                                     <div>
                                         <Label htmlFor="industry">Industry</Label>
-                                        <Select value={formData.industry || ''} onValueChange={(value) => handleInputChange("industry", value)}>
-                                        <SelectTrigger><SelectValue placeholder="Select industry" /></SelectTrigger>
-                                        <SelectContent>{industries.map(i => <SelectItem key={i} value={i}>{i}</SelectItem>)}</SelectContent>
-                                        </Select>
+                                        <Datalist 
+                                          id="industry"
+                                          options={industries}
+                                          value={formData.industry || ''}
+                                          onChange={(e) => handleInputChange("industry", e.target.value)}
+                                          placeholder="Select or type industry"
+                                        />
                                     </div>
                                     <div>
                                         <Label htmlFor="website">Website</Label>

@@ -3,6 +3,8 @@
 import { getDb } from '@/lib/data';
 import { Invoice } from '@/lib/types';
 import { sendOverdueNotification, sendUpcomingPaymentNotification } from '@/lib/email-notifications';
+import { calculateDaysDifference, formatDaysDifference, getPaymentStatus, getAlertSeverity } from '@/lib/date-utils';
+import { getSession } from '@/lib/auth';
 
 export interface InvoiceAlert {
   id: string;
@@ -28,14 +30,28 @@ export async function updateInvoiceStatuses(): Promise<{
     throw new Error('Database connection failed. Cannot update invoice statuses.');
   }
 
+  // Get current user's company ID to filter invoices
+  const user = await getSession();
+  const companyId = user?.companyId;
+  
+  if (!companyId) {
+    return {
+      updated: 0,
+      overdueInvoices: [],
+      upcomingPayments: [],
+      alerts: []
+    };
+  }
+
   try {
     const invoicesCollection = db.collection('invoices');
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // Find all unpaid invoices
+    // Find unpaid invoices for current user's company only
     const unpaidInvoices = await invoicesCollection
       .find({ 
+        companyId,  // Filter by company ID
         status: { $in: ['Unpaid', 'Pending'] },
         invoiceDueDate: { $exists: true }
       })
@@ -48,10 +64,8 @@ export async function updateInvoiceStatuses(): Promise<{
 
     for (const invoice of unpaidInvoices) {
       const dueDate = new Date(invoice.invoiceDueDate);
-      dueDate.setHours(0, 0, 0, 0);
-      
-      const diffTime = dueDate.getTime() - today.getTime();
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      const diffDays = calculateDaysDifference(dueDate);
+      const paymentStatus = getPaymentStatus(diffDays);
 
       // Convert MongoDB document to Invoice type
       const { _id, ...invoiceRest } = invoice;
@@ -61,7 +75,7 @@ export async function updateInvoiceStatuses(): Promise<{
       } as Invoice;
 
       // Check if invoice is overdue
-      if (diffDays < 0) {
+      if (paymentStatus === 'overdue') {
         if (invoice.status !== 'Overdue') {
           // Update status to overdue
           await invoicesCollection.updateOne(
@@ -85,8 +99,8 @@ export async function updateInvoiceStatuses(): Promise<{
         alerts.push({
           id: `overdue-${invoice._id}`,
           type: 'overdue',
-          severity: 'high',
-          message: `Invoice #${invoice.invoiceNumber} is ${Math.abs(diffDays)} days overdue`,
+          severity: getAlertSeverity(diffDays),
+          message: `Invoice #${invoice.invoiceNumber} is ${formatDaysDifference(diffDays)}`,
           invoiceId: invoice._id.toString(),
           invoiceNumber: invoice.invoiceNumber,
           amount: invoice.invoiceAmount,
@@ -95,12 +109,12 @@ export async function updateInvoiceStatuses(): Promise<{
         });
       }
       // Check if payment is due today
-      else if (diffDays === 0) {
+      else if (paymentStatus === 'due_today') {
         alerts.push({
           id: `due-today-${invoice._id}`,
           type: 'due_today',
-          severity: 'high',
-          message: `Invoice #${invoice.invoiceNumber} is due today`,
+          severity: getAlertSeverity(diffDays),
+          message: `Invoice #${invoice.invoiceNumber} is ${formatDaysDifference(diffDays)}`,
           invoiceId: invoice._id.toString(),
           invoiceNumber: invoice.invoiceNumber,
           amount: invoice.invoiceAmount,
@@ -109,16 +123,14 @@ export async function updateInvoiceStatuses(): Promise<{
         });
       }
       // Check for upcoming payments (1-3 days)
-      else if (diffDays >= 1 && diffDays <= 3) {
+      else if (paymentStatus === 'upcoming') {
         upcomingPayments.push(invoiceData);
-        
-        const severity = diffDays === 1 ? 'medium' : 'low';
         
         alerts.push({
           id: `upcoming-${invoice._id}`,
           type: 'upcoming',
-          severity,
-          message: `Invoice #${invoice.invoiceNumber} is due in ${diffDays} day${diffDays > 1 ? 's' : ''}`,
+          severity: getAlertSeverity(diffDays),
+          message: `Invoice #${invoice.invoiceNumber} is ${formatDaysDifference(diffDays)}`,
           invoiceId: invoice._id.toString(),
           invoiceNumber: invoice.invoiceNumber,
           amount: invoice.invoiceAmount,
@@ -156,9 +168,20 @@ export async function markInvoiceAsPaid(invoiceId: string): Promise<boolean> {
   const db = await getDb();
   if (!db) throw new Error('Database connection failed.');
 
+  // Get current user's company ID to ensure they can only update their company's invoices
+  const user = await getSession();
+  const companyId = user?.companyId;
+  
+  if (!companyId) {
+    return false;
+  }
+
   try {
     const result = await db.collection('invoices').updateOne(
-      { _id: new (require('mongodb')).ObjectId(invoiceId) },
+      { 
+        _id: new (require('mongodb')).ObjectId(invoiceId),
+        companyId  // Ensure user can only update their company's invoices
+      },
       { 
         $set: { 
           status: 'Paid',
@@ -179,9 +202,20 @@ export async function getOverdueInvoices(): Promise<Invoice[]> {
   const db = await getDb();
   if (!db) throw new Error('Database connection failed.');
 
+  // Get current user's company ID to filter invoices
+  const user = await getSession();
+  const companyId = user?.companyId;
+  
+  if (!companyId) {
+    return [];
+  }
+
   try {
     const invoices = await db.collection('invoices')
-      .find({ status: 'Overdue' })
+      .find({ 
+        companyId,  // Filter by company ID
+        status: 'Overdue' 
+      })
       .sort({ invoiceDueDate: 1 })
       .toArray();
 
@@ -202,6 +236,14 @@ export async function getUpcomingPayments(): Promise<Invoice[]> {
   const db = await getDb();
   if (!db) throw new Error('Database connection failed.');
 
+  // Get current user's company ID to filter invoices
+  const user = await getSession();
+  const companyId = user?.companyId;
+  
+  if (!companyId) {
+    return [];
+  }
+
   try {
     const today = new Date();
     const threeDaysFromNow = new Date();
@@ -209,6 +251,7 @@ export async function getUpcomingPayments(): Promise<Invoice[]> {
 
     const invoices = await db.collection('invoices')
       .find({ 
+        companyId,  // Filter by company ID
         status: { $in: ['Unpaid', 'Pending'] },
         invoiceDueDate: { 
           $gte: today,

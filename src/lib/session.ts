@@ -38,7 +38,8 @@ export async function createSession(userId: string) {
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
   const session = await encrypt({ userId, expiresAt })
  
-  cookies().set('session', session, {
+  const cookieStore = await cookies()
+  cookieStore.set('session', session, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     expires: expiresAt,
@@ -49,7 +50,8 @@ export async function createSession(userId: string) {
 
 // Lightweight session check for middleware (no DB access)
 export async function verifySession(): Promise<{ isAuth: boolean; userId: string | null }> {
-  const cookie = cookies().get('session')?.value
+  const cookieStore = await cookies()
+  const cookie = cookieStore.get('session')?.value
   const session = await decrypt(cookie)
  
   if (!session?.userId) {
@@ -60,5 +62,6 @@ export async function verifySession(): Promise<{ isAuth: boolean; userId: string
 }
 
 export async function deleteSession() {
-  cookies().delete('session')
+  const cookieStore = await cookies()
+  cookieStore.delete('session')
 }

@@ -17,8 +17,21 @@ import Link from "next/link";
 import { format } from "date-fns";
 import { Contract } from "@/lib/types";
 import { DashboardAlerts } from "@/components/dashboard/dashboard-alerts";
+import { calculateDaysDifference, formatDaysDifference } from "@/lib/date-utils";
+import { getSession } from "@/lib/auth";
+import { redirect } from "next/navigation";
 
 export default async function DashboardPage() {
+    // Middleware ensures only authenticated users reach this page
+    const user = await getSession();
+    
+    console.log('Dashboard Page - User session:', user);
+    
+    // If no user session, redirect to login
+    if (!user) {
+        redirect('/login');
+    }
+    
     const isDbConfigured = clientPromise !== null;
 
     if (!isDbConfigured) {
@@ -78,14 +91,9 @@ export default async function DashboardPage() {
     // Type assertion since we know the structure from fetchCardData
     const invoice = nextPaymentDue as any;
     const dueDate = new Date(invoice.invoiceDueDate);
-    const today = new Date();
-    today.setHours(0,0,0,0);
-    const diffTime = dueDate.getTime() - today.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-    if (diffDays < 0) return `Overdue by ${Math.abs(diffDays)} days`;
-    if (diffDays === 0) return "Due today";
-    return `Due in ${diffDays} days`;
+    const diffDays = calculateDaysDifference(dueDate);
+    
+    return formatDaysDifference(diffDays);
   }
 
   const summaryCards = [

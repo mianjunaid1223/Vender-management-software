@@ -4,7 +4,7 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { getDb, createInvoice, updateInvoice, deleteInvoice, updateInvoiceStatus, updateCompany, createOrUpdateCompany } from "@/lib/data";
+import { getDb, getClient, createInvoice, updateInvoice, deleteInvoice, updateInvoiceStatus, updateCompany, createOrUpdateCompany } from "@/lib/data";
 import { sendPaymentConfirmation } from '@/lib/email-notifications';
 import { ObjectId } from 'mongodb';
 import { Invoice, Company } from "@/lib/types";
@@ -21,6 +21,7 @@ const companyRegistrationSchema = z.object({
   companyName: z.string().min(2, { message: "Company name must be at least 2 characters." }),
   industry: z.string().min(1, { message: "Please select an industry." }),
   businessType: z.string().min(1, { message: "Please select a business type." }),
+  businessDescription: z.string().min(10, { message: "Business description must be at least 10 characters." }),
   taxId: z.string().optional(),
   legalId: z.string().optional(),
   primaryAddress: z.object({
@@ -46,6 +47,7 @@ export async function loginUser(prevState: any, formData: FormData) {
 
   if (!validatedFields.success) {
     return {
+      message: "",
       errors: validatedFields.error.flatten().fieldErrors,
     };
   }
@@ -57,7 +59,10 @@ export async function loginUser(prevState: any, formData: FormData) {
     const user = await db.collection("users").findOne({ email });
 
     if (!user || user.password !== password) {
-      return { message: "Invalid email or password." };
+      return { 
+        message: "Invalid email or password.",
+        errors: {}
+      };
     }
 
     await createSession(user._id.toString());
@@ -67,7 +72,10 @@ export async function loginUser(prevState: any, formData: FormData) {
       throw error;
     }
     console.error("Login Error:", error);
-    return { message: "An unexpected error occurred. Please try again." };
+    return { 
+      message: "An unexpected error occurred. Please try again.",
+      errors: {}
+    };
   }
 
   redirect("/dashboard");
@@ -75,40 +83,83 @@ export async function loginUser(prevState: any, formData: FormData) {
 
 
 export async function registerCompany(prevState: any, formData: FormData) {
-  const validatedFields = companyRegistrationSchema.safeParse(
-    Object.fromEntries(formData.entries())
-  );
+  console.log('registerCompany called with formData:', Object.fromEntries(formData.entries()));
+  
+  // Transform the flat form data into the expected nested structure
+  const formEntries = Object.fromEntries(formData.entries());
+  
+  // Create a new object without the flat address fields
+  const { 
+    'primaryAddress.street': street,
+    'primaryAddress.city': city,
+    'primaryAddress.state': state,
+    'primaryAddress.zipCode': zipCode,
+    'primaryAddress.country': country,
+    ...restOfData
+  } = formEntries;
+  
+  const transformedData = {
+    ...restOfData,
+    primaryAddress: {
+      street,
+      city,
+      state,
+      zipCode,
+      country,
+    }
+  };
+  
+  console.log('Transformed data:', transformedData);
+  
+  const validatedFields = companyRegistrationSchema.safeParse(transformedData);
 
   if (!validatedFields.success) {
+    console.log('Validation failed:', validatedFields.error.flatten().fieldErrors);
     return {
+      message: "",
       errors: validatedFields.error.flatten().fieldErrors,
     };
   }
+  
+  console.log('Validation passed, proceeding with registration...');
 
   const { 
-      companyName, industry, businessType, taxId, legalId, primaryAddress, 
+      companyName, industry, businessType, businessDescription, taxId, legalId, primaryAddress, 
       websiteUrl, userFullName, primaryContactEmail, userPassword 
   } = validatedFields.data;
 
+  console.log('Getting database connection...');
   const db = await getDb();
+  const client = await getClient();
   const usersCollection = db.collection("users");
   const companiesCollection = db.collection("companies");
+  console.log('Database connection established');
 
   try {
+    console.log('Checking for existing user with email:', primaryContactEmail);
     const existingUser = await usersCollection.findOne({ email: primaryContactEmail });
     if (existingUser) {
-      return { message: "A user with this email already exists." };
+      console.log('User already exists');
+      return { 
+        message: "A user with this email already exists.",
+        errors: {}
+      };
     }
+    console.log('No existing user found, proceeding...');
 
-    const session = db.client.startSession();
+    console.log('Starting MongoDB session...');
+    const session = client.startSession();
     let newUserId: ObjectId;
+    console.log('Session started, beginning transaction...');
 
     await session.withTransaction(async () => {
+        console.log('Inside transaction - creating company...');
         // Step 1: Create the company first to get its ID
         const companyResult = await companiesCollection.insertOne({
             name: companyName,
             industry,
             businessType,
+            description: businessDescription,
             taxId,
             legalId,
             addresses: [primaryAddress],
@@ -156,17 +207,24 @@ export async function registerCompany(prevState: any, formData: FormData) {
         );
     });
     
+    console.log('Transaction completed successfully');
     await session.endSession();
+    console.log('MongoDB session ended');
     
     // Create session for the new user
+    console.log('Creating user session for userId:', newUserId!.toString());
     await createSession(newUserId!.toString());
+    console.log('User session created, redirecting to dashboard...');
 
   } catch (error) {
     if (error instanceof Error && error.name === 'NEXT_REDIRECT') {
       throw error;
     }
     console.error("Company Registration Error:", error);
-    return { message: "Registration failed. Please try again." };
+    return { 
+      message: "Registration failed. Please try again.",
+      errors: {}
+    };
   }
   
   redirect("/dashboard");

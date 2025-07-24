@@ -14,13 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Datalist } from "@/components/ui/datalist";
 import { 
   Edit, 
   X,
@@ -218,32 +212,23 @@ export function VendorEditDialog({ vendor, open, onOpenChange, onVendorUpdated }
               </div>
               <div>
                 <Label htmlFor="paymentTerms">Payment Terms *</Label>
-                <Select value={formData.paymentTerms} onValueChange={(value) => handleInputChange("paymentTerms", value)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select payment terms" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Net 15">Net 15</SelectItem>
-                    <SelectItem value="Net 30">Net 30</SelectItem>
-                    <SelectItem value="Net 45">Net 45</SelectItem>
-                    <SelectItem value="Net 60">Net 60</SelectItem>
-                    <SelectItem value="Advance">Advance</SelectItem>
-                    <SelectItem value="COD">COD</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Datalist 
+                  id="paymentTerms"
+                  options={["Net 15", "Net 30", "Net 45", "Net 60", "Advance", "COD"]}
+                  value={formData.paymentTerms || ''}
+                  onChange={(e) => handleInputChange("paymentTerms", e.target.value)}
+                  placeholder="Select or type payment terms"
+                />
               </div>
               <div>
                 <Label htmlFor="status">Status *</Label>
-                <Select value={formData.status} onValueChange={(value) => handleInputChange("status", value)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select vendor status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Active">Active</SelectItem>
-                    <SelectItem value="Pending">Pending</SelectItem>
-                    <SelectItem value="Inactive">Inactive</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Datalist 
+                  id="status"
+                  options={["Active", "Pending", "Inactive"]}
+                  value={formData.status || ''}
+                  onChange={(e) => handleInputChange("status", e.target.value)}
+                  placeholder="Select or type vendor status"
+                />
               </div>
               <div>
                 <Label htmlFor="notes">Notes</Label>

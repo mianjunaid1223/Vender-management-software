@@ -11,7 +11,7 @@ import { verifySession } from '@/lib/session'
 export async function getSession(): Promise<User | null> {
   const { isAuth, userId } = await verifySession()
   if (!isAuth || !userId) return null
- 
+
   try {
     const db = await getDb()
     const usersCollection = db.collection('users')
@@ -19,8 +19,10 @@ export async function getSession(): Promise<User | null> {
     const user = await usersCollection.findOne({ 
       _id: new ObjectId(userId) 
     })
- 
+
     if (!user) {
+      // User no longer exists, but we can't clear cookies from server components
+      // This will be handled by requireAuth redirect
       return null
     }
     
@@ -29,13 +31,13 @@ export async function getSession(): Promise<User | null> {
       ...userWithoutSensitiveData,
       id: _id.toString(),
     }));
- 
+
   } catch (error) {
     console.error('Error fetching session user:', error);
     return null
   }
 }
- 
+
 export async function requireAuth(redirectTo = '/login'): Promise<User> {
   const session = await getSession()
   if (!session) {

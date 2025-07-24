@@ -2,7 +2,8 @@
 "use client";
 
 import Link from "next/link";
-import { useFormState, useFormStatus } from "react-dom";
+import { useActionState } from "react";
+import { useFormStatus } from "react-dom";
 import { Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -11,13 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { loginUser } from "@/app/actions";
 
-const initialState = {
-  message: "",
-  errors: {
-    email: [],
-    password: [],
-  },
-};
+
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -30,7 +25,7 @@ function SubmitButton() {
 }
 
 export default function LoginPage() {
-  const [state, formAction] = useFormState(loginUser, initialState);
+  const [state, formAction] = useActionState(loginUser, { message: "", errors: { email: [], password: [] } });
 
   return (
     <div className="min-h-screen w-full bg-background flex justify-center items-center p-4">

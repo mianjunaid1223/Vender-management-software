@@ -2,21 +2,20 @@
 "use client";
 
 import Link from "next/link";
-import { useFormState, useFormStatus } from "react-dom";
+import { useActionState } from "react";
+import { useFormStatus } from "react-dom";
 import { Loader2, Building, MapPin, User as UserIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Datalist } from "@/components/ui/datalist";
 import { Separator } from "@/components/ui/separator";
+import { Textarea } from "@/components/ui/textarea";
 import { registerCompany } from "@/app/actions";
 import { Label } from "@/components/ui/label";
 
-const initialState = {
-  message: "",
-  errors: {},
-};
+
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -48,7 +47,7 @@ const countries = [
 ];
 
 export default function CompanyRegistrationPage() {
-  const [state, formAction] = useFormState(registerCompany, initialState);
+  const [state, formAction] = useActionState(registerCompany, { message: "", errors: {} });
 
   return (
     <div className="min-h-screen w-full bg-background py-16 px-4 flex justify-center items-center">
@@ -81,17 +80,23 @@ export default function CompanyRegistrationPage() {
                   </div>
                   <div>
                     <Label htmlFor="industry">Industry</Label>
-                    <Select name="industry" required>
-                      <SelectTrigger id="industry"><SelectValue placeholder="Select industry" /></SelectTrigger>
-                      <SelectContent>{industries.map(i => <SelectItem key={i} value={i}>{i}</SelectItem>)}</SelectContent>
-                    </Select>
+                    <Datalist 
+                      id="industry" 
+                      name="industry" 
+                      options={industries} 
+                      placeholder="Select or type industry" 
+                      required 
+                    />
                   </div>
-                   <div>
+                  <div>
                     <Label htmlFor="businessType">Business Type</Label>
-                    <Select name="businessType" required>
-                      <SelectTrigger id="businessType"><SelectValue placeholder="Select business type" /></SelectTrigger>
-                      <SelectContent>{businessTypes.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
-                    </Select>
+                    <Datalist 
+                      id="businessType" 
+                      name="businessType" 
+                      options={businessTypes} 
+                      placeholder="Select or type business type" 
+                      required 
+                    />
                   </div>
                   <div>
                     <Label htmlFor="websiteUrl">Website URL</Label>
@@ -105,6 +110,21 @@ export default function CompanyRegistrationPage() {
                     <Label htmlFor="legalId">Legal ID (Optional)</Label>
                     <Input id="legalId" name="legalId" placeholder="Business registration number" />
                   </div>
+                </div>
+                
+                {/* Business Description - Full Width */}
+                <div className="space-y-2">
+                  <Label htmlFor="businessDescription">Business Description</Label>
+                  <Textarea 
+                    id="businessDescription" 
+                    name="businessDescription" 
+                    placeholder="Describe your business, products, or services..."
+                    className="min-h-[100px] resize-none"
+                    required
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    This helps <b className="" style={{ backgroundSize: '200% 200%', color: 'transparent', background: 'linear-gradient(to top right, #3b82f6,rgb(255, 0, 251))', WebkitBackgroundClip: 'text', backgroundClip: 'text'}}>AI</b> get better context of your business for personalized recommendations.
+                  </p>
                 </div>
               </div>
 
@@ -139,10 +159,13 @@ export default function CompanyRegistrationPage() {
                 
                 <div>
                   <Label htmlFor="primaryAddress.country">Country</Label>
-                  <Select name="primaryAddress.country" required>
-                    <SelectTrigger id="primaryAddress.country"><SelectValue placeholder="Select country" /></SelectTrigger>
-                    <SelectContent>{countries.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
-                  </Select>
+                  <Datalist 
+                    id="primaryAddress.country" 
+                    name="primaryAddress.country" 
+                    options={countries} 
+                    placeholder="Select or type country" 
+                    required 
+                  />
                 </div>
               </div>
 
