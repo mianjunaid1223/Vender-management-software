@@ -1,3 +1,4 @@
+
 import { type ReactNode } from "react";
 import { PanelLeft } from "lucide-react";
 
@@ -9,13 +10,12 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { getUser, fetchInvoices, fetchVendors, processAndFetchContracts, fetchCompany } from "@/lib/data";
 import { DashboardNav } from "@/components/dashboard-nav";
 import { AISpotlight } from "@/components/dashboard/ai-spotlight";
-import { requireAuth } from "@/lib/session";
+import { requireAuth } from "@/lib/auth";
 
 export default async function DashboardLayout({ children }: { children: ReactNode }) {
-    await requireAuth();
+    const user = await requireAuth();
 
-    const [user, invoices, vendors, contracts, company] = await Promise.all([
-        getUser(),
+    const [invoices, vendors, contracts, company] = await Promise.all([
         fetchInvoices(),
         fetchVendors(),
         processAndFetchContracts(),
@@ -89,3 +89,5 @@ export default async function DashboardLayout({ children }: { children: ReactNod
         </div>
     );
 }
+
+    

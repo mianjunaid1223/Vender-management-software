@@ -8,7 +8,7 @@ import { getDb, createInvoice, updateInvoice, deleteInvoice, updateInvoiceStatus
 import { sendPaymentConfirmation } from '@/lib/email-notifications';
 import { ObjectId } from 'mongodb';
 import { Invoice, Company } from "@/lib/types";
-import { createSession, deleteSession } from "@/lib/session";
+import { createSession, deleteSession } from "@/lib/auth"; // Updated import
 
 // --- Form Schemas ---
 
@@ -51,9 +51,9 @@ export async function loginUser(prevState: any, formData: FormData) {
   }
 
   const { email, password } = validatedFields.data;
-
+  const db = await getDb();
+  
   try {
-    const db = await getDb();
     const user = await db.collection("users").findOne({ email });
 
     if (!user || user.password !== password) {
@@ -93,7 +93,6 @@ export async function registerCompany(prevState: any, formData: FormData) {
   const db = await getDb();
   const usersCollection = db.collection("users");
   const companiesCollection = db.collection("companies");
-  let newUserId: ObjectId;
 
   try {
     const existingUser = await usersCollection.findOne({ email: primaryContactEmail });
@@ -102,14 +101,12 @@ export async function registerCompany(prevState: any, formData: FormData) {
     }
 
     const session = db.client.startSession();
+    let newUserId: ObjectId;
+
     await session.withTransaction(async () => {
       // Step 1: Create the company first to get its ID
-      const newCompanyId = new ObjectId(); // Generate a new ObjectId for the company
-      
-      const companyResult = await companiesCollection.insertOne({
-        _id: newCompanyId,
+      const newCompany = {
         name: companyName,
-        companyId: newCompanyId.toString(), // Store string version as the unique company identifier
         industry,
         businessType,
         taxId,
@@ -129,16 +126,23 @@ export async function registerCompany(prevState: any, formData: FormData) {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         createdBy: '', // Placeholder, will be updated shortly
-      }, { session });
-      
-      const companyIdString = newCompanyId.toString();
+      };
+      const companyResult = await companiesCollection.insertOne(newCompany, { session });
+      const companyId = companyResult.insertedId.toString();
 
+      // Set the companyId on the company document itself for consistent querying
+      await companiesCollection.updateOne(
+        { _id: companyResult.insertedId },
+        { $set: { companyId: companyId } },
+        { session }
+      );
+      
       // Step 2: Create the user and assign them the new company's ID
       const userResult = await usersCollection.insertOne({
         name: userFullName,
         email: primaryContactEmail,
         password: userPassword,
-        companyId: companyIdString, // Assign the new company's ID
+        companyId: companyId, // Assign the new company's ID
         image: `https://placehold.co/100x100.png?text=${userFullName.charAt(0)}`,
         role: "admin",
         createdAt: new Date().toISOString()
@@ -148,11 +152,12 @@ export async function registerCompany(prevState: any, formData: FormData) {
 
       // Step 3: Update the company's 'createdBy' field with the new user's ID
       await companiesCollection.updateOne(
-        { _id: newCompanyId },
+        { _id: companyResult.insertedId },
         { $set: { createdBy: newUserId.toString() } },
         { session }
       );
     });
+    
     await session.endSession();
     
     // Create session for the new user
@@ -433,3 +438,6 @@ export async function refreshInvoiceStatusesAction(): Promise<{ success: boolean
     return { success: false, message: 'Failed to refresh invoice statuses' };
   }
 }
+
+
+    

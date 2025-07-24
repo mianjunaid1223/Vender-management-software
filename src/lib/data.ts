@@ -28,7 +28,8 @@ export async function fetchInvoices(): Promise<Invoice[]> {
     const companyId = await getCurrentUserCompanyId();
     
     if (!companyId) {
-        throw new Error('User not authenticated or no company associated');
+        console.error("fetchInvoices: No companyId found for current user.");
+        return [];
     }
 
     try {
@@ -55,7 +56,8 @@ export async function fetchVendors(): Promise<Vendor[]> {
     const companyId = await getCurrentUserCompanyId();
     
     if (!companyId) {
-        throw new Error('User not authenticated or no company associated');
+        console.error("fetchVendors: No companyId found for current user.");
+        return [];
     }
     
     try {
@@ -82,7 +84,12 @@ export async function fetchCardData() {
     const companyId = await getCurrentUserCompanyId();
     
     if (!companyId) {
-        throw new Error('User not authenticated or no company associated');
+         return {
+            totalSpend: 0,
+            activeVendors: 0,
+            unpaidInvoices: 0,
+            nextPaymentDue: null,
+        };
     }
 
     try {
@@ -141,14 +148,9 @@ export async function fetchCardData() {
 }
 
 
-export async function getUser(): Promise<User> {
+export async function getUser(): Promise<User | null> {
     noStore();
     const user = await getCurrentUser();
-    
-    if (!user) {
-        throw new Error('User not authenticated');
-    }
-
     return user;
 }
 
@@ -159,7 +161,7 @@ export async function processAndFetchContracts(): Promise<Contract[]> {
     const today = new Date();
   
     if (!companyId) {
-        throw new Error('User not authenticated or no company associated');
+        return [];
     }
   
     try {
@@ -216,7 +218,7 @@ export async function fetchContracts(): Promise<Contract[]> {
     const companyId = await getCurrentUserCompanyId();
     
     if (!companyId) {
-        throw new Error('User not authenticated or no company associated');
+        return [];
     }
     try {
         const contracts = await db
@@ -369,7 +371,7 @@ export async function fetchCompany(): Promise<Company | null> {
     const companyId = await getCurrentUserCompanyId();
     
     if (!companyId) {
-        return null; 
+        return null;
     }
     
     try {
@@ -622,7 +624,7 @@ export async function fetchExpiringContracts(daysAhead: number = 30): Promise<Co
     const companyId = await getCurrentUserCompanyId();
     
     if (!companyId) {
-        throw new Error('User not authenticated or no company associated');
+        return [];
     }
     
     try {
@@ -942,7 +944,12 @@ export async function fetchAnalyticsData() {
     const companyId = await getCurrentUserCompanyId();
     
     if (!companyId) {
-        throw new Error('User not authenticated or no company associated');
+       return {
+            activeContracts: 0,
+            expiringContracts: 0,
+            vendorsByStatus: [],
+            invoicesByMonth: []
+        };
     }
 
     try {
@@ -1000,6 +1007,3 @@ export async function fetchAnalyticsData() {
 }
 
     
-
-    
-
