@@ -1,5 +1,6 @@
+
 import { NextRequest, NextResponse } from 'next/server'
-import { verifySession, updateSession } from '@/lib/session'
+import { verifySession } from '@/lib/auth'
 
 const protectedRoutes = ['/dashboard']
 const authRoutes = ['/login', '/signup']
@@ -23,13 +24,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/dashboard', request.url))
   }
   
-  const response = NextResponse.next()
-
-  if (isAuth) {
-    await updateSession()
-  }
-
-  return response
+  return NextResponse.next()
 }
 
 export const config = {

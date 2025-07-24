@@ -7,7 +7,7 @@ import { Sheet, SheetTrigger, SheetContent, SheetTitle } from "@/components/ui/s
 import { UserNav } from "@/components/user-nav";
 import { Logo } from "@/components/logo";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { getUser, fetchInvoices, fetchVendors, processAndFetchContracts, fetchCompany } from "@/lib/data";
+import { fetchInvoices, fetchVendors, processAndFetchContracts, fetchCompany } from "@/lib/data";
 import { DashboardNav } from "@/components/dashboard-nav";
 import { AISpotlight } from "@/components/dashboard/ai-spotlight";
 import { requireAuth } from "@/lib/auth";
@@ -89,5 +89,3 @@ export default async function DashboardLayout({ children }: { children: ReactNod
         </div>
     );
 }
-
-    

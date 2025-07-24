@@ -4,11 +4,11 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { getDb, createInvoice, updateInvoice, deleteInvoice, updateInvoiceStatus, createCompany, updateCompany, createOrUpdateCompany } from "@/lib/data";
+import { getDb, createInvoice, updateInvoice, deleteInvoice, updateInvoiceStatus, updateCompany, createOrUpdateCompany } from "@/lib/data";
 import { sendPaymentConfirmation } from '@/lib/email-notifications';
 import { ObjectId } from 'mongodb';
 import { Invoice, Company } from "@/lib/types";
-import { createSession, deleteSession } from "@/lib/auth"; // Updated import
+import { createSession, deleteSession } from "@/lib/session"; 
 
 // --- Form Schemas ---
 
@@ -104,58 +104,56 @@ export async function registerCompany(prevState: any, formData: FormData) {
     let newUserId: ObjectId;
 
     await session.withTransaction(async () => {
-      // Step 1: Create the company first to get its ID
-      const newCompany = {
-        name: companyName,
-        industry,
-        businessType,
-        taxId,
-        legalId,
-        addresses: [primaryAddress],
-        primaryAddress,
-        website: websiteUrl || "",
-        contacts: [{
-          id: new ObjectId().toString(),
-          name: userFullName,
-          email: primaryContactEmail,
-          phone: "",
-          isPrimary: true,
-          role: 'Administrator'
-        }],
-        preferences: { defaultPaymentTerms: 'Net 30', defaultCurrency: 'USD' },
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        createdBy: '', // Placeholder, will be updated shortly
-      };
-      const companyResult = await companiesCollection.insertOne(newCompany, { session });
-      const companyId = companyResult.insertedId.toString();
+        // Step 1: Create the company first to get its ID
+        const companyResult = await companiesCollection.insertOne({
+            name: companyName,
+            industry,
+            businessType,
+            taxId,
+            legalId,
+            addresses: [primaryAddress],
+            primaryAddress,
+            website: websiteUrl || "",
+            contacts: [{
+                id: new ObjectId().toString(),
+                name: userFullName,
+                email: primaryContactEmail,
+                phone: "",
+                isPrimary: true,
+                role: 'Administrator'
+            }],
+            preferences: { defaultPaymentTerms: 'Net 30', defaultCurrency: 'USD' },
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            createdBy: '', // Placeholder
+        }, { session });
+        
+        const companyId = companyResult.insertedId.toString();
 
-      // Set the companyId on the company document itself for consistent querying
-      await companiesCollection.updateOne(
-        { _id: companyResult.insertedId },
-        { $set: { companyId: companyId } },
-        { session }
-      );
-      
-      // Step 2: Create the user and assign them the new company's ID
-      const userResult = await usersCollection.insertOne({
-        name: userFullName,
-        email: primaryContactEmail,
-        password: userPassword,
-        companyId: companyId, // Assign the new company's ID
-        image: `https://placehold.co/100x100.png?text=${userFullName.charAt(0)}`,
-        role: "admin",
-        createdAt: new Date().toISOString()
-      }, { session });
-      
-      newUserId = userResult.insertedId;
+        // Step 2: Create the user and assign them the new company's ID
+        const userResult = await usersCollection.insertOne({
+            name: userFullName,
+            email: primaryContactEmail,
+            password: userPassword,
+            companyId: companyId,
+            image: `https://placehold.co/100x100.png?text=${userFullName.charAt(0)}`,
+            role: "admin",
+            createdAt: new Date().toISOString()
+        }, { session });
+        
+        newUserId = userResult.insertedId;
 
-      // Step 3: Update the company's 'createdBy' field with the new user's ID
-      await companiesCollection.updateOne(
-        { _id: companyResult.insertedId },
-        { $set: { createdBy: newUserId.toString() } },
-        { session }
-      );
+        // Step 3: Update the company's 'createdBy' and add the self-referencing 'companyId' field
+        await companiesCollection.updateOne(
+            { _id: companyResult.insertedId },
+            { 
+                $set: { 
+                    createdBy: newUserId.toString(),
+                    companyId: companyId 
+                } 
+            },
+            { session }
+        );
     });
     
     await session.endSession();
@@ -438,6 +436,3 @@ export async function refreshInvoiceStatusesAction(): Promise<{ success: boolean
     return { success: false, message: 'Failed to refresh invoice statuses' };
   }
 }
-
-
-    

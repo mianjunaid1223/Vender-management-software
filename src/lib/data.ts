@@ -1,5 +1,4 @@
 
-
 'use server';
 
 import clientPromise from '@/lib/mongodb';
@@ -7,7 +6,7 @@ import { ObjectId } from 'mongodb';
 import type { Invoice, Vendor, User, Contract, Company, Notification, ActionLog, SearchFilters } from '@/lib/types';
 import { unstable_noStore as noStore } from 'next/cache';
 import { add } from 'date-fns';
-import { getCurrentUserCompanyId, getCurrentUser } from '@/lib/auth';
+import { getSession } from '@/lib/session';
 
 export const getDb = async () => {
     if (!clientPromise) {
@@ -22,13 +21,17 @@ export const getDb = async () => {
     }
 }
 
+async function getCurrentUserCompanyId(): Promise<string | null> {
+    const user = await getSession();
+    return user?.companyId || null;
+}
+
 export async function fetchInvoices(): Promise<Invoice[]> {
     noStore();
     const db = await getDb();
     const companyId = await getCurrentUserCompanyId();
     
     if (!companyId) {
-        console.error("fetchInvoices: No companyId found for current user.");
         return [];
     }
 
@@ -56,7 +59,6 @@ export async function fetchVendors(): Promise<Vendor[]> {
     const companyId = await getCurrentUserCompanyId();
     
     if (!companyId) {
-        console.error("fetchVendors: No companyId found for current user.");
         return [];
     }
     
@@ -150,7 +152,7 @@ export async function fetchCardData() {
 
 export async function getUser(): Promise<User | null> {
     noStore();
-    const user = await getCurrentUser();
+    const user = await getSession();
     return user;
 }
 
@@ -393,23 +395,23 @@ export async function fetchCompany(): Promise<Company | null> {
 export async function createCompany(company: Partial<Company>): Promise<Company> {
     noStore();
     const db = await getDb();
-    const currentUser = await getCurrentUser();
+    const user = await getUser();
     
-    if (!currentUser || !currentUser.companyId) {
+    if (!user || !user.companyId) {
         throw new Error('User not authenticated or missing companyId');
     }
     
     try {
         const companyData = {
             ...company,
-            companyId: currentUser.companyId,
+            companyId: user.companyId,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
-            createdBy: currentUser.id,
+            createdBy: user.id,
         };
         
         const existingCompany = await db.collection('companies').findOne({ 
-            companyId: currentUser.companyId
+            companyId: user.companyId
         });
         
         if (existingCompany) {
@@ -434,13 +436,14 @@ export async function createCompany(company: Partial<Company>): Promise<Company>
 export async function updateCompany(id: string, updates: Partial<Company>): Promise<Company> {
     noStore();
     const db = await getDb();
+    const companyId = await getCurrentUserCompanyId();
     
     try {
         const { id: _, _id, ...updateData } = updates as any;
         updateData.updatedAt = new Date().toISOString();
         
         const result = await db.collection('companies').findOneAndUpdate(
-            { _id: new ObjectId(id) },
+            { _id: new ObjectId(id), companyId },
             { $set: updateData },
             { returnDocument: 'after' }
         );
@@ -763,8 +766,13 @@ export async function deleteVendor(id: string): Promise<void> {
 export async function fetchInvoicesByVendor(vendorId: string): Promise<Invoice[]> {
     noStore();
     const db = await getDb();
+    const companyId = await getCurrentUserCompanyId();
+
+    if (!companyId) {
+      return [];
+    }
     try {
-        const invoices = await db.collection('invoices').find({ vendorId }).toArray();
+        const invoices = await db.collection('invoices').find({ vendorId, companyId }).toArray();
         return JSON.parse(JSON.stringify(invoices.map(i => ({...i, id: i._id.toString()}))));
     } catch (error) {
         console.error("Database Error fetching invoices by vendor:", error);
@@ -1005,5 +1013,3 @@ export async function fetchAnalyticsData() {
         throw new Error('Failed to fetch analytics data.');
     }
 }
-
-    
