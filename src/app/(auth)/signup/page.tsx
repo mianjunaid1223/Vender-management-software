@@ -651,50 +651,8 @@ export default function CompanyRegistrationPage() {
 
                   <Separator className="bg-border" />
 
-                  {/* AI Features Section */}
-                  <div className="space-y-6">
-                    <div className="bg-gradient-to-r from-muted/70 to-card rounded-xl p-6 border border-border dark:from-muted/80 dark:to-card">
-                      <div className="flex items-start gap-4">
-                        <div className="flex-shrink-0">
-                          <div className="w-10 h-10 bg-gradient-to-r from-primary to-secondary rounded-lg flex items-center justify-center shadow-lg">
-                            <Sparkles className="h-5 w-5 text-white" />
-                          </div>
-                        </div>
-                        <div className="flex-1 space-y-4">
-                          <div>
-                            <h3 className="text-lg font-semibold text-foreground bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent drop-shadow-sm">
-                              Enable AI-Powered Features
-                            </h3>
-                            <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
-                              Unlock the power of AI to streamline your vendor management workflow. Our intelligent system analyzes uploaded documents, automatically extracts invoice data, pre-fills forms with vendor information, and provides contextual insights to help you make informed decisions faster.
-                            </p>
-                          </div>
-                          
-                          <FormField
-                            control={form.control}
-                            name="aiOptIn"
-                            render={({ field }) => (
-                              <FormItem className="flex flex-row items-center space-x-3 space-y-0">
-                                <FormControl>
-                                  <Checkbox
-                                    checked={field.value}
-                                    onCheckedChange={field.onChange}
-                                    className="border-primary data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-                                  />
-                                </FormControl>
-                                <div className="space-y-1 leading-none">
-                                  <FormLabel className="text-sm font-medium text-foreground cursor-pointer">
-                                    Yes, enable AI-powered document analysis and insights
-                                  </FormLabel>
-                                </div>
-                              </FormItem>
-                            )}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
+                  {/* AI Features Section -- REMOVED AS PER USER REQUEST */}
+                  
                   {/* Submit Button */}
                   <div className="pt-6">
                     <Button 
