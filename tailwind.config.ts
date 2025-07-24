@@ -72,6 +72,9 @@ const config: Config = {
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
+      boxShadow: {
+        'gradient-shadow': '0 0 80px 0 rgba(139, 92, 246, 0.3), 0 0 120px 0 rgba(59, 130, 246, 0.3), 0 0 160px 0 rgba(236, 72, 153, 0.3)',
+      },
       keyframes: {
         "accordion-down": {
           from: { height: "0" },
