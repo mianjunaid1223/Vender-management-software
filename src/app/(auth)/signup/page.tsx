@@ -127,9 +127,7 @@ export default function CompanyRegistrationPage() {
     <TooltipProvider>
       <div className="min-h-screen w-full bg-background dark:bg-background py-16 px-4">
         <div className="mx-auto max-w-6xl w-full relative">
-          <Card className="relative z-10 shadow-2xl border-1 backdrop-blur-lg"
-            style={{ backgroundColor: 'white' }}
-          >
+          <Card className="relative z-10 shadow-2xl border-1 bg-card">
             <div className="absolute inset-0 bg-gradient-to-br from-purple-500 via-blue-500 to-pink-500 filter blur-3xl rounded-lg opacity-100 -z-10"></div>
             <CardHeader className="space-y-6 pb-8">
               <div className="text-center space-y-2">
@@ -681,5 +679,3 @@ export default function CompanyRegistrationPage() {
     </TooltipProvider>
   );
 }
-
-    
