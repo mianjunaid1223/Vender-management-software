@@ -98,7 +98,7 @@ export default function CompanyRegistrationPage() {
     name: "additionalAddresses",
   });
 
-  async function onSubmit(values: z.infer<typeof formSchema>) {
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsLoading(true);
     const result = await registerCompany(values);
     
@@ -108,9 +108,10 @@ export default function CompanyRegistrationPage() {
         title: "Registration failed",
         description: result.message,
       });
+      setIsLoading(false);
     }
-    setIsLoading(false);
-  }
+    // On success, the action redirects, so no need to set loading to false here.
+  };
 
   const addAdditionalAddress = () => {
     append({

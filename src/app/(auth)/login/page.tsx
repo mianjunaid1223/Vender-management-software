@@ -34,7 +34,7 @@ export default function LoginPage() {
     },
   });
 
-  async function onSubmit(values: z.infer<typeof formSchema>) {
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsLoading(true);
     const result = await loginUser(values);
 
@@ -44,9 +44,10 @@ export default function LoginPage() {
         title: "Login failed",
         description: result.message,
       });
+      setIsLoading(false);
     }
-    setIsLoading(false);
-  }
+    // On success, the action redirects, so no need to set loading to false here.
+  };
 
   return (
     <div className="min-h-screen w-full bg-background dark:bg-background py-20 px-4 flex justify-center items-center">
