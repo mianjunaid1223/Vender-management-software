@@ -252,7 +252,10 @@ export default function CompanyRegistrationPage() {
                                   <span tabIndex={0}><Info className="h-4 w-4 text-gray-400" /></span>
                                 </TooltipTrigger>
                                 <TooltipContent>
-                                  <p>Your business tax identification number (EIN, SSN, etc.)</p>
+                                  <p className="max-w-xs">
+                                    Your business tax identification number (e.g., EIN, SSN).
+                                    This is used for tax purposes and to verify your business's legal status.
+                                  </p>
                                 </TooltipContent>
                               </Tooltip>
                             </FormLabel>
@@ -279,7 +282,10 @@ export default function CompanyRegistrationPage() {
                                    <span tabIndex={0}><Info className="h-4 w-4 text-gray-400" /></span>
                                 </TooltipTrigger>
                                 <TooltipContent>
-                                  <p>Your business registration number or legal entity identifier</p>
+                                  <p className="max-w-xs">
+                                    Your business registration number or legal entity identifier.
+                                    This unique code is often assigned by a government registry.
+                                  </p>
                                 </TooltipContent>
                               </Tooltip>
                             </FormLabel>
@@ -679,5 +685,3 @@ export default function CompanyRegistrationPage() {
     </TooltipProvider>
   );
 }
-
-    
