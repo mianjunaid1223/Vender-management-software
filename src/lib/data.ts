@@ -381,6 +381,7 @@ export async function fetchCompany(): Promise<Company | null> {
         }
         
         const { _id, ...companyData } = company;
+        // The `id` field in the type is for the MongoDB `_id`
         return JSON.parse(JSON.stringify({ ...companyData, id: _id.toString() }));
 
     } catch (error) {
@@ -460,7 +461,7 @@ export async function createOrUpdateCompany(companyData: Partial<Company>): Prom
     noStore();
     const existingCompany = await fetchCompany();
     if (existingCompany) {
-        return updateCompany(existingCompany._id!.toString(), companyData);
+        return updateCompany(existingCompany.id, companyData);
     } else {
         return createCompany(companyData);
     }
@@ -999,5 +1000,7 @@ export async function fetchAnalyticsData() {
         throw new Error('Failed to fetch analytics data.');
     }
 }
+
+    
 
     

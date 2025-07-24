@@ -350,11 +350,32 @@ export async function registerCompany(values: z.infer<typeof companyRegistration
       return { success: false, message: "User with this email already exists." };
     }
     
-    const companyId = `company-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    // Create a new user first to get their ID
+    const newUser = {
+      name: validatedData.userFullName,
+      email: validatedData.primaryContactEmail,
+      password: validatedData.userPassword,
+      companyId: '', // will be updated
+      image: `https://placehold.co/100x100.png?text=${validatedData.userFullName.charAt(0)}`,
+      role: "admin",
+      createdAt: new Date().toISOString()
+    };
+    const userResult = await usersCollection.insertOne(newUser);
+    const userId = userResult.insertedId;
+
+    // Create a unique company ID based on the new user's ID
+    const companyId = `company-${userId.toString()}`;
     
-    const companyData: Partial<Company> = {
-      id: companyId,
+    // Update the user with their new companyId
+    await usersCollection.updateOne(
+      { _id: userId },
+      { $set: { companyId: companyId } }
+    );
+    
+    // Now create the company with all correct IDs
+    const companyData: Omit<Company, 'id'> = {
       name: validatedData.companyName,
+      companyId: companyId, // Correctly set the companyId field
       industry: validatedData.industry,
       businessType: validatedData.businessType,
       taxId: validatedData.taxId,
@@ -367,34 +388,20 @@ export async function registerCompany(values: z.infer<typeof companyRegistration
         name: validatedData.userFullName,
         email: validatedData.primaryContactEmail,
         phone: validatedData.primaryContactPhone,
-        isPrimary: true
+        isPrimary: true,
+        role: 'Administrator'
       }],
       preferences: { defaultPaymentTerms: 'Net 30', defaultCurrency: 'USD' },
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      createdBy: '', // will be updated with user id
+      createdBy: userId.toString(),
     };
-
-    const companyResult = await companiesCollection.insertOne({ ...companyData, companyId: companyId });
     
-    const userData = {
-      name: validatedData.userFullName,
-      email: validatedData.primaryContactEmail,
-      password: validatedData.userPassword,
-      companyId: companyId,
-      image: `https://placehold.co/100x100.png?text=${validatedData.userFullName.charAt(0)}`,
-      role: "admin",
-      createdAt: new Date().toISOString()
-    };
-
-    const userResult = await usersCollection.insertOne(userData);
-
-    await companiesCollection.updateOne(
-      { _id: companyResult.insertedId },
-      { $set: { createdBy: userResult.insertedId.toString() } }
-    );
+    // Insert the company document
+    await companiesCollection.insertOne(companyData);
     
-    await createSession(userResult.insertedId.toString());
+    // Create session for the newly created user
+    await createSession(userId.toString());
     
   } catch (error) {
     console.error("Company Registration Error:", error);
@@ -406,6 +413,8 @@ export async function registerCompany(values: z.infer<typeof companyRegistration
 
   redirect("/dashboard");
 }
+    
+
     
 
     

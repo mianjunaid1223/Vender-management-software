@@ -1,4 +1,5 @@
 
+
 export type Vendor = {
   id: string;
   name: string;
@@ -205,7 +206,8 @@ export type ContractKPI = {
 
 // Agency/Company Types
 export type Company = {
-  id: string;
+  id: string; // This will store the MongoDB _id as a string
+  companyId: string; // This is the unique, shareable ID for the company
   name: string;
   businessType: string;
   industry?: string;
@@ -366,3 +368,5 @@ export type NotificationAction = {
   action: string;
   isPrimary?: boolean;
 };
+
+    
