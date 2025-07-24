@@ -63,6 +63,9 @@ export async function loginUser(prevState: any, formData: FormData) {
     await createSession(user._id.toString());
     
   } catch (error) {
+    if (error instanceof Error && error.name === 'NEXT_REDIRECT') {
+      throw error;
+    }
     console.error("Login Error:", error);
     return { message: "An unexpected error occurred. Please try again." };
   }
@@ -90,6 +93,7 @@ export async function registerCompany(prevState: any, formData: FormData) {
   const db = await getDb();
   const usersCollection = db.collection("users");
   const companiesCollection = db.collection("companies");
+  let newUserId: ObjectId;
 
   try {
     const existingUser = await usersCollection.findOne({ email: primaryContactEmail });
@@ -97,31 +101,28 @@ export async function registerCompany(prevState: any, formData: FormData) {
       return { message: "A user with this email already exists." };
     }
 
-    // Use a transaction to ensure both user and company are created or neither are.
     const session = db.client.startSession();
-    let newUserId: ObjectId;
-
     await session.withTransaction(async () => {
-      // 1. Create the new user
+      // Create the user first to get their ID
       const userResult = await usersCollection.insertOne({
         name: userFullName,
         email: primaryContactEmail,
-        password: userPassword, 
-        companyId: '', // Placeholder, will be updated
+        password: userPassword,
+        companyId: '', // Placeholder, will be updated shortly
         image: `https://placehold.co/100x100.png?text=${userFullName.charAt(0)}`,
         role: "admin",
         createdAt: new Date().toISOString()
       }, { session });
-      
+
       newUserId = userResult.insertedId;
 
-      // 2. Create the company ID based on the new user's ID for uniqueness
+      // Now, create the unique companyId based on the new user's ID
       const companyId = `company-${newUserId.toString()}`;
 
-      // 3. Create the new company document
-      await companiesCollection.insertOne({
+      // Create the company document with the correct companyId
+      const companyResult = await companiesCollection.insertOne({
         name: companyName,
-        companyId: companyId,
+        companyId: companyId, // <-- CRITICAL FIX HERE
         industry,
         businessType,
         taxId,
@@ -143,20 +144,22 @@ export async function registerCompany(prevState: any, formData: FormData) {
         createdBy: newUserId.toString(),
       }, { session });
 
-      // 4. Update the user with the correct companyId
+      // Finally, update the user with the correct companyId
       await usersCollection.updateOne(
         { _id: newUserId },
         { $set: { companyId: companyId } },
         { session }
       );
     });
-
     await session.endSession();
-
-    // 5. Create the session for the newly created user
+    
+    // Create session for the new user
     await createSession(newUserId!.toString());
 
   } catch (error) {
+    if (error instanceof Error && error.name === 'NEXT_REDIRECT') {
+      throw error;
+    }
     console.error("Company Registration Error:", error);
     return { message: "Registration failed. Please try again." };
   }
