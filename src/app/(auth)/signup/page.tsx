@@ -126,7 +126,7 @@ export default function CompanyRegistrationPage() {
   return (
     <TooltipProvider>
       <div className="min-h-screen w-full bg-background dark:bg-background py-12 px-4">
-        <div className="mx-auto max-w-4xl w-full">
+        <div className="mx-auto max-w-6xl w-full">
           <Card className="shadow-xl border-0 bg-background dark:bg-background backdrop-blur-sm">
             <CardHeader className="space-y-6 pb-8">
               <div className="text-center space-y-2">
@@ -722,5 +722,3 @@ export default function CompanyRegistrationPage() {
     </TooltipProvider>
   );
 }
-
-    
