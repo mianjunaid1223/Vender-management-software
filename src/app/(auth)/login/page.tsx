@@ -49,12 +49,12 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen w-full bg-background dark:bg-background py-16 px-4">
+    <div className="min-h-screen w-full bg-background dark:bg-background py-20 px-4 flex justify-center items-center">
       <div className="mx-auto max-w-sm w-full relative group">
-        <div className="absolute -inset-0.5 bg-gradient-to-r from-purple-500 via-blue-500 to-pink-500 rounded-lg blur-3xl opacity-75 group-hover:opacity-100 transition duration-300"></div>
+        <div className="absolute -inset-0.5 bg-gradient-to-r from-purple-500 via-blue-500 to-pink-500 rounded-lg blur-3xl opacity-60 group-hover:opacity-85 transition duration-300"></div>
         <Card className="relative z-10 shadow-2xl border-1 bg-background dark:bg-background">
           <CardHeader>
-            <CardTitle className="text-2xl">Login</CardTitle>
+            <CardTitle className="text-2xl">Welcome Back!</CardTitle>
             <CardDescription>Enter your email below to login to your account</CardDescription>
           </CardHeader>
           <CardContent>

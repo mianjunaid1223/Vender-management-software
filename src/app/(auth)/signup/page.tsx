@@ -125,10 +125,10 @@ export default function CompanyRegistrationPage() {
 
   return (
     <TooltipProvider>
-      <div className="min-h-screen w-full bg-background dark:bg-background py-16 px-4">
+      <div className="min-h-screen w-full bg-background dark:bg-background py-16 px-4 flex justify-center items-center">
         <div className="mx-auto max-w-6xl w-full relative group">
-          <div className="absolute -inset-1 bg-gradient-to-r from-purple-500 via-blue-500 to-pink-500 rounded-lg blur-3xl opacity-75 group-hover:opacity-100 transition duration-300"></div>
-          <Card className="relative z-10 shadow-2xl border-1 bg-card">
+          <div className="absolute -inset-1 bg-gradient-to-r from-purple-500 via-blue-500 to-pink-500 rounded-lg blur-3xl opacity-60 group-hover:opacity-85 transition duration-300"></div>
+          <Card className="relative z-10 shadow-2xl border-1  bg-background dark:bg-background">
             <CardHeader className="space-y-6 pb-8">
               <div className="text-center space-y-2">
                 <CardTitle className="text-4xl font-bold tracking-tight text-foreground">
@@ -248,8 +248,8 @@ export default function CompanyRegistrationPage() {
                           <FormItem>
                             <FormLabel className="text-sm font-medium text-foreground flex items-center gap-2">Tax ID
                               <Tooltip>
-                                <TooltipTrigger>
-                                  <Info className="h-4 w-4 text-gray-400" />
+                                <TooltipTrigger asChild>
+                                  <span tabIndex={0}><Info className="h-4 w-4 text-gray-400" /></span>
                                 </TooltipTrigger>
                                 <TooltipContent>
                                   <p>Your business tax identification number (EIN, SSN, etc.)</p>
@@ -275,8 +275,8 @@ export default function CompanyRegistrationPage() {
                           <FormItem>
                             <FormLabel className="text-sm font-medium text-foreground flex items-center gap-2">Legal ID
                               <Tooltip>
-                                <TooltipTrigger>
-                                  <Info className="h-4 w-4 text-gray-400" />
+                                <TooltipTrigger asChild>
+                                   <span tabIndex={0}><Info className="h-4 w-4 text-gray-400" /></span>
                                 </TooltipTrigger>
                                 <TooltipContent>
                                   <p>Your business registration number or legal entity identifier</p>
@@ -679,3 +679,5 @@ export default function CompanyRegistrationPage() {
     </TooltipProvider>
   );
 }
+
+    
