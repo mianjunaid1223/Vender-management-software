@@ -373,7 +373,6 @@ export async function fetchCompany(): Promise<Company | null> {
     }
     
     try {
-        // CORRECT: Query by the companyId field
         const company = await db.collection('companies').findOne({ companyId: companyId });
         
         if (!company) {
@@ -381,7 +380,6 @@ export async function fetchCompany(): Promise<Company | null> {
         }
         
         const { _id, ...companyData } = company;
-        // The `id` field in the type is for the MongoDB `_id`
         return JSON.parse(JSON.stringify({ ...companyData, id: _id.toString() }));
 
     } catch (error) {
@@ -395,8 +393,8 @@ export async function createCompany(company: Partial<Company>): Promise<Company>
     const db = await getDb();
     const currentUser = await getCurrentUser();
     
-    if (!currentUser) {
-        throw new Error('User not authenticated');
+    if (!currentUser || !currentUser.companyId) {
+        throw new Error('User not authenticated or missing companyId');
     }
     
     try {

@@ -50,10 +50,10 @@ import { cn } from "@/lib/utils";
 
 interface CompanyRegistrationFormProps {
   isEditing?: boolean;
-  company?: Company;
+  company?: Company | null;
 }
 
-const getInitialFormData = (company?: Company): Partial<Company> => {
+const getInitialFormData = (company?: Company | null): Partial<Company> => {
     if (company) return JSON.parse(JSON.stringify(company));
 
     return {
@@ -137,7 +137,7 @@ export function CompanyRegistrationForm({ isEditing = false, company }: CompanyR
     
     try {
       // Ensure the ID is passed for updates
-      const dataToSave = company?.id ? { ...formData, id: company.id } : formData;
+      const dataToSave = formData.id ? { ...formData } : formData;
       const result = await createOrUpdateCompanyAction(dataToSave);
       
       if (result.success) {

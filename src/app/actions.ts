@@ -103,26 +103,13 @@ export async function registerCompany(prevState: any, formData: FormData) {
 
     const session = db.client.startSession();
     await session.withTransaction(async () => {
-      // Create the user first to get their ID
-      const userResult = await usersCollection.insertOne({
-        name: userFullName,
-        email: primaryContactEmail,
-        password: userPassword,
-        companyId: '', // Placeholder, will be updated shortly
-        image: `https://placehold.co/100x100.png?text=${userFullName.charAt(0)}`,
-        role: "admin",
-        createdAt: new Date().toISOString()
-      }, { session });
-
-      newUserId = userResult.insertedId;
-
-      // Now, create the unique companyId based on the new user's ID
-      const companyId = `company-${newUserId.toString()}`;
-
-      // Create the company document with the correct companyId
+      // Step 1: Create the company first to get its ID
+      const newCompanyId = new ObjectId(); // Generate a new ObjectId for the company
+      
       const companyResult = await companiesCollection.insertOne({
+        _id: newCompanyId,
         name: companyName,
-        companyId: companyId, // <-- CRITICAL FIX HERE
+        companyId: newCompanyId.toString(), // Store string version as the unique company identifier
         industry,
         businessType,
         taxId,
@@ -141,13 +128,28 @@ export async function registerCompany(prevState: any, formData: FormData) {
         preferences: { defaultPaymentTerms: 'Net 30', defaultCurrency: 'USD' },
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-        createdBy: newUserId.toString(),
+        createdBy: '', // Placeholder, will be updated shortly
       }, { session });
+      
+      const companyIdString = newCompanyId.toString();
 
-      // Finally, update the user with the correct companyId
-      await usersCollection.updateOne(
-        { _id: newUserId },
-        { $set: { companyId: companyId } },
+      // Step 2: Create the user and assign them the new company's ID
+      const userResult = await usersCollection.insertOne({
+        name: userFullName,
+        email: primaryContactEmail,
+        password: userPassword,
+        companyId: companyIdString, // Assign the new company's ID
+        image: `https://placehold.co/100x100.png?text=${userFullName.charAt(0)}`,
+        role: "admin",
+        createdAt: new Date().toISOString()
+      }, { session });
+      
+      newUserId = userResult.insertedId;
+
+      // Step 3: Update the company's 'createdBy' field with the new user's ID
+      await companiesCollection.updateOne(
+        { _id: newCompanyId },
+        { $set: { createdBy: newUserId.toString() } },
         { session }
       );
     });
