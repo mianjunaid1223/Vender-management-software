@@ -125,15 +125,15 @@ export default function CompanyRegistrationPage() {
 
   return (
     <TooltipProvider>
-      <div className="min-h-screen w-full bg-background dark:bg-background py-12 px-4">
+      <div className="min-h-screen w-full bg-background dark:bg-background py-16 px-4">
         <div className="mx-auto max-w-6xl w-full">
-          <Card className="shadow-xl border-0 bg-background/80 dark:bg-background/50 backdrop-blur-sm">
+          <Card className="shadow-2xl border-0 bg-background/85 dark:bg-background/60 backdrop-blur-lg">
             <CardHeader className="space-y-6 pb-8">
               <div className="text-center space-y-2">
-                <CardTitle className="text-3xl font-bold tracking-tight text-foreground">
+                <CardTitle className="text-4xl font-bold tracking-tight text-foreground">
                   Company Registration
                 </CardTitle>
-                <CardDescription className="text-lg text-muted-foreground max-w-2xl mx-auto">
+                <CardDescription className="text-xl text-muted-foreground max-w-3xl mx-auto">
                   Create your company profile to get started with our vendor management platform
                 </CardDescription>
               </div>
@@ -141,13 +141,13 @@ export default function CompanyRegistrationPage() {
             
             <CardContent className="space-y-8">
               <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-12">
                   
                   {/* Company Information Section */}
                   <div className="space-y-6">
-                    <div className="flex items-center gap-3 pb-4 border-b border-border">
-                      <Building className="h-5 w-5 text-foreground" />
-                      <h3 className="text-xl font-semibold text-foreground">Company Information</h3>
+                    <div className="flex items-center gap-3 pb-4 border-b border-border/70">
+                      <Building className="h-6 w-6 text-foreground" />
+                      <h3 className="text-2xl font-semibold text-foreground">Company Information</h3>
                     </div>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -160,7 +160,7 @@ export default function CompanyRegistrationPage() {
                             <FormControl>
                               <Input 
                                 placeholder="Acme Corporation" 
-                                className="h-11 border-border focus:border-primary focus:ring-primary bg-background text-foreground placeholder:text-muted-foreground"
+                                className="h-11 border-border/70 focus:border-primary focus:ring-primary bg-background text-foreground placeholder:text-muted-foreground"
                                 {...field} 
                               />
                             </FormControl>
@@ -177,7 +177,7 @@ export default function CompanyRegistrationPage() {
                             <FormLabel className="text-sm font-medium text-foreground">Industry</FormLabel>
                             <Select onValueChange={field.onChange} defaultValue={field.value}>
                               <FormControl>
-                                <SelectTrigger className="h-11 border-border focus:border-primary focus:ring-primary bg-background text-foreground">
+                                <SelectTrigger className="h-11 border-border/70 focus:border-primary focus:ring-primary bg-background text-foreground">
                                   <SelectValue placeholder="Select industry" />
                                 </SelectTrigger>
                               </FormControl>
@@ -202,7 +202,7 @@ export default function CompanyRegistrationPage() {
                             <FormLabel className="text-sm font-medium text-foreground">Business Type</FormLabel>
                             <Select onValueChange={field.onChange} defaultValue={field.value}>
                               <FormControl>
-                                <SelectTrigger className="h-11 border-border focus:border-primary focus:ring-primary bg-background text-foreground">
+                                <SelectTrigger className="h-11 border-border/70 focus:border-primary focus:ring-primary bg-background text-foreground">
                                   <SelectValue placeholder="Select business type" />
                                 </SelectTrigger>
                               </FormControl>
@@ -229,7 +229,7 @@ export default function CompanyRegistrationPage() {
                                <Globe className="absolute left-3 top-3.5 h-4 w-4 text-gray-400" />
                                 <Input 
                                   placeholder="https://www.example.com" 
-                                  className="h-11 pl-10 border-border focus:border-primary focus:ring-primary bg-background text-foreground placeholder:text-muted-foreground"
+                                  className="h-11 pl-10 border-border/70 focus:border-primary focus:ring-primary bg-background text-foreground placeholder:text-muted-foreground"
                                   {...field} 
                                 />
                             </div>
@@ -258,7 +258,7 @@ export default function CompanyRegistrationPage() {
                             <FormControl>
                               <Input 
                                 placeholder="XX-XXXXXXX" 
-                                className="h-11 border-border focus:border-primary focus:ring-primary bg-background text-foreground placeholder:text-muted-foreground"
+                                className="h-11 border-border/70 focus:border-primary focus:ring-primary bg-background text-foreground placeholder:text-muted-foreground"
                                 {...field} 
                               />
                             </FormControl>
@@ -285,7 +285,7 @@ export default function CompanyRegistrationPage() {
                             <FormControl>
                               <Input 
                                 placeholder="Business registration number" 
-                                className="h-11 border-border focus:border-primary focus:ring-primary bg-background text-foreground placeholder:text-muted-foreground"
+                                className="h-11 border-border/70 focus:border-primary focus:ring-primary bg-background text-foreground placeholder:text-muted-foreground"
                                 {...field} 
                               />
                             </FormControl>
@@ -296,13 +296,13 @@ export default function CompanyRegistrationPage() {
                     </div>
                   </div>
 
-                  <Separator className="bg-border" />
+                  <Separator className="bg-border/50" />
 
                   {/* Primary Address Section */}
                   <div className="space-y-6">
-                    <div className="flex items-center gap-3 pb-4 border-b border-border">
-                      <MapPin className="h-5 w-5 text-foreground" />
-                      <h3 className="text-xl font-semibold text-foreground">Primary Address</h3>
+                    <div className="flex items-center gap-3 pb-4 border-b border-border/70">
+                      <MapPin className="h-6 w-6 text-foreground" />
+                      <h3 className="text-2xl font-semibold text-foreground">Primary Address</h3>
                     </div>
                     
                     <div className="grid grid-cols-1 gap-6">
@@ -315,7 +315,7 @@ export default function CompanyRegistrationPage() {
                             <FormControl>
                               <Input 
                                 placeholder="123 Main Street" 
-                                className="h-11 border-border focus:border-primary focus:ring-primary bg-background text-foreground placeholder:text-muted-foreground"
+                                className="h-11 border-border/70 focus:border-primary focus:ring-primary bg-background text-foreground placeholder:text-muted-foreground"
                                 {...field} 
                               />
                             </FormControl>
@@ -334,7 +334,7 @@ export default function CompanyRegistrationPage() {
                               <FormControl>
                                 <Input 
                                   placeholder="New York" 
-                                  className="h-11 border-border focus:border-primary focus:ring-primary bg-background text-foreground placeholder:text-muted-foreground"
+                                  className="h-11 border-border/70 focus:border-primary focus:ring-primary bg-background text-foreground placeholder:text-muted-foreground"
                                   {...field} 
                                 />
                               </FormControl>
@@ -352,7 +352,7 @@ export default function CompanyRegistrationPage() {
                               <FormControl>
                                 <Input 
                                   placeholder="NY" 
-                                  className="h-11 border-border focus:border-primary focus:ring-primary bg-background text-foreground placeholder:text-muted-foreground"
+                                  className="h-11 border-border/70 focus:border-primary focus:ring-primary bg-background text-foreground placeholder:text-muted-foreground"
                                   {...field} 
                                 />
                               </FormControl>
@@ -370,7 +370,7 @@ export default function CompanyRegistrationPage() {
                               <FormControl>
                                 <Input 
                                   placeholder="10001" 
-                                  className="h-11 border-border focus:border-primary focus:ring-primary bg-background text-foreground placeholder:text-muted-foreground"
+                                  className="h-11 border-border/70 focus:border-primary focus:ring-primary bg-background text-foreground placeholder:text-muted-foreground"
                                   {...field} 
                                 />
                               </FormControl>
@@ -388,7 +388,7 @@ export default function CompanyRegistrationPage() {
                             <FormLabel className="text-sm font-medium text-foreground">Country</FormLabel>
                             <Select onValueChange={field.onChange} defaultValue={field.value}>
                               <FormControl>
-                                <SelectTrigger className="h-11 border-border focus:border-primary focus:ring-primary bg-background text-foreground">
+                                <SelectTrigger className="h-11 border-border/70 focus:border-primary focus:ring-primary bg-background text-foreground">
                                   <SelectValue placeholder="Select country" />
                                 </SelectTrigger>
                               </FormControl>
@@ -409,14 +409,14 @@ export default function CompanyRegistrationPage() {
 
                   {/* Additional Addresses Section */}
                   <div className="space-y-6">
-                    <div className="flex items-center justify-between pb-4 border-b border-border">
+                    <div className="flex items-center justify-between pb-4 border-b border-border/70">
                       <h3 className="text-lg font-semibold text-foreground">Additional Addresses</h3>
                       <Button
                         type="button"
                         variant="outline"
                         size="sm"
                         onClick={addAdditionalAddress}
-                        className="h-9 border-border hover:bg-muted"
+                        className="h-9 border-border/70 hover:bg-muted"
                       >
                         <Plus className="h-4 w-4 mr-2" />
                         Add Address
@@ -424,9 +424,9 @@ export default function CompanyRegistrationPage() {
                     </div>
                     
                     {fields.map((field, index) => (
-                      <Card key={field.id} className="p-6 border border-border bg-background/50">
+                      <Card key={field.id} className="p-6 border border-border/70 bg-background/50">
                         <div className="flex items-center justify-between mb-4">
-                          <h4 className="text-sm font-medium ">Additional Address {index + 1}</h4>
+                          <h4 className="text-md font-medium ">Additional Address {index + 1}</h4>
                           <Button
                             type="button"
                             variant="ghost"
@@ -448,7 +448,7 @@ export default function CompanyRegistrationPage() {
                                 <FormControl>
                                   <Input 
                                     placeholder="e.g., Warehouse, Branch Office" 
-                                    className="h-10 border-border focus:border-primary focus:ring-primary bg-background text-foreground placeholder:text-muted-foreground"
+                                    className="h-11 border-border/70 focus:border-primary focus:ring-primary bg-background text-foreground placeholder:text-muted-foreground"
                                     {...field} 
                                   />
                                 </FormControl>
@@ -466,7 +466,7 @@ export default function CompanyRegistrationPage() {
                                 <FormControl>
                                   <Input 
                                     placeholder="456 Oak Avenue" 
-                                    className="h-10 border-border focus:border-primary focus:ring-primary bg-background text-foreground placeholder:text-muted-foreground"
+                                    className="h-11 border-border/70 focus:border-primary focus:ring-primary bg-background text-foreground placeholder:text-muted-foreground"
                                     {...field} 
                                   />
                                 </FormControl>
@@ -485,7 +485,7 @@ export default function CompanyRegistrationPage() {
                                   <FormControl>
                                     <Input 
                                       placeholder="Chicago" 
-                                      className="h-10 border-border focus:border-primary focus:ring-primary bg-background text-foreground placeholder:text-muted-foreground"
+                                      className="h-11 border-border/70 focus:border-primary focus:ring-primary bg-background text-foreground placeholder:text-muted-foreground"
                                       {...field} 
                                     />
                                   </FormControl>
@@ -503,7 +503,7 @@ export default function CompanyRegistrationPage() {
                                   <FormControl>
                                     <Input 
                                       placeholder="IL" 
-                                      className="h-10 border-border focus:border-primary focus:ring-primary bg-background text-foreground placeholder:text-muted-foreground"
+                                      className="h-11 border-border/70 focus:border-primary focus:ring-primary bg-background text-foreground placeholder:text-muted-foreground"
                                       {...field} 
                                     />
                                   </FormControl>
@@ -521,7 +521,7 @@ export default function CompanyRegistrationPage() {
                                   <FormControl>
                                     <Input 
                                       placeholder="60601" 
-                                      className="h-10 border-border focus:border-primary focus:ring-primary bg-background text-foreground placeholder:text-muted-foreground"
+                                      className="h-11 border-border/70 focus:border-primary focus:ring-primary bg-background text-foreground placeholder:text-muted-foreground"
                                       {...field} 
                                     />
                                   </FormControl>
@@ -539,7 +539,7 @@ export default function CompanyRegistrationPage() {
                                 <FormLabel className="text-sm font-medium text-foreground">Country</FormLabel>
                                 <Select onValueChange={field.onChange} defaultValue={field.value}>
                                   <FormControl>
-                                    <SelectTrigger className="h-10 border-border focus:border-primary focus:ring-primary bg-background text-foreground">
+                                    <SelectTrigger className="h-11 border-border/70 focus:border-primary focus:ring-primary bg-background text-foreground">
                                       <SelectValue placeholder="Select country" />
                                     </SelectTrigger>
                                   </FormControl>
@@ -560,13 +560,13 @@ export default function CompanyRegistrationPage() {
                     ))}
                   </div>
 
-                  <Separator className="bg-border" />
+                  <Separator className="bg-border/50" />
 
                   {/* Administrator Account Section */}
                   <div className="space-y-6">
-                    <div className="flex items-center gap-3 pb-4 border-b border-border">
-                      <UserIcon className="h-5 w-5 text-foreground" />
-                      <h3 className="text-xl font-semibold text-foreground">Administrator Account</h3>
+                    <div className="flex items-center gap-3 pb-4 border-b border-border/70">
+                      <UserIcon className="h-6 w-6 text-foreground" />
+                      <h3 className="text-2xl font-semibold text-foreground">Administrator Account</h3>
                     </div>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -579,7 +579,7 @@ export default function CompanyRegistrationPage() {
                             <FormControl>
                               <Input 
                                 placeholder="John Doe" 
-                                className="h-11 border-border focus:border-primary focus:ring-primary bg-background text-foreground placeholder:text-muted-foreground"
+                                className="h-11 border-border/70 focus:border-primary focus:ring-primary bg-background text-foreground placeholder:text-muted-foreground"
                                 {...field} 
                               />
                             </FormControl>
@@ -599,7 +599,7 @@ export default function CompanyRegistrationPage() {
                                 <Input 
                                   type="email" 
                                   placeholder="contact@company.com" 
-                                  className="h-11 pl-10 border-border focus:border-primary focus:ring-primary bg-background text-foreground placeholder:text-muted-foreground"
+                                  className="h-11 pl-10 border-border/70 focus:border-primary focus:ring-primary bg-background text-foreground placeholder:text-muted-foreground"
                                   {...field} 
                                 />
                               </div>
@@ -618,7 +618,7 @@ export default function CompanyRegistrationPage() {
                               <Input 
                                 type="password" 
                                 placeholder="Create a secure password"
-                                className="h-11 border-border focus:border-primary focus:ring-primary bg-background text-foreground placeholder:text-muted-foreground"
+                                className="h-11 border-border/70 focus:border-primary focus:ring-primary bg-background text-foreground placeholder:text-muted-foreground"
                                 {...field} 
                               />
                             </FormControl>
@@ -637,7 +637,7 @@ export default function CompanyRegistrationPage() {
                                 <Phone className="absolute left-3 top-3.5 h-4 w-4 text-gray-400" />
                                 <Input 
                                   placeholder="+1 (555) 123-4567" 
-                                  className="h-11 pl-10 border-border focus:border-primary focus:ring-primary bg-background text-foreground placeholder:text-muted-foreground"
+                                  className="h-11 pl-10 border-border/70 focus:border-primary focus:ring-primary bg-background text-foreground placeholder:text-muted-foreground"
                                   {...field} 
                                 />
                               </div>
@@ -649,15 +649,13 @@ export default function CompanyRegistrationPage() {
                     </div>
                   </div>
 
-                  <Separator className="bg-border" />
-
-                  {/* AI Features Section -- REMOVED AS PER USER REQUEST */}
+                  <Separator className="bg-border/50" />
                   
                   {/* Submit Button */}
                   <div className="pt-6">
                     <Button 
                       type="submit" 
-                      className="w-full h-12 bg-gray-900 hover:bg-gray-800 text-white font-medium text-base transition-colors duration-200" 
+                      className="w-full h-12 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-lg transition-all duration-300 transform hover:scale-105" 
                       disabled={isLoading}
                     >
                       {isLoading && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
@@ -667,9 +665,9 @@ export default function CompanyRegistrationPage() {
                 </form>
               </Form>
               
-              <div className="mt-8 pt-6 border-t border-border text-center text-sm text-muted-foreground">
+              <div className="mt-8 pt-6 border-t border-border/50 text-center text-sm text-muted-foreground">
                 Already have an account?{" "}
-                <Link href="/login" className="font-medium text-primary transition-colors duration-200">
+                <Link href="/login" className="font-medium text-primary hover:underline transition-colors duration-200">
                   Sign in here
                 </Link>
               </div>
