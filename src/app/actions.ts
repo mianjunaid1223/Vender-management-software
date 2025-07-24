@@ -53,86 +53,26 @@ export async function addInvoice(values: z.infer<typeof invoiceFormSchema>) {
     }
 }
 
-const signupFormSchema = z.object({
-  fullName: z.string().min(2, { message: "Name must be at least 2 characters." }),
-  email: z.string().email({ message: "Please enter a valid email." }),
-  password: z.string().min(6, { message: "Password must be at least 6 characters." }),
-});
-
-export async function signupUser(values: z.infer<typeof signupFormSchema>) {
-  const db = await getDb();
-  if (!db) {
-      return { success: false, message: "Database connection failed. Please check server configuration." };
-  }
-  
-  try {
-    const validatedData = signupFormSchema.parse(values);
-    
-    const usersCollection = db.collection("users");
-
-    const existingUser = await usersCollection.findOne({ email: validatedData.email });
-    if (existingUser) {
-      return { success: false, message: "User with this email already exists." };
-    }
-    
-    // In a real app, you would hash the password
-    const { fullName, email, password } = validatedData;
-    
-    // Create a unique company ID for the new user (in a real app, this might be more sophisticated)
-    const companyId = `company-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    
-    const result = await usersCollection.insertOne({ 
-      name: fullName, 
-      email, 
-      password, 
-      companyId, // Assign company ID to ensure multi-tenant isolation
-      image: `https://placehold.co/100x100.png?text=${fullName.charAt(0)}` 
-    });
-
-    // Create session for the new user
-    await createSession(result.insertedId.toString());
-    
-  } catch (error) {
-    console.error("Signup Error:", error);
-    if (error instanceof z.ZodError) {
-      return { success: false, message: "Validation failed.", issues: error.flatten() };
-    }
-    return { success: false, message: "An unexpected error occurred during sign up." };
-  }
-
-  redirect("/dashboard");
-}
-
-
 const loginFormSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email." }),
   password: z.string().min(1, { message: "Password is required." }),
 });
 
-export async function logoutUser() {
-  await deleteSession();
-  redirect("/");
-}
-
 export async function loginUser(values: z.infer<typeof loginFormSchema>) {
     const db = await getDb();
     if (!db) {
-        return { success: false, message: "Database connection failed. Please check server configuration." };
+        return { success: false, message: "Database connection failed." };
     }
     
     try {
         const validatedData = loginFormSchema.parse(values);
+        const user = await db.collection("users").findOne({ email: validatedData.email });
         
-        const usersCollection = db.collection("users");
-
-        const user = await usersCollection.findOne({ email: validatedData.email });
-        
-        // In a real app, you would compare hashed passwords
         if (!user || user.password !== validatedData.password) {
           return { success: false, message: "Invalid email or password." };
         }
 
-        // Create session for the authenticated user
+        // CORRECT: Use the user's MongoDB _id for the session
         await createSession(user._id.toString());
         
     } catch (error) {
@@ -144,6 +84,11 @@ export async function loginUser(values: z.infer<typeof loginFormSchema>) {
     }
 
     redirect("/dashboard");
+}
+
+export async function logoutUser() {
+  await deleteSession();
+  redirect("/");
 }
 
 const profileFormSchema = z.object({
@@ -158,7 +103,6 @@ export async function updateUserProfile(values: z.infer<typeof profileFormSchema
             return { success: false, message: "Database connection failed. Please check server configuration." };
         }
         
-        // In a real app, this would come from a session. For now, we update the first user found.
         const currentUser = await db.collection("users").findOne({});
         if (!currentUser) {
             return { success: false, message: "User not found." };
@@ -170,7 +114,7 @@ export async function updateUserProfile(values: z.infer<typeof profileFormSchema
         );
 
         revalidatePath("/dashboard/profile");
-        revalidatePath("/dashboard"); // To update user-nav
+        revalidatePath("/dashboard");
         return { success: true, message: "Profile updated successfully." };
     } catch (error) {
         console.error("Failed to update profile:", error);
@@ -385,7 +329,6 @@ const companyRegistrationSchema = z.object({
   primaryContactEmail: z.string().email({ message: "Please enter a valid email." }),
   primaryContactPhone: z.string().min(1, { message: "Phone number is required." }),
   aiOptIn: z.boolean().default(false),
-  // User account fields
   userFullName: z.string().min(2, { message: "Full name must be at least 2 characters." }),
   userPassword: z.string().min(6, { message: "Password must be at least 6 characters." }),
 });
@@ -393,7 +336,7 @@ const companyRegistrationSchema = z.object({
 export async function registerCompany(values: z.infer<typeof companyRegistrationSchema>) {
   const db = await getDb();
   if (!db) {
-      return { success: false, message: "Database connection failed. Please check server configuration." };
+      return { success: false, message: "Database connection failed." };
   }
   
   try {
@@ -402,44 +345,43 @@ export async function registerCompany(values: z.infer<typeof companyRegistration
     const usersCollection = db.collection("users");
     const companiesCollection = db.collection("companies");
 
-    // Check if user already exists
     const existingUser = await usersCollection.findOne({ email: validatedData.primaryContactEmail });
     if (existingUser) {
       return { success: false, message: "User with this email already exists." };
     }
     
-    // Create a unique company ID
     const companyId = `company-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     
-    // Create company record
     const companyData: Partial<Company> = {
       id: companyId,
-      companyId,
       name: validatedData.companyName,
       industry: validatedData.industry,
       businessType: validatedData.businessType,
       taxId: validatedData.taxId,
       legalId: validatedData.legalId,
-      primaryAddress: validatedData.primaryAddress,
       addresses: [validatedData.primaryAddress],
       additionalAddresses: validatedData.additionalAddresses || [],
       website: validatedData.websiteUrl || "",
-      primaryContactEmail: validatedData.primaryContactEmail,
-      primaryContactPhone: validatedData.primaryContactPhone,
-      aiOptIn: validatedData.aiOptIn,
+      contacts: [{
+        id: new ObjectId().toString(),
+        name: validatedData.userFullName,
+        email: validatedData.primaryContactEmail,
+        phone: validatedData.primaryContactPhone,
+        isPrimary: true
+      }],
+      preferences: { defaultPaymentTerms: 'Net 30', defaultCurrency: 'USD' },
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      status: "active"
+      createdBy: '', // will be updated with user id
     };
 
-    await companiesCollection.insertOne(companyData);
+    const companyResult = await companiesCollection.insertOne({ ...companyData, companyId: companyId });
     
-    // Create user record
     const userData = {
       name: validatedData.userFullName,
       email: validatedData.primaryContactEmail,
-      password: validatedData.userPassword, // In production, hash this password
-      companyId,
+      password: validatedData.userPassword,
+      companyId: companyId,
       image: `https://placehold.co/100x100.png?text=${validatedData.userFullName.charAt(0)}`,
       role: "admin",
       createdAt: new Date().toISOString()
@@ -447,7 +389,11 @@ export async function registerCompany(values: z.infer<typeof companyRegistration
 
     const userResult = await usersCollection.insertOne(userData);
 
-    // Create session for the new user
+    await companiesCollection.updateOne(
+      { _id: companyResult.insertedId },
+      { $set: { createdBy: userResult.insertedId.toString() } }
+    );
+    
     await createSession(userResult.insertedId.toString());
     
   } catch (error) {
@@ -460,5 +406,4 @@ export async function registerCompany(values: z.infer<typeof companyRegistration
 
   redirect("/dashboard");
 }
-
     

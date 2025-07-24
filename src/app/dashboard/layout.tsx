@@ -12,10 +12,8 @@ import { AISpotlight } from "@/components/dashboard/ai-spotlight";
 import { requireAuth } from "@/lib/session";
 
 export default async function DashboardLayout({ children }: { children: ReactNode }) {
-    // Ensure user is authenticated
     await requireAuth();
 
-    // Fetch all data in parallel
     const [user, invoices, vendors, contracts, company] = await Promise.all([
         getUser(),
         fetchInvoices(),
@@ -24,7 +22,6 @@ export default async function DashboardLayout({ children }: { children: ReactNod
         fetchCompany()
     ]);
 
-    // Serialize all data before passing to client components
     const serializedUser = JSON.parse(JSON.stringify(user));
     const serializedInvoices = JSON.parse(JSON.stringify(invoices));
     const serializedVendors = JSON.parse(JSON.stringify(vendors));

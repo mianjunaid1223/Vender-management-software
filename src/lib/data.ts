@@ -34,7 +34,7 @@ export async function fetchInvoices(): Promise<Invoice[]> {
     try {
         const invoices = await db
             .collection('invoices')
-            .find({ companyId }) // Only get invoices for the current user's company
+            .find({ companyId }) 
             .sort({ invoiceDate: -1 })
             .toArray();
         
@@ -61,7 +61,7 @@ export async function fetchVendors(): Promise<Vendor[]> {
     try {
         const vendors = await db
             .collection('vendors')
-            .find({ companyId }) // Only get vendors for the current user's company
+            .find({ companyId }) 
             .sort({ name: 1 })
             .toArray();
 
@@ -90,20 +90,20 @@ export async function fetchCardData() {
         const vendorsCollection = db.collection('vendors');
 
         const totalSpendPromise = invoicesCollection.aggregate([
-            { $match: { status: 'Paid', companyId } }, // Scope by company
+            { $match: { status: 'Paid', companyId } },
             { $group: { _id: null, total: { $sum: '$totalAmount' } } }
         ]).toArray();
         
-        const activeVendorsPromise = vendorsCollection.countDocuments({ companyId }); // Scope by company
+        const activeVendorsPromise = vendorsCollection.countDocuments({ companyId });
         
         const unpaidInvoicesPromise = invoicesCollection.countDocuments({ 
           status: { $in: ['Unpaid', 'Pending', 'Overdue'] },
-          companyId // Scope by company
+          companyId
         });
         
         const nextPaymentDuePromise = invoicesCollection.find({ 
           status: { $in: ['Unpaid', 'Pending', 'Overdue'] },
-          companyId // Scope by company
+          companyId
         })
             .sort({ invoiceDueDate: 1 })
             .limit(1)
@@ -167,7 +167,7 @@ export async function processAndFetchContracts(): Promise<Contract[]> {
       const activeContracts = await contractsCollection
         .find({ 
             status: { $nin: ['Expired', 'Terminated'] },
-            companyId // Only get contracts for the current user's company
+            companyId
         })
         .toArray();
   
@@ -183,7 +183,7 @@ export async function processAndFetchContracts(): Promise<Contract[]> {
             const newEndDate = add(newStartDate, { months: renewalPeriod });
   
             await contractsCollection.updateOne(
-              { _id: contract._id, companyId }, // Ensure company scoping even in updates
+              { _id: contract._id, companyId },
               {
                 $set: {
                   startDate: newStartDate.toISOString(),
@@ -194,14 +194,14 @@ export async function processAndFetchContracts(): Promise<Contract[]> {
             );
           } else {
             await contractsCollection.updateOne(
-              { _id: contract._id, companyId }, // Ensure company scoping even in updates
+              { _id: contract._id, companyId },
               { $set: { status: 'Expired', updatedAt: new Date().toISOString() } }
             );
           }
         }
       }
   
-      const allContracts = await contractsCollection.find({ companyId }).sort({ createdAt: -1 }).toArray(); // Scope by company
+      const allContracts = await contractsCollection.find({ companyId }).sort({ createdAt: -1 }).toArray();
       return JSON.parse(JSON.stringify(allContracts.map(c => ({...c, id: c._id.toString()}))));
   
     } catch (error) {
@@ -221,7 +221,7 @@ export async function fetchContracts(): Promise<Contract[]> {
     try {
         const contracts = await db
             .collection('contracts')
-            .find({ companyId }) // Only get contracts for the current user's company
+            .find({ companyId }) 
             .sort({ createdAt: -1 })
             .toArray();
 
@@ -244,7 +244,7 @@ export async function createInvoice(invoice: Partial<Invoice>): Promise<Invoice>
     try {
         const invoiceData = {
             ...invoice,
-            companyId, // Ensure the invoice belongs to the current user's company
+            companyId, 
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
         };
@@ -282,7 +282,7 @@ export async function updateInvoice(id: string, updates: Partial<Invoice>): Prom
         updateData.updatedAt = new Date().toISOString();
         
         const result = await db.collection('invoices').findOneAndUpdate(
-            { _id: new ObjectId(id), companyId }, // Ensure only own company's invoices can be updated
+            { _id: new ObjectId(id), companyId }, 
             { $set: updateData },
             { returnDocument: 'after' }
         );
@@ -314,7 +314,7 @@ export async function deleteInvoice(id: string): Promise<void> {
     try {
         const result = await db.collection('invoices').deleteOne({ 
             _id: new ObjectId(id), 
-            companyId // Ensure only own company's invoices can be deleted
+            companyId
         });
         
         if (result.deletedCount === 0) {
@@ -346,7 +346,7 @@ export async function updateInvoiceStatus(id: string, status: Invoice['status'])
         };
         
         const result = await db.collection('invoices').updateOne(
-            { _id: new ObjectId(id), companyId }, // Ensure only own company's invoices can be updated
+            { _id: new ObjectId(id), companyId },
             { $set: updateData }
         );
         
@@ -369,11 +369,12 @@ export async function fetchCompany(): Promise<Company | null> {
     const companyId = await getCurrentUserCompanyId();
     
     if (!companyId) {
-        return null; // No user logged in or no company associated
+        return null; 
     }
     
     try {
-        const company = await db.collection('companies').findOne({ companyId });
+        // CORRECT: Query by the companyId field
+        const company = await db.collection('companies').findOne({ companyId: companyId });
         
         if (!company) {
             return null;
@@ -400,23 +401,17 @@ export async function createCompany(company: Partial<Company>): Promise<Company>
     try {
         const companyData = {
             ...company,
-            id: currentUser.companyId, // Link the company to the user's companyId
-            companyId: currentUser.companyId, // Also store as companyId for consistency
+            companyId: currentUser.companyId,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
-            createdBy: currentUser.id, // Track who created the company
+            createdBy: currentUser.id,
         };
         
-        // First, check if a company with this companyId already exists
         const existingCompany = await db.collection('companies').findOne({ 
-            $or: [
-                { id: currentUser.companyId },
-                { companyId: currentUser.companyId }
-            ]
+            companyId: currentUser.companyId
         });
         
         if (existingCompany) {
-            // Update the existing company instead of creating a new one
             return updateCompany(existingCompany._id.toString(), companyData);
         }
         
@@ -463,8 +458,9 @@ export async function updateCompany(id: string, updates: Partial<Company>): Prom
 
 export async function createOrUpdateCompany(companyData: Partial<Company>): Promise<Company> {
     noStore();
-    if (companyData.id) {
-        return updateCompany(companyData.id, companyData);
+    const existingCompany = await fetchCompany();
+    if (existingCompany) {
+        return updateCompany(existingCompany._id!.toString(), companyData);
     } else {
         return createCompany(companyData);
     }
@@ -483,7 +479,7 @@ export async function createContract(contract: Partial<Contract>): Promise<Contr
     try {
         const contractData = {
             ...contract,
-            companyId, // Ensure the contract belongs to the current user's company
+            companyId, 
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
         };
@@ -514,7 +510,7 @@ export async function updateContract(id: string, updates: Partial<Contract>): Pr
         updateData.updatedAt = new Date().toISOString();
         
         const result = await db.collection('contracts').findOneAndUpdate(
-            { _id: new ObjectId(id), companyId }, // Ensure only own company's contracts can be updated
+            { _id: new ObjectId(id), companyId },
             { $set: updateData },
             { returnDocument: 'after' }
         );
@@ -546,7 +542,6 @@ export async function deleteContract(id: string): Promise<void> {
             const contractsCollection = db.collection('contracts');
             const invoicesCollection = db.collection('invoices');
 
-            // Delete only invoices belonging to this company and contract
             await invoicesCollection.deleteMany({ 
                 contractId: id, 
                 companyId 
@@ -554,7 +549,7 @@ export async function deleteContract(id: string): Promise<void> {
 
             const result = await contractsCollection.deleteOne({ 
                 _id: new ObjectId(id), 
-                companyId // Ensure only own company's contracts can be deleted
+                companyId
             }, { session });
             
             if (result.deletedCount === 0) {
@@ -582,7 +577,7 @@ export async function fetchContractsByVendor(vendorId: string): Promise<Contract
         const contracts = await db
             .collection('contracts')
             .find({ 
-                companyId, // Only get contracts for the current user's company
+                companyId,
                 $or: [ { "partyA.id": vendorId }, { "partyB.id": vendorId } ]
             })
             .sort({ createdAt: -1 })
@@ -609,7 +604,7 @@ export async function fetchInvoicesByContract(contractId: string): Promise<Invoi
             .collection('invoices')
             .find({ 
                 contractId, 
-                companyId // Only get invoices for the current user's company
+                companyId
             })
             .sort({ createdAt: -1 })
             .toArray();
@@ -638,7 +633,7 @@ export async function fetchExpiringContracts(daysAhead: number = 30): Promise<Co
         const contracts = await db
             .collection('contracts')
             .find({ 
-                companyId, // Only get contracts for the current user's company
+                companyId,
                 endDate: { $lte: futureDate.toISOString() },
                 status: { $in: ['Active', 'Pending'] }
             })
@@ -665,7 +660,7 @@ export async function createVendor(vendor: Partial<Vendor>): Promise<Vendor> {
     try {
         const vendorData = {
             ...vendor,
-            companyId, // Ensure the vendor belongs to the current user's company
+            companyId,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
         };
@@ -697,7 +692,7 @@ export async function updateVendor(id: string, updates: Partial<Vendor>): Promis
         updateData.updatedAt = new Date().toISOString();
 
         const result = await db.collection('vendors').findOneAndUpdate(
-            { _id: new ObjectId(id), companyId }, // Ensure only own company's vendors can be updated
+            { _id: new ObjectId(id), companyId },
             { $set: updateData },
             { returnDocument: 'after' }
         );
@@ -731,7 +726,6 @@ export async function deleteVendor(id: string): Promise<void> {
             const contractsCollection = db.collection('contracts');
             const invoicesCollection = db.collection('invoices');
 
-            // Only work with data belonging to the current user's company
             const contractsToDelete = await contractsCollection.find({ 
                 companyId,
                 $or: [ { "partyA.id": id }, { "partyB.id": id } ] 
@@ -750,7 +744,7 @@ export async function deleteVendor(id: string): Promise<void> {
             
             const result = await vendorsCollection.deleteOne({ 
                 _id: new ObjectId(id), 
-                companyId // Ensure only own company's vendors can be deleted
+                companyId
             }, { session });
 
             if (result.deletedCount === 0) {
@@ -827,7 +821,7 @@ export async function createNotification(notification: Partial<Notification>): P
     try {
         const notificationData = {
             ...notification,
-            companyId, // Ensure notification belongs to the current user's company
+            companyId,
             createdAt: new Date().toISOString(),
             isRead: false,
         };
@@ -848,7 +842,7 @@ export async function fetchNotifications(userId: string): Promise<Notification[]
     const companyId = await getCurrentUserCompanyId();
     
     if (!companyId) {
-        return []; // Return empty array if no company context
+        return [];
     }
     
     try {
@@ -856,7 +850,7 @@ export async function fetchNotifications(userId: string): Promise<Notification[]
             .collection('notifications')
             .find({ 
                 userId, 
-                companyId // Only get notifications for the current user's company
+                companyId
             })
             .sort({ createdAt: -1 })
             .limit(50)
@@ -882,7 +876,7 @@ export async function markNotificationAsRead(id: string): Promise<void> {
         await db.collection('notifications').updateOne(
             { 
                 _id: new ObjectId(id), 
-                companyId // Ensure only own company's notifications can be marked as read
+                companyId
             },
             { $set: { isRead: true } }
         );
@@ -899,20 +893,19 @@ export async function logAction(action: Partial<ActionLog>): Promise<void> {
     const companyId = await getCurrentUserCompanyId();
     
     if (!companyId) {
-        return; // Skip logging if no company context
+        return;
     }
     
     try {
         const actionData = {
             ...action,
-            companyId, // Ensure action log belongs to the current user's company
+            companyId,
             timestamp: new Date().toISOString(),
         };
         
         await db.collection('action_logs').insertOne(actionData);
     } catch (error) {
         console.error('Database Error:', error);
-        // Don't throw error for action logging to avoid disrupting main flow
     }
 }
 
@@ -922,7 +915,7 @@ export async function fetchRecentActions(userId: string, limit: number = 10): Pr
     const companyId = await getCurrentUserCompanyId();
     
     if (!companyId) {
-        return []; // Return empty array if no company context
+        return [];
     }
     
     try {
@@ -930,7 +923,7 @@ export async function fetchRecentActions(userId: string, limit: number = 10): Pr
             .collection('action_logs')
             .find({ 
                 userId, 
-                companyId // Only get actions for the current user's company
+                companyId
             })
             .sort({ timestamp: -1 })
             .limit(limit)
@@ -960,21 +953,21 @@ export async function fetchAnalyticsData() {
 
         const activeContractsPromise = contractsCollection.countDocuments({ 
             status: 'Active',
-            companyId // Scope by company
+            companyId
         });
         const expiringContractsPromise = contractsCollection.countDocuments({ 
             endDate: { $lte: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() },
             status: 'Active',
-            companyId // Scope by company
+            companyId
         });
         
         const vendorsByStatusPromise = vendorsCollection.aggregate([
-            { $match: { companyId } }, // Scope by company
+            { $match: { companyId } },
             { $group: { _id: '$status', count: { $sum: 1 } } }
         ]).toArray();
         
         const invoicesByMonthPromise = invoicesCollection.aggregate([
-            { $match: { companyId } }, // Scope by company
+            { $match: { companyId } },
             {
                 $group: {
                     _id: {

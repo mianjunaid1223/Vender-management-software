@@ -27,12 +27,11 @@ export async function getCurrentUserCompanyId(): Promise<string | null> {
  * Get the current user's company
  */
 export async function getCurrentUserCompany(): Promise<Company | null> {
+    noStore();
     const user = await getCurrentUser();
-    console.log('user', user);
     if (!user?.companyId) return null;
 
     const db = await getDb();
-    console.log('user.companyId', user.companyId);
     try {
         const company = await db.collection('companies').findOne({ 
             companyId: user.companyId 
