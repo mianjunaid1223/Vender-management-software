@@ -10,6 +10,169 @@ import { ObjectId } from 'mongodb';
 import { Invoice, Company } from "@/lib/types";
 import { createSession, deleteSession } from "@/lib/session";
 
+// --- Form Schemas ---
+
+const loginFormSchema = z.object({
+  email: z.string().email({ message: "Please enter a valid email." }),
+  password: z.string().min(6, { message: "Password must be at least 6 characters." }),
+});
+
+const companyRegistrationSchema = z.object({
+  companyName: z.string().min(2, { message: "Company name must be at least 2 characters." }),
+  industry: z.string().min(1, { message: "Please select an industry." }),
+  businessType: z.string().min(1, { message: "Please select a business type." }),
+  taxId: z.string().optional(),
+  legalId: z.string().optional(),
+  primaryAddress: z.object({
+    street: z.string().min(1, { message: "Street address is required." }),
+    city: z.string().min(1, { message: "City is required." }),
+    state: z.string().min(1, { message: "State is required." }),
+    zipCode: z.string().min(1, { message: "ZIP code is required." }),
+    country: z.string().min(1, { message: "Country is required." }),
+  }),
+  websiteUrl: z.string().url({ message: "Please enter a valid URL." }).optional().or(z.literal("")),
+  userFullName: z.string().min(2, { message: "Full name must be at least 2 characters." }),
+  primaryContactEmail: z.string().email({ message: "Please enter a valid email." }),
+  userPassword: z.string().min(6, { message: "Password must be at least 6 characters." }),
+});
+
+
+// --- Authentication Actions ---
+
+export async function loginUser(prevState: any, formData: FormData) {
+  const validatedFields = loginFormSchema.safeParse(
+    Object.fromEntries(formData.entries())
+  );
+
+  if (!validatedFields.success) {
+    return {
+      errors: validatedFields.error.flatten().fieldErrors,
+    };
+  }
+
+  const { email, password } = validatedFields.data;
+
+  try {
+    const db = await getDb();
+    const user = await db.collection("users").findOne({ email });
+
+    if (!user || user.password !== password) {
+      return { message: "Invalid email or password." };
+    }
+
+    await createSession(user._id.toString());
+    
+  } catch (error) {
+    console.error("Login Error:", error);
+    return { message: "An unexpected error occurred. Please try again." };
+  }
+
+  redirect("/dashboard");
+}
+
+
+export async function registerCompany(prevState: any, formData: FormData) {
+  const validatedFields = companyRegistrationSchema.safeParse(
+    Object.fromEntries(formData.entries())
+  );
+
+  if (!validatedFields.success) {
+    return {
+      errors: validatedFields.error.flatten().fieldErrors,
+    };
+  }
+
+  const { 
+      companyName, industry, businessType, taxId, legalId, primaryAddress, 
+      websiteUrl, userFullName, primaryContactEmail, userPassword 
+  } = validatedFields.data;
+
+  const db = await getDb();
+  const usersCollection = db.collection("users");
+  const companiesCollection = db.collection("companies");
+
+  try {
+    const existingUser = await usersCollection.findOne({ email: primaryContactEmail });
+    if (existingUser) {
+      return { message: "A user with this email already exists." };
+    }
+
+    // Use a transaction to ensure both user and company are created or neither are.
+    const session = db.client.startSession();
+    let newUserId: ObjectId;
+
+    await session.withTransaction(async () => {
+      // 1. Create the new user
+      const userResult = await usersCollection.insertOne({
+        name: userFullName,
+        email: primaryContactEmail,
+        password: userPassword, 
+        companyId: '', // Placeholder, will be updated
+        image: `https://placehold.co/100x100.png?text=${userFullName.charAt(0)}`,
+        role: "admin",
+        createdAt: new Date().toISOString()
+      }, { session });
+      
+      newUserId = userResult.insertedId;
+
+      // 2. Create the company ID based on the new user's ID for uniqueness
+      const companyId = `company-${newUserId.toString()}`;
+
+      // 3. Create the new company document
+      await companiesCollection.insertOne({
+        name: companyName,
+        companyId: companyId,
+        industry,
+        businessType,
+        taxId,
+        legalId,
+        addresses: [primaryAddress],
+        primaryAddress,
+        website: websiteUrl || "",
+        contacts: [{
+          id: new ObjectId().toString(),
+          name: userFullName,
+          email: primaryContactEmail,
+          phone: "",
+          isPrimary: true,
+          role: 'Administrator'
+        }],
+        preferences: { defaultPaymentTerms: 'Net 30', defaultCurrency: 'USD' },
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        createdBy: newUserId.toString(),
+      }, { session });
+
+      // 4. Update the user with the correct companyId
+      await usersCollection.updateOne(
+        { _id: newUserId },
+        { $set: { companyId: companyId } },
+        { session }
+      );
+    });
+
+    await session.endSession();
+
+    // 5. Create the session for the newly created user
+    await createSession(newUserId!.toString());
+
+  } catch (error) {
+    console.error("Company Registration Error:", error);
+    return { message: "Registration failed. Please try again." };
+  }
+  
+  redirect("/dashboard");
+}
+
+
+export async function logoutUser() {
+  await deleteSession();
+  redirect("/");
+}
+
+
+// --- Other Actions (Unchanged) ---
+
 const invoiceFormSchema = z.object({
   vendorName: z.string().min(1, "Vendor name is required."),
   invoiceAmount: z.coerce.number().min(0.01, "Amount must be greater than 0."),
@@ -51,47 +214,6 @@ export async function addInvoice(values: z.infer<typeof invoiceFormSchema>) {
         }
         return { success: false, message: "An unexpected error occurred." };
     }
-}
-
-const loginFormSchema = z.object({
-  email: z.string().email({ message: "Please enter a valid email." }),
-  password: z.string().min(1, { message: "Password is required." }),
-});
-
-export async function loginUser(values: z.infer<typeof loginFormSchema>) {
-    try {
-        const db = await getDb();
-        if (!db) {
-            return { success: false, message: "Database connection failed." };
-        }
-        
-        const validatedData = loginFormSchema.parse(values);
-        const user = await db.collection("users").findOne({ email: validatedData.email });
-        
-        if (!user || user.password !== validatedData.password) {
-          return { success: false, message: "Invalid email or password." };
-        }
-
-        await createSession(user._id.toString());
-        
-    } catch (error) {
-       console.error("Login Error:", error);
-      if (error instanceof z.ZodError) {
-        return { success: false, message: "Validation failed.", issues: error.flatten() };
-      }
-      // Re-throw other errors to be handled by Next.js, including redirects
-      if (error && typeof error === 'object' && 'message' in error && typeof error.message === 'string' && error.message.includes('NEXT_REDIRECT')) {
-        throw error;
-      }
-      return { success: false, message: "An unexpected error occurred during login." };
-    }
-
-    redirect("/dashboard");
-}
-
-export async function logoutUser() {
-  await deleteSession();
-  redirect("/");
 }
 
 const profileFormSchema = z.object({
@@ -306,123 +428,3 @@ export async function refreshInvoiceStatusesAction(): Promise<{ success: boolean
     return { success: false, message: 'Failed to refresh invoice statuses' };
   }
 }
-
-const companyRegistrationSchema = z.object({
-  companyName: z.string().min(2, { message: "Company name must be at least 2 characters." }),
-  industry: z.string().min(1, { message: "Please select an industry." }),
-  businessType: z.string().min(1, { message: "Please select a business type." }),
-  taxId: z.string().min(1, { message: "Tax ID is required." }),
-  legalId: z.string().min(1, { message: "Legal ID is required." }),
-  primaryAddress: z.object({
-    street: z.string().min(1, { message: "Street address is required." }),
-    city: z.string().min(1, { message: "City is required." }),
-    state: z.string().min(1, { message: "State is required." }),
-    zipCode: z.string().min(1, { message: "ZIP code is required." }),
-    country: z.string().min(1, { message: "Country is required." }),
-  }),
-  additionalAddresses: z.array(z.object({
-    label: z.string().min(1, { message: "Address label is required." }),
-    street: z.string().min(1, { message: "Street address is required." }),
-    city: z.string().min(1, { message: "City is required." }),
-    state: z.string().min(1, { message: "State is required." }),
-    zipCode: z.string().min(1, { message: "ZIP code is required." }),
-    country: z.string().min(1, { message: "Country is required." }),
-  })).optional(),
-  websiteUrl: z.string().url({ message: "Please enter a valid URL." }).optional().or(z.literal("")),
-  primaryContactEmail: z.string().email({ message: "Please enter a valid email." }),
-  primaryContactPhone: z.string().min(1, { message: "Phone number is required." }),
-  aiOptIn: z.boolean().default(false),
-  userFullName: z.string().min(2, { message: "Full name must be at least 2 characters." }),
-  userPassword: z.string().min(6, { message: "Password must be at least 6 characters." }),
-});
-
-export async function registerCompany(values: z.infer<typeof companyRegistrationSchema>) {
-  try {
-    const db = await getDb();
-    if (!db) {
-        return { success: false, message: "Database connection failed." };
-    }
-    
-    const validatedData = companyRegistrationSchema.parse(values);
-    
-    const usersCollection = db.collection("users");
-    const companiesCollection = db.collection("companies");
-
-    const existingUser = await usersCollection.findOne({ email: validatedData.primaryContactEmail });
-    if (existingUser) {
-      return { success: false, message: "User with this email already exists." };
-    }
-    
-    // Create a new user first to get their ID
-    const newUser = {
-      name: validatedData.userFullName,
-      email: validatedData.primaryContactEmail,
-      password: validatedData.userPassword,
-      companyId: '', // will be updated
-      image: `https://placehold.co/100x100.png?text=${validatedData.userFullName.charAt(0)}`,
-      role: "admin",
-      createdAt: new Date().toISOString()
-    };
-    const userResult = await usersCollection.insertOne(newUser);
-    const userId = userResult.insertedId;
-
-    // Create a unique company ID based on the new user's ID
-    const companyId = `company-${userId.toString()}`;
-    
-    // Update the user with their new companyId
-    await usersCollection.updateOne(
-      { _id: userId },
-      { $set: { companyId: companyId } }
-    );
-    
-    // Now create the company with all correct IDs
-    const companyData: Omit<Company, 'id'> = {
-      name: validatedData.companyName,
-      companyId: companyId, // Correctly set the companyId field
-      industry: validatedData.industry,
-      businessType: validatedData.businessType,
-      taxId: validatedData.taxId,
-      legalId: validatedData.legalId,
-      addresses: [validatedData.primaryAddress],
-      additionalAddresses: validatedData.additionalAddresses || [],
-      website: validatedData.websiteUrl || "",
-      contacts: [{
-        id: new ObjectId().toString(),
-        name: validatedData.userFullName,
-        email: validatedData.primaryContactEmail,
-        phone: validatedData.primaryContactPhone,
-        isPrimary: true,
-        role: 'Administrator'
-      }],
-      preferences: { defaultPaymentTerms: 'Net 30', defaultCurrency: 'USD' },
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      createdBy: userId.toString(),
-    };
-    
-    // Insert the company document
-    await companiesCollection.insertOne(companyData);
-    
-    // Create session for the newly created user
-    await createSession(userId.toString());
-    
-  } catch (error) {
-    console.error("Company Registration Error:", error);
-    if (error instanceof z.ZodError) {
-      return { success: false, message: "Validation failed.", issues: error.flatten() };
-    }
-     // Re-throw other errors to be handled by Next.js, including redirects
-     if (error && typeof error === 'object' && 'message' in error && typeof error.message === 'string' && error.message.includes('NEXT_REDIRECT')) {
-        throw error;
-     }
-    return { success: false, message: "An unexpected error occurred during registration." };
-  }
-
-  redirect("/dashboard");
-}
-    
-
-    
-
-    
-
