@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -50,9 +51,8 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen w-full bg-background dark:bg-background py-16 px-4">
       <div className="mx-auto max-w-sm w-full relative group">
-        <Card className="relative z-10 shadow-2xl border-1 bg-background dark:bg-background
-                       before:content-[''] before:absolute before:inset-0 before:bg-gradient-to-br from-purple-500 via-blue-500 to-pink-500 
-                       before:filter before:blur-3xl before:rounded-lg before:opacity-100 before:-z-10">
+        <div className="absolute -inset-0.5 bg-gradient-to-r from-purple-500 via-blue-500 to-pink-500 rounded-lg blur-3xl opacity-75 group-hover:opacity-100 transition duration-300"></div>
+        <Card className="relative z-10 shadow-2xl border-1 bg-background dark:bg-background">
           <CardHeader>
             <CardTitle className="text-2xl">Login</CardTitle>
             <CardDescription>Enter your email below to login to your account</CardDescription>

@@ -126,9 +126,9 @@ export default function CompanyRegistrationPage() {
   return (
     <TooltipProvider>
       <div className="min-h-screen w-full bg-background dark:bg-background py-16 px-4">
-        <div className="mx-auto max-w-6xl w-full relative">
+        <div className="mx-auto max-w-6xl w-full relative group">
+          <div className="absolute -inset-1 bg-gradient-to-r from-purple-500 via-blue-500 to-pink-500 rounded-lg blur-3xl opacity-75 group-hover:opacity-100 transition duration-300"></div>
           <Card className="relative z-10 shadow-2xl border-1 bg-card">
-            <div className="absolute inset-0 bg-gradient-to-br from-purple-500 via-blue-500 to-pink-500 filter blur-3xl rounded-lg opacity-100 -z-10"></div>
             <CardHeader className="space-y-6 pb-8">
               <div className="text-center space-y-2">
                 <CardTitle className="text-4xl font-bold tracking-tight text-foreground">
