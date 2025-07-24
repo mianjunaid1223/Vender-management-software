@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -5,7 +6,7 @@ import Link from "next/link";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Loader2, Plus, Trash2, Info, Building, MapPin, Globe, Phone, Mail, Sparkles } from "lucide-react";
+import { Loader2, Plus, Trash2, Info, Building, MapPin, Globe, Phone, Mail, Sparkles, User as UserIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -125,7 +126,7 @@ export default function CompanyRegistrationPage() {
   return (
     <TooltipProvider>
       <div className="min-h-screen w-full bg-background dark:bg-background py-12 px-4">
-        <div className="mx-auto max-w-6xl w-full">
+        <div className="mx-auto max-w-4xl w-full">
           <Card className="shadow-xl border-0 bg-background dark:bg-background backdrop-blur-sm">
             <CardHeader className="space-y-6 pb-8">
               <div className="text-center space-y-2">
@@ -224,11 +225,14 @@ export default function CompanyRegistrationPage() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel className="text-sm font-medium text-foreground">Website URL</FormLabel>
-                            <Input 
-                              placeholder="https://www.example.com" 
-                              className="h-11 pl-10 border-border focus:border-primary focus:ring-primary bg-background text-foreground placeholder:text-muted-foreground"
-                              {...field} 
-                            />
+                            <div className="relative">
+                               <Globe className="absolute left-3 top-3.5 h-4 w-4 text-gray-400" />
+                                <Input 
+                                  placeholder="https://www.example.com" 
+                                  className="h-11 pl-10 border-border focus:border-primary focus:ring-primary bg-background text-foreground placeholder:text-muted-foreground"
+                                  {...field} 
+                                />
+                            </div>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -558,64 +562,10 @@ export default function CompanyRegistrationPage() {
 
                   <Separator className="bg-border" />
 
-                  {/* Contact Information Section */}
+                  {/* Administrator Account Section */}
                   <div className="space-y-6">
                     <div className="flex items-center gap-3 pb-4 border-b border-border">
-                      <Mail className="h-5 w-5 text-foreground" />
-                      <h3 className="text-xl font-semibold text-foreground">Contact Information</h3>
-                    </div>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <FormField
-                        control={form.control}
-                        name="primaryContactEmail"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-sm font-medium text-foreground">Primary Contact Email</FormLabel>
-                            <FormControl>
-                              <div className="relative">
-                                <Mail className="absolute left-3 top-3.5 h-4 w-4 text-gray-400" />
-                                <Input 
-                                  type="email" 
-                                  placeholder="contact@company.com" 
-                                  className="h-11 pl-10 border-border focus:border-primary focus:ring-primary bg-background text-foreground placeholder:text-muted-foreground"
-                                  {...field} 
-                                />
-                              </div>
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      
-                      <FormField
-                        control={form.control}
-                        name="primaryContactPhone"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-sm font-medium text-foreground">Primary Contact Phone</FormLabel>
-                            <FormControl>
-                              <div className="relative">
-                                <Phone className="absolute left-3 top-3.5 h-4 w-4 text-gray-400" />
-                                <Input 
-                                  placeholder="+1 (555) 123-4567" 
-                                  className="h-11 pl-10 border-border focus:border-primary focus:ring-primary bg-background text-foreground placeholder:text-muted-foreground"
-                                  {...field} 
-                                />
-                              </div>
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                  </div>
-
-                  <Separator className="bg-border" />
-
-                  {/* User Account Section */}
-                  <div className="space-y-6">
-                    <div className="flex items-center gap-3 pb-4 border-b border-border">
+                      <UserIcon className="h-5 w-5 text-foreground" />
                       <h3 className="text-xl font-semibold text-foreground">Administrator Account</h3>
                     </div>
                     
@@ -637,7 +587,27 @@ export default function CompanyRegistrationPage() {
                           </FormItem>
                         )}
                       />
-                      
+                       <FormField
+                        control={form.control}
+                        name="primaryContactEmail"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-sm font-medium text-foreground">Email (for Login)</FormLabel>
+                            <FormControl>
+                              <div className="relative">
+                                <Mail className="absolute left-3 top-3.5 h-4 w-4 text-gray-400" />
+                                <Input 
+                                  type="email" 
+                                  placeholder="contact@company.com" 
+                                  className="h-11 pl-10 border-border focus:border-primary focus:ring-primary bg-background text-foreground placeholder:text-muted-foreground"
+                                  {...field} 
+                                />
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                       <FormField
                         control={form.control}
                         name="userPassword"
@@ -651,6 +621,26 @@ export default function CompanyRegistrationPage() {
                                 className="h-11 border-border focus:border-primary focus:ring-primary bg-background text-foreground placeholder:text-muted-foreground"
                                 {...field} 
                               />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                       <FormField
+                        control={form.control}
+                        name="primaryContactPhone"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-sm font-medium text-foreground">Contact Phone</FormLabel>
+                            <FormControl>
+                              <div className="relative">
+                                <Phone className="absolute left-3 top-3.5 h-4 w-4 text-gray-400" />
+                                <Input 
+                                  placeholder="+1 (555) 123-4567" 
+                                  className="h-11 pl-10 border-border focus:border-primary focus:ring-primary bg-background text-foreground placeholder:text-muted-foreground"
+                                  {...field} 
+                                />
+                              </div>
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -732,3 +722,5 @@ export default function CompanyRegistrationPage() {
     </TooltipProvider>
   );
 }
+
+    
