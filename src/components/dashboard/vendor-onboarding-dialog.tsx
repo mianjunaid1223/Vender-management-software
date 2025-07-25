@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -63,7 +64,7 @@ const initialFormData: VendorFormData = {
     city: "",
     state: "",
     zipCode: "",
-    country: "US"
+    country: "United States"
   },
   taxId: "",
   contactPerson: "",
@@ -118,6 +119,10 @@ const commonServices = [
   "Video Production",
   "Other"
 ];
+
+const countries = [
+    "United States", "Canada", "United Kingdom", "Australia", "Germany", "France", "Japan", "Other"
+]
 
 export function VendorOnboardingDialog() {
   const [open, setOpen] = useState(false);
@@ -340,21 +345,9 @@ export function VendorOnboardingDialog() {
                 <Label htmlFor="country">Country *</Label>
                 <Datalist 
                   id="country"
-                  options={["United States", "Canada", "United Kingdom", "Australia", "Germany", "France", "Japan", "Other"]}
-                  value={formData.address.country === "US" ? "United States" : formData.address.country === "CA" ? "Canada" : formData.address.country === "GB" ? "United Kingdom" : formData.address.country === "AU" ? "Australia" : formData.address.country === "DE" ? "Germany" : formData.address.country === "FR" ? "France" : formData.address.country === "JP" ? "Japan" : "Other"}
-                  onChange={(e) => {
-                    const countryMap: {[key: string]: string} = {
-                      "United States": "US",
-                      "Canada": "CA", 
-                      "United Kingdom": "GB",
-                      "Australia": "AU",
-                      "Germany": "DE",
-                      "France": "FR",
-                      "Japan": "JP",
-                      "Other": "OTHER"
-                    };
-                    handleInputChange("address.country", countryMap[e.target.value] || e.target.value);
-                  }}
+                  options={countries}
+                  value={formData.address.country}
+                  onChange={(e) => handleInputChange("address.country", e.target.value)}
                   placeholder="Select or type country"
                 />
               </div>
