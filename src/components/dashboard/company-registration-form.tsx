@@ -177,24 +177,24 @@ export function CompanyRegistrationForm({ isEditing = false, company }: CompanyR
             </Button>
           )}
         </DialogTrigger>
-        <DialogContent className="max-w-4xl max-h-[90vh]">
+        <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col sm:max-w-[95vw] md:max-w-4xl">
             <DialogHeader>
-                <DialogTitle>{isEditing ? "Edit Company Profile" : "Company Registration"}</DialogTitle>
+                <DialogTitle>{isEditing ? "Edit Company Profile" : "Complete Company Registration"}</DialogTitle>
                 <DialogDescription>{isEditing ? "Update your company information." : "Complete your registration."}</DialogDescription>
             </DialogHeader>
-            <form onSubmit={handleSubmit} className="flex flex-col h-full">
-                <ScrollArea className="flex-grow pr-6">
-                    <div className="space-y-6">
-                        <Tabs defaultValue="basic" className="space-y-6">
-                            <TabsList>
-                                <TabsTrigger value="basic">Basic Info</TabsTrigger>
-                                <TabsTrigger value="address">Address</TabsTrigger>
-                                <TabsTrigger value="contacts">Contacts</TabsTrigger>
-                                <TabsTrigger value="preferences">Preferences</TabsTrigger>
+            <form onSubmit={handleSubmit} className="flex flex-col h-full overflow-hidden">
+                <ScrollArea className="flex-grow overflow-y-auto">
+                    <div className="space-y-6 p-1">
+                        <Tabs defaultValue="basic" className="space-y-4">
+                            <TabsList className="w-full justify-start overflow-x-auto scrollbar-hide">
+                                <TabsTrigger value="basic" className="flex-shrink-0">Basic Info</TabsTrigger>
+                                <TabsTrigger value="address" className="flex-shrink-0">Address</TabsTrigger>
+                                <TabsTrigger value="contacts" className="flex-shrink-0">Contacts</TabsTrigger>
+                                <TabsTrigger value="preferences" className="flex-shrink-0">Preferences</TabsTrigger>
                             </TabsList>
                             
                             <TabsContent value="basic" className="space-y-4">
-                                <div className="grid md:grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div>
                                         <Label htmlFor="name">Company Name *</Label>
                                         <Input id="name" value={formData.name || ''} onChange={(e) => handleInputChange("name", e.target.value)} required />
@@ -209,8 +209,8 @@ export function CompanyRegistrationForm({ isEditing = false, company }: CompanyR
                                           placeholder="Select or type business type"
                                         />
                                     </div>
-                                    </div>
-                                    <div className="grid md:grid-cols-2 gap-4">
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div>
                                         <Label htmlFor="industry">Industry</Label>
                                         <Datalist 
@@ -225,26 +225,26 @@ export function CompanyRegistrationForm({ isEditing = false, company }: CompanyR
                                         <Label htmlFor="website">Website</Label>
                                         <Input id="website" value={formData.website || ''} onChange={(e) => handleInputChange("website", e.target.value)} />
                                     </div>
-                                    </div>
-                                    <div className="grid md:grid-cols-2 gap-4">
-                                        <div><Label htmlFor="taxId">Tax ID</Label><Input id="taxId" value={formData.taxId || ""} onChange={e => handleInputChange("taxId", e.target.value)} /></div>
-                                        <div><Label htmlFor="legalId">Legal ID</Label><Input id="legalId" value={formData.legalId || ""} onChange={e => handleInputChange("legalId", e.target.value)} /></div>
-                                    </div>
-                                    <div>
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div><Label htmlFor="taxId">Tax ID</Label><Input id="taxId" value={formData.taxId || ""} onChange={e => handleInputChange("taxId", e.target.value)} /></div>
+                                    <div><Label htmlFor="legalId">Legal ID</Label><Input id="legalId" value={formData.legalId || ""} onChange={e => handleInputChange("legalId", e.target.value)} /></div>
+                                </div>
+                                <div>
                                     <Label htmlFor="description">Business Description</Label>
-                                    <Textarea id="description" value={formData.description || ''} onChange={(e) => handleInputChange("description", e.target.value)} rows={4} />
-                                    </div>
+                                    <Textarea id="description" value={formData.description || ''} onChange={(e) => handleInputChange("description", e.target.value)} rows={3} className="min-h-[80px]" />
+                                </div>
                             </TabsContent>
                             
                             <TabsContent value="address" className="space-y-4">
                                 {(formData.addresses || []).map((address, index) => (
                                     <Card key={index} className="relative p-4">
                                         <CardContent className="space-y-4 pt-6">
-                                            <div className="grid md:grid-cols-2 gap-4">
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                                 <div><Label>Street</Label><Input value={address.street} onChange={e => handleListChange('addresses', index, 'street', e.target.value)} /></div>
                                                 <div><Label>City</Label><Input value={address.city} onChange={e => handleListChange('addresses', index, 'city', e.target.value)} /></div>
                                             </div>
-                                            <div className="grid md:grid-cols-3 gap-4">
+                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                                 <div><Label>State</Label><Input value={address.state} onChange={e => handleListChange('addresses', index, 'state', e.target.value)} /></div>
                                                 <div><Label>Zip Code</Label><Input value={address.zipCode} onChange={e => handleListChange('addresses', index, 'zipCode', e.target.value)} /></div>
                                                 <div><Label>Country</Label><Input value={address.country} onChange={e => handleListChange('addresses', index, 'country', e.target.value)} /></div>
@@ -262,11 +262,11 @@ export function CompanyRegistrationForm({ isEditing = false, company }: CompanyR
                                 {(formData.contacts || []).map((contact, index) => (
                                     <Card key={contact.id || index} className="relative p-4">
                                         <CardContent className="space-y-4 pt-6">
-                                            <div className="grid md:grid-cols-2 gap-4">
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                                 <div><Label>Name</Label><Input value={contact.name} onChange={e => handleListChange('contacts', index, 'name', e.target.value)} /></div>
                                                 <div><Label>Role</Label><Input value={contact.role || ''} onChange={e => handleListChange('contacts', index, 'role', e.target.value)} /></div>
                                             </div>
-                                            <div className="grid md:grid-cols-2 gap-4">
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                                 <div><Label>Email</Label><Input type="email" value={contact.email} onChange={e => handleListChange('contacts', index, 'email', e.target.value)} /></div>
                                                 <div><Label>Phone</Label><Input type="tel" value={contact.phone} onChange={e => handleListChange('contacts', index, 'phone', e.target.value)} /></div>
                                             </div>
@@ -289,7 +289,7 @@ export function CompanyRegistrationForm({ isEditing = false, company }: CompanyR
                                 <Card>
                                     <CardHeader><CardTitle>Business Preferences</CardTitle></CardHeader>
                                     <CardContent className="space-y-4">
-                                        <div className="grid md:grid-cols-3 gap-4">
+                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                             <div><Label>Default Payment Terms</Label><Input value={formData.preferences?.defaultPaymentTerms} onChange={e => handleInputChange('preferences.defaultPaymentTerms', e.target.value)} /></div>
                                             <div><Label>Default Currency</Label><Input value={formData.preferences?.defaultCurrency} onChange={e => handleInputChange('preferences.defaultCurrency', e.target.value)} /></div>
                                             <div><Label>Default Tax Rate (%)</Label><Input type="number" value={formData.preferences?.defaultTaxRate || 0} onChange={e => handleInputChange('preferences.defaultTaxRate', parseFloat(e.target.value))} /></div>
