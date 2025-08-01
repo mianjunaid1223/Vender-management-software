@@ -9,7 +9,6 @@ import { sendPaymentConfirmation } from '@/lib/email-notifications';
 import { ObjectId } from 'mongodb';
 import { Invoice, Company } from "@/lib/types";
 import { createSession, deleteSession } from "@/lib/session"; 
-import { getSession } from "@/lib/auth";
 
 // --- Form Schemas ---
 
@@ -295,14 +294,14 @@ export async function updateUserProfile(values: z.infer<typeof profileFormSchema
             return { success: false, message: "Database connection failed. Please check server configuration." };
         }
         
-        const currentUser = await getSession();
+        const currentUser = await db.collection("users").findOne({});
         if (!currentUser) {
-            return { success: false, message: "User not found or not authenticated." };
+            return { success: false, message: "User not found." };
         }
 
         await db.collection("users").updateOne(
-            { _id: new ObjectId(currentUser.id) },
-            { $set: { name: validatedData.name, updatedAt: new Date().toISOString() } }
+            { _id: currentUser._id },
+            { $set: { name: validatedData.name } }
         );
 
         revalidatePath("/dashboard/profile");
@@ -495,5 +494,3 @@ export async function refreshInvoiceStatusesAction(): Promise<{ success: boolean
     return { success: false, message: 'Failed to refresh invoice statuses' };
   }
 }
-
-    
