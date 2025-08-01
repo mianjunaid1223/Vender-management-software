@@ -42,6 +42,7 @@ import {
 import { InvoiceDialog } from "./invoice-dialog";
 import { cn } from "@/lib/utils";
 import { downloadInvoicePDF, previewInvoicePDF } from "@/lib/pdf-utils";
+import { formatCurrency } from "@/lib/currency-utils";
 import type { Invoice, Vendor, Contract } from "@/lib/types";
 
 interface InvoicesTableProps {
@@ -67,11 +68,8 @@ export function InvoicesTable({
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [selectedInvoices, setSelectedInvoices] = useState<string[]>([]);
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-    }).format(amount);
+  const formatCurrencyLocal = (amount: number, currency: string = 'USD') => {
+    return formatCurrency(amount, currency);
   };
   
   const formatDate = (dateString: string) => {
@@ -132,7 +130,7 @@ export function InvoicesTable({
   };
   
   const handleDuplicateInvoice = (invoice: Invoice) => {
-    const { id, _id, invoiceNumber, status, createdAt, updatedAt, ...rest } = invoice;
+    const { id, invoiceNumber, status, createdAt, updatedAt, ...rest } = invoice;
     const newInvoice: Partial<Invoice> = {
       ...rest,
       id: crypto.randomUUID(), // Ensure a new unique ID for the key prop
@@ -191,7 +189,7 @@ export function InvoicesTable({
           <CardContent>
             <div className="text-2xl font-bold">{stats.total}</div>
             <p className="text-xs text-muted-foreground">
-              {formatCurrency(stats.totalAmount)} total value
+              {formatCurrency(stats.totalAmount, 'USD')} total value
             </p>
           </CardContent>
         </Card>
@@ -203,7 +201,7 @@ export function InvoicesTable({
           <CardContent>
             <div className="text-2xl font-bold">{stats.paid}</div>
             <p className="text-xs text-muted-foreground">
-              {formatCurrency(stats.paidAmount)} received
+              {formatCurrency(stats.paidAmount, 'USD')} received
             </p>
           </CardContent>
         </Card>
@@ -226,7 +224,7 @@ export function InvoicesTable({
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {formatCurrency(stats.totalAmount - stats.paidAmount)}
+              {formatCurrency(stats.totalAmount - stats.paidAmount, 'USD')}
             </div>
             <p className="text-xs text-muted-foreground">
               Pending payment
@@ -373,7 +371,7 @@ export function InvoicesTable({
                 <TableCell className="text-right">
                   <div className="flex flex-col items-end">
                     <span className="font-medium">
-                      {formatCurrency(invoice.totalAmount || invoice.invoiceAmount || 0)}
+                      {formatCurrencyLocal(invoice.totalAmount || invoice.invoiceAmount || 0, invoice.currency || 'USD')}
                     </span>
                     {invoice.paymentStatus && invoice.paymentStatus !== 'Pending' && (
                       <span className="text-sm text-muted-foreground">

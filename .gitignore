@@ -38,7 +38,10 @@ yarn-error.log*
 next-env.d.ts
 
 .genkit/*
-.env*
+# Environment variables
+# Do not commit .env.local or other sensitive environment files
+.env.local
+.env.*.local
 
 # firebase
 firebase-debug.log

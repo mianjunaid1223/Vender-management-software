@@ -11,10 +11,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, FileText } from "lucide-react";
 import type { Invoice, InvoiceItem, Vendor, Contract, CustomField, Company, InvoiceEntity } from "@/lib/types";
 import { fetchCompany } from "@/lib/data";
 import { useToast } from "@/hooks/use-toast";
+import { AIInvoiceUpload } from "@/components/invoices/ai-invoice-upload";
+import { ExtractedInvoiceData } from "@/lib/ai-invoice-parser";
+import { formatCurrency, getCurrencySelectOptions, getDefaultCurrency } from "@/lib/currency-utils";
 
 interface InvoiceDialogProps {
   invoice?: Invoice;
@@ -56,15 +59,13 @@ export function InvoiceDialog({
   const [items, setItems] = useState<InvoiceItem[]>([]);
   const [customFields, setCustomFields] = useState<CustomField[]>([]);
   const [activeTab, setActiveTab] = useState("basic");
+  const [showAIUpload, setShowAIUpload] = useState(false);
   const [myRole, setMyRole] = useState<'seller' | 'buyer'>('seller');
   const [company, setCompany] = useState<Company | null>(null);
   const { toast } = useToast();
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-    }).format(amount || 0);
+  const formatCurrencyAmount = (amount: number, currency?: string) => {
+    return formatCurrency(amount || 0, currency || formData.currency || 'USD');
   };
 
   const initializeFormData = async () => {
@@ -97,6 +98,7 @@ export function InvoiceDialog({
         discounts: 0,
         discountRate: 0,
         discountType: 'percentage',
+        currency: companyData?.preferences?.baseCurrency || 'USD',
         seller: myRole === 'seller' ? companyEntity : { name: '', address: { street: '', city: '', state: '', zipCode: '', country: 'US' } },
         buyer: myRole === 'buyer' ? companyEntity : { name: '', address: { street: '', city: '', state: '', zipCode: '', country: 'US' } }
       });
@@ -252,6 +254,48 @@ export function InvoiceDialog({
     }
   };
 
+  const handleAIDataExtracted = (data: ExtractedInvoiceData) => {
+    // Find or create vendor based on extracted data
+    let selectedVendor = vendors.find(v => 
+      v.name.toLowerCase().includes(data.vendorName.toLowerCase()) ||
+      v.email === data.vendorEmail
+    );
+
+    // Convert extracted data to form data
+    const extractedFormData: Partial<Invoice> = {
+      invoiceNumber: data.invoiceNumber,
+      invoiceDate: data.invoiceDate,
+      invoiceDueDate: data.dueDate,
+      invoiceAmount: data.amount,
+      totalAmount: data.amount,
+      subtotal: data.subtotal || data.amount,
+      taxes: data.taxAmount || 0,
+      currency: data.currency || 'USD',
+      vendorId: selectedVendor?.id,
+      status: 'Draft',
+      paymentStatus: 'Pending'
+    };
+
+    // Convert line items
+    const extractedItems: InvoiceItem[] = data.lineItems.map(item => ({
+      id: crypto.randomUUID(),
+      description: item.description,
+      quantity: item.quantity,
+      unitPrice: item.unitPrice,
+      total: item.total
+    }));
+
+    setFormData(prev => ({ ...prev, ...extractedFormData }));
+    setItems(extractedItems);
+    setShowAIUpload(false);
+    setActiveTab('basic');
+    
+    toast({ 
+      title: 'Success', 
+      description: `Invoice data imported successfully${selectedVendor ? '' : '. Please select a vendor manually.'}` 
+    });
+  };
+
   const otherPartyIsVendor = myRole === 'seller' || myRole === 'buyer';
 
   return (
@@ -267,13 +311,28 @@ export function InvoiceDialog({
         </DialogHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
+            {mode === 'create' && (
+              <TabsTrigger value="ai-upload">
+                <FileText className="h-4 w-4 mr-1" />
+                AI Extract
+              </TabsTrigger>
+            )}
             <TabsTrigger value="basic">Basic Info</TabsTrigger>
             <TabsTrigger value="parties">Parties</TabsTrigger>
             <TabsTrigger value="items">Items</TabsTrigger>
             <TabsTrigger value="payment">Payment</TabsTrigger>
             <TabsTrigger value="custom">Custom</TabsTrigger>
           </TabsList>
+
+          {mode === 'create' && (
+            <TabsContent value="ai-upload" className="space-y-4 pt-4">
+              <AIInvoiceUpload
+                onDataExtracted={handleAIDataExtracted}
+                onCancel={() => setActiveTab('basic')}
+              />
+            </TabsContent>
+          )}
 
           <TabsContent value="basic" className="space-y-4 pt-4">
              <div className="grid grid-cols-2 gap-4">
@@ -402,7 +461,7 @@ export function InvoiceDialog({
                       <Input type="number" value={item.unitPrice} placeholder="0.00" onChange={(e) => updateItem(item.id, { unitPrice: parseFloat(e.target.value) || 0 })} disabled={mode === 'view'} />
                     </div>
                     <div className="col-span-2 text-right font-medium">
-                      {formatCurrency(item.total)}
+                      {formatCurrencyAmount(item.total)}
                     </div>
                     <div className="col-span-1 text-right">
                       {mode !== 'view' && (
@@ -421,25 +480,42 @@ export function InvoiceDialog({
             <div className="flex justify-end">
                 <div className="w-full max-w-sm space-y-2">
                     <Separator />
-                    <div className="flex justify-between"><span>Subtotal</span><span>{formatCurrency(totals.subtotal)}</span></div>
+                    <div className="flex justify-between"><span>Subtotal</span><span>{formatCurrencyAmount(totals.subtotal)}</span></div>
                     <div className="flex justify-between items-center">
                         <Label>Tax (%)</Label>
                         <Input type="number" className="w-24 h-8" value={formData.taxRate || 0} onChange={(e) => setFormData(prev => ({...prev, taxRate: parseFloat(e.target.value)}))} disabled={mode === 'view'} />
                     </div>
-                    <div className="flex justify-between"><span>Tax Amount</span><span>{formatCurrency(totals.taxAmount)}</span></div>
+                    <div className="flex justify-between"><span>Tax Amount</span><span>{formatCurrencyAmount(totals.taxAmount)}</span></div>
                      <div className="flex justify-between items-center">
                         <Label>Discount (%)</Label>
                         <Input type="number" className="w-24 h-8" value={formData.discountRate || 0} onChange={(e) => setFormData(prev => ({...prev, discountRate: parseFloat(e.target.value)}))} disabled={mode === 'view'} />
                     </div>
-                    <div className="flex justify-between"><span>Discount Amount</span><span className="text-destructive">-{formatCurrency(totals.discountAmount)}</span></div>
+                    <div className="flex justify-between"><span>Discount Amount</span><span className="text-destructive">-{formatCurrencyAmount(totals.discountAmount)}</span></div>
                     <Separator />
-                    <div className="flex justify-between font-bold text-lg"><span>Total</span><span>{formatCurrency(totals.totalAmount)}</span></div>
+                    <div className="flex justify-between font-bold text-lg"><span>Total</span><span>{formatCurrencyAmount(totals.totalAmount)}</span></div>
                 </div>
             </div>
           </TabsContent>
           
           <TabsContent value="payment" className="space-y-4 pt-4">
-             <div className="grid grid-cols-2 gap-4">
+             <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-2">
+                    <Label>Currency</Label>
+                    <Select 
+                      value={formData.currency || 'USD'} 
+                      onValueChange={(value) => setFormData(prev => ({ ...prev, currency: value }))}
+                      disabled={mode === 'view'}
+                    >
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                            {getCurrencySelectOptions().map(option => (
+                                <SelectItem key={option.value} value={option.value}>
+                                    {option.label}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
                 <div className="space-y-2">
                     <Label>Payment Terms</Label>
                     <Select value={formData.paymentTerms} onValueChange={(value) => setFormData(prev => ({ ...prev, paymentTerms: value }))} disabled={mode === 'view'}>

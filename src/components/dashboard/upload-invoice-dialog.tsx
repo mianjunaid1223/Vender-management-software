@@ -111,7 +111,6 @@ export function UploadInvoiceDialog() {
         });
       }
     } catch (error) {
-      console.error("Failed to extract invoice data:", error);
       toast({
         variant: "destructive",
         title: "Extraction Failed",

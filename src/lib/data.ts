@@ -664,6 +664,40 @@ export async function fetchExpiringContracts(daysAhead: number = 30): Promise<Co
     }
 }
 
+export async function fetchPendingVendorApplications(): Promise<Array<{
+    id: string;
+    vendorName: string;
+    submittedAt: Date;
+    status: 'pending' | 'approved' | 'rejected';
+    service: string;
+}>> {
+    noStore();
+    const db = await getDb();
+    const companyId = await getCurrentUserCompanyId();
+    
+    if (!companyId) {
+        return [];
+    }
+
+    try {
+        const applications = await db.collection('vendorApplications').find({
+            targetCompanyId: new ObjectId(companyId),
+            status: 'pending',
+        }).sort({ submittedAt: -1 }).toArray();
+
+        return applications.map(app => ({
+            id: app._id.toString(),
+            vendorName: app.companyName || 'Unknown Vendor',
+            submittedAt: app.submittedAt || new Date(),
+            status: app.status || 'pending',
+            service: app.service || 'General Services',
+        }));
+    } catch (error) {
+        console.error('Error fetching pending vendor applications:', error);
+        throw new Error('Failed to fetch pending vendor applications');
+    }
+}
+
 // Enhanced Vendor Operations
 export async function createVendor(vendor: Partial<Vendor>): Promise<Vendor> {
     noStore();

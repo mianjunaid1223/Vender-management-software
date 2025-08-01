@@ -216,10 +216,10 @@ async function CompanyContent() {
                   <div className="text-sm text-muted-foreground">{company.preferences.defaultPaymentTerms}</div>
                 </div>
               )}
-              {company.preferences.defaultCurrency && (
+              {company.preferences.baseCurrency && (
                 <div>
                   <div className="text-sm font-medium">Default Currency</div>
-                  <div className="text-sm text-muted-foreground">{company.preferences.defaultCurrency}</div>
+                  <div className="text-sm text-muted-foreground">{company.preferences.baseCurrency}</div>
                 </div>
               )}
               {company.preferences.defaultTaxRate !== undefined && (

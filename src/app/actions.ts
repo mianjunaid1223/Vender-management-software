@@ -174,7 +174,7 @@ export async function registerCompany(prevState: any, formData: FormData) {
                 isPrimary: true,
                 role: 'Administrator'
             }],
-            preferences: { defaultPaymentTerms: 'Net 30', defaultCurrency: 'USD' },
+            preferences: { defaultPaymentTerms: 'Net 30', baseCurrency: 'USD' },
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
             createdBy: '', // Placeholder

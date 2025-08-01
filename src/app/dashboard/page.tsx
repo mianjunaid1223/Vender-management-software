@@ -5,8 +5,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { DollarSign, Receipt, Users, CreditCard, FileClock, AlertCircle } from "lucide-react";
-import { fetchCardData, fetchInvoices, fetchExpiringContracts } from "@/lib/data";
+import { DollarSign, Receipt, Users, CreditCard, FileClock, AlertCircle, UserPlus } from "lucide-react";
+import { fetchCardData, fetchInvoices, fetchExpiringContracts, fetchPendingVendorApplications } from "@/lib/data";
 import { updateInvoiceStatuses } from "@/lib/invoice-status-manager";
 import clientPromise from "@/lib/mongodb";
 import { DbConfigWarning } from "@/components/db-config-warning";
@@ -54,7 +54,7 @@ export default async function DashboardPage() {
       );
     }
 
-    const { invoices, cardData, alerts, expiringContracts } = await (async () => {
+    const { invoices, cardData, alerts, expiringContracts, pendingApplications } = await (async () => {
         try {
           // Update invoice statuses and get alerts
           const statusUpdate = await updateInvoiceStatuses();
@@ -63,13 +63,20 @@ export default async function DashboardPage() {
           const cardDataPromise = fetchCardData();
           const expiringContractsPromise = fetchExpiringContracts(30);
 
-          const [invoices, cardData, expiringContracts] = await Promise.all([
+          const [invoices, cardData, expiringContracts, pendingApplications] = await Promise.all([
               invoicesPromise, 
               cardDataPromise, 
-              expiringContractsPromise
+              expiringContractsPromise,
+              fetchPendingVendorApplications()
             ]);
           
-          return { invoices, cardData, alerts: statusUpdate.alerts, expiringContracts };
+          return { 
+            invoices, 
+            cardData, 
+            alerts: statusUpdate.alerts, 
+            expiringContracts, 
+            pendingApplications 
+          };
         } catch (error) {
           console.error('Database error:', error);
           throw error;
@@ -134,24 +141,58 @@ export default async function DashboardPage() {
         <DashboardAlertsWrapper 
           invoiceAlerts={alerts} 
           contractAlerts={expiringContracts}
+          vendorApplicationAlerts={pendingApplications}
         />
       )}
       
       <div className="grid gap-6">
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-            {summaryCards.map((card) => (
-            <Card key={card.title}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">{card.title}</CardTitle>
-                {card.icon}
-                </CardHeader>
-                <CardContent>
-                <div className="text-2xl font-bold">{card.value}</div>
-                <p className="text-xs text-muted-foreground">{card.description}</p>
-                </CardContent>
-            </Card>
-            ))}
-        </div>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {summaryCards.map((card, index) => (
+          <Card key={index}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                {card.title}
+              </CardTitle>
+              {card.icon}
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{card.value}</div>
+              <p className="text-xs text-muted-foreground">
+                {card.description}
+              </p>
+            </CardContent>
+          </Card>
+        ))}
+        <Card className="border-blue-200 bg-blue-50 dark:border-blue-800/50 dark:bg-blue-900/20">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-blue-800 dark:text-blue-200">
+              Pending Vendor Applications
+            </CardTitle>
+            <UserPlus className="h-4 w-4 text-blue-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-800 dark:text-blue-200">
+              {pendingApplications.length}
+            </div>
+            <p className="text-xs text-blue-600 dark:text-blue-400">
+              {pendingApplications.length === 0 
+                ? 'No pending applications' 
+                : `${pendingApplications.length} application${pendingApplications.length > 1 ? 's' : ''} awaiting review`}
+            </p>
+            {pendingApplications.length > 0 && (
+              <Button 
+                variant="link" 
+                className="h-auto p-0 text-xs text-blue-700 dark:text-blue-300 mt-2"
+                asChild
+              >
+                <Link href="/dashboard/vendor-applications">
+                  Review Applications
+                </Link>
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      </div>
         <RecentInvoices data={invoices} />
       </div>
     </div>

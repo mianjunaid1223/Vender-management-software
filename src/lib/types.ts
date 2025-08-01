@@ -25,6 +25,26 @@ export type Vendor = {
   updatedAt?: string;
 };
 
+export type VendorApplication = {
+  id: string;
+  applicationId: string;
+  name: string;           // Company name
+  contactPerson: string;  // Contact person name
+  email: string;
+  phone: string;
+  service: string;        // Main service offered
+  taxId: string;
+  address: InvoiceAddress;
+  paymentTerms: string;
+  notes: string;
+  targetCompanyId: string;
+  status: 'pending' | 'approved' | 'rejected';
+  submittedAt: string;
+  reviewedAt?: string;
+  reviewedBy?: string;
+  inviteToken?: string;
+};
+
 export type InvoiceItem = {
   id: string;
   description: string;
@@ -89,6 +109,7 @@ export type Invoice = {
   discountRate?: number; // Discount rate as percentage
   discountType?: 'percentage' | 'fixed'; // Type of discount calculation
   totalAmount: number;
+  currency: string; // Currency code (USD, EUR, GBP, etc.)
   
   // Status and tracking
   status: 'Draft' | 'Sent' | 'Paid' | 'Unpaid' | 'Pending' | 'Overdue' | 'Cancelled';
@@ -239,12 +260,28 @@ export type ContactInfo = {
 
 export type CompanyPreferences = {
   defaultPaymentTerms?: string;
-  defaultCurrency?: string;
+  baseCurrency: string; // Required: Single base currency for all financial data
   defaultTaxRate?: number;
   emailNotifications?: boolean;
   invoiceReminders?: boolean;
   contractReminders?: boolean;
   preferredLanguage?: string;
+};
+
+// Currency conversion types
+export type CurrencyConversion = {
+  fromCurrency: string;
+  toCurrency: string;
+  exchangeRate: number;
+  convertedAmount: number;
+  originalAmount: number;
+  conversionDate: string;
+};
+
+export type FileImportCurrency = {
+  fileCurrency: string;
+  exchangeRate: number;
+  convertToBase: boolean;
 };
 
 // Enhanced AI Context Types

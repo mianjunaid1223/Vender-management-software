@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
   AlertTriangle, 
   Clock, 
@@ -16,35 +16,73 @@ import {
   ChevronDown,
   ChevronUp,
   FileClock,
+  UserPlus,
 } from 'lucide-react';
-import { InvoiceAlert } from '@/lib/invoice-status-manager';
-import type { Contract } from '@/lib/types';
 import { format } from 'date-fns';
 
+interface VendorApplicationAlert {
+  id: string;
+  vendorName: string;
+  submittedAt: Date;
+  status: 'pending' | 'approved' | 'rejected';
+  service: string;
+}
+
+// Define a more flexible contract type for the alerts
+interface ContractAlert {
+  id?: string;
+  _id?: string | { toString: () => string };
+  contractName?: string;
+  name?: string;
+  endDate: string | Date | any;
+  partyA?: {
+    name?: string;
+    [key: string]: any;
+  };
+  [key: string]: any; // Allow any other properties
+}
+
+// Define a more flexible invoice alert type
+interface InvoiceAlertDetails {
+  id: string;
+  severity: 'high' | 'medium' | 'low';
+  amount?: number;
+  dueDate?: Date;
+  message: string;
+  title?: string;
+  details?: string;
+}
+
 interface DashboardAlertsProps {
-  invoiceAlerts?: InvoiceAlert[];
-  contractAlerts?: Contract[];
+  invoiceAlerts?: InvoiceAlertDetails[];
+  contractAlerts?: ContractAlert[];
+  vendorApplicationAlerts?: VendorApplicationAlert[];
   onDismissInvoiceAlert?: (alertId: string) => void;
   onViewInvoice?: (invoiceId: string) => void;
   onViewContracts?: () => void;
+  onViewVendorApplications?: () => void;
+  className?: string;
 }
 
 export function DashboardAlerts({ 
   invoiceAlerts = [], 
   contractAlerts = [],
+  vendorApplicationAlerts = [],
   onDismissInvoiceAlert, 
   onViewInvoice,
-  onViewContracts
+  onViewContracts,
+  onViewVendorApplications,
+  className = ''
 }: DashboardAlertsProps) {
-  const [visibleInvoiceAlerts, setVisibleInvoiceAlerts] = useState(invoiceAlerts);
   const [isExpanded, setIsExpanded] = useState(true);
-
-  useEffect(() => {
-    setVisibleInvoiceAlerts(invoiceAlerts);
-  }, [invoiceAlerts]);
+  const [dismissedAlerts, setDismissedAlerts] = useState<Set<string>>(new Set());
 
   const handleDismiss = (alertId: string) => {
-    setVisibleInvoiceAlerts(prev => prev.filter(alert => alert.id !== alertId));
+    setDismissedAlerts(prev => {
+      const newSet = new Set(prev);
+      newSet.add(alertId);
+      return newSet;
+    });
     onDismissInvoiceAlert?.(alertId);
   };
 
@@ -63,132 +101,198 @@ export function DashboardAlerts({
     });
   };
 
-  const totalAlerts = visibleInvoiceAlerts.length + (contractAlerts.length > 0 ? 1 : 0);
+  // Filter out dismissed alerts
+  const activeInvoiceAlerts = invoiceAlerts.filter(alert => !dismissedAlerts.has(`invoice-${alert.id}`));
+  const activeContractAlerts = contractAlerts.filter(contract => {
+    const contractId = contract.id || (contract._id ? (typeof contract._id === 'string' ? contract._id : contract._id.toString()) : '');
+    return !dismissedAlerts.has(`contract-${contractId}`);
+  });
+  const activeVendorAlerts = vendorApplicationAlerts.filter(app => !dismissedAlerts.has(`vendor-app-${app.id}`));
+
+  const totalAlerts = activeInvoiceAlerts.length + activeContractAlerts.length + activeVendorAlerts.length;
   
   if (totalAlerts === 0) {
     return null;
   }
 
   return (
-    <Card className="relative overflow-hidden w-full">
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Bell className="h-5 w-5" />
-            System Alerts
-            <Badge variant="secondary">
-              {totalAlerts}
-            </Badge>
-          </CardTitle>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setIsExpanded(!isExpanded)}
-            className="h-8 w-8 p-0 rounded-md"
-          >
-            {isExpanded ? (
-              <ChevronUp className="h-4 w-4" />
-            ) : (
-              <ChevronDown className="h-4 w-4" />
-            )}
-            <span className="sr-only">
-              {isExpanded ? 'Collapse alerts' : 'Expand alerts'}
-            </span>
-          </Button>
-        </div>
-      </CardHeader>
-      
-      <div 
-        className={`transition-all duration-300 ease-in-out overflow-hidden ${
-          isExpanded ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'
-        }`}
-      >
+    <div className={className}>
+      <Card className="relative overflow-hidden w-full">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Bell className="h-5 w-5" />
+              System Alerts
+              <Badge variant="secondary">
+                {totalAlerts}
+              </Badge>
+            </CardTitle>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsExpanded(!isExpanded)}
+              className="h-8 w-8 p-0"
+            >
+              {isExpanded ? (
+                <ChevronUp className="h-4 w-4" />
+              ) : (
+                <ChevronDown className="h-4 w-4" />
+              )}
+              <span className="sr-only">
+                {isExpanded ? 'Collapse' : 'Expand'} alerts
+              </span>
+            </Button>
+          </div>
+        </CardHeader>
         <CardContent className="space-y-4 pt-0">
-          <div className="grid md:grid-cols-2 gap-4">
-            
-            {/* Invoice Alerts */}
-            <div className="space-y-3">
-              <h3 className="text-sm font-medium text-muted-foreground">Payment Alerts</h3>
-              {visibleInvoiceAlerts.length > 0 ? visibleInvoiceAlerts.map(alert => (
-                <Alert
-                  key={alert.id}
-                  variant={alert.severity === 'high' ? 'destructive' : 'default'}
-                  className="relative pr-10"
+          {isExpanded && (
+            <div className="space-y-4">
+              {/* Vendor Application Alerts */}
+              {activeVendorAlerts.map(app => (
+                <Alert 
+                  key={`vendor-app-${app.id}`}
+                  className="border-blue-200 bg-blue-50 dark:border-blue-800/50 dark:bg-blue-900/20"
                 >
-                  <div className="flex items-start gap-3">
-                    <div className="mt-1">{alert.severity === 'high' ? <AlertTriangle className="h-4 w-4" /> : <Clock className="h-4 w-4" />}</div>
-                    <div className="flex-1 space-y-1">
-                      <AlertDescription className="text-sm">
-                        <p>{alert.message}</p>
-                        <div className="flex items-center gap-4 text-xs text-muted-foreground mt-1">
-                          <span className="flex items-center gap-1">
-                            <DollarSign className="h-3 w-3" />
-                            {formatCurrency(alert.amount)}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <Calendar className="h-3 w-3" />
-                            Due: {formatDate(alert.dueDate)}
-                          </span>
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start space-x-3">
+                      <UserPlus className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                      <div className="flex-1">
+                        <AlertTitle className="text-blue-800 dark:text-blue-200">
+                          New Vendor Application: {app.vendorName}
+                        </AlertTitle>
+                        <AlertDescription className="text-blue-700 dark:text-blue-300">
+                          Service: {app.service}<br />
+                          Submitted: {formatDate(app.submittedAt)}
+                        </AlertDescription>
+                        <div className="mt-2 space-x-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="text-xs h-7"
+                            onClick={onViewVendorApplications}
+                          >
+                            View Application
+                          </Button>
                         </div>
-                      </AlertDescription>
-                      <div className="pt-1">
-                        <Button
-                          size="sm"
-                          variant="link"
-                          onClick={() => onViewInvoice?.(alert.invoiceId)}
-                          className="h-auto p-0 text-xs"
-                        >
-                          View Invoice <ExternalLink className="h-3 w-3 ml-1" />
-                        </Button>
                       </div>
                     </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6 -mt-1 -mr-2"
+                      onClick={() => handleDismiss(`vendor-app-${app.id}`)}
+                    >
+                      <X className="h-3.5 w-3.5" />
+                      <span className="sr-only">Dismiss</span>
+                    </Button>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleDismiss(alert.id)}
-                    className="absolute top-2 right-2 h-6 w-6 p-0"
-                  >
-                    <X className="h-3 w-3" />
-                    <span className="sr-only">Dismiss</span>
-                  </Button>
                 </Alert>
-              )) : (
-                <div className="text-sm text-muted-foreground p-4 text-center border rounded-lg">No payment alerts.</div>
-              )}
-            </div>
-
-            {/* Contract Alerts */}
-            <div className="space-y-3">
-              <h3 className="text-sm font-medium text-muted-foreground">Contract Alerts</h3>
-              {contractAlerts.length > 0 ? (
-                <Alert className="border-yellow-200 bg-yellow-50 dark:border-yellow-800/50 dark:bg-yellow-900/20">
-                  <div className="flex items-start gap-3">
-                    <div className="mt-1"><FileClock className="h-4 w-4 text-yellow-600" /></div>
-                    <div className="flex-1 space-y-2">
-                       <AlertTitle className="text-yellow-800 dark:text-yellow-300">Expiring Contracts</AlertTitle>
-                       <AlertDescription>
-                        {contractAlerts.length} contract(s) expiring within 30 days.
-                       </AlertDescription>
-                       <Button
-                          size="sm"
-                          variant="link"
-                          onClick={onViewContracts}
-                          className="h-auto p-0 text-xs text-yellow-700 dark:text-yellow-400"
+              ))}
+              {/* Invoice Alerts */}
+              {activeInvoiceAlerts.length > 0 && (
+                <div className="space-y-3">
+                  <h3 className="text-sm font-medium text-muted-foreground">Payment Alerts</h3>
+                  {activeInvoiceAlerts.map(alert => (
+                    <Alert
+                      key={`invoice-${alert.id}`}
+                      variant={alert.severity === 'high' ? 'destructive' : 'default'}
+                      className="relative"
+                    >
+                      <div className="flex items-start">
+                        <div className="flex-shrink-0 pt-0.5">
+                          {alert.severity === 'high' ? (
+                            <AlertTriangle className="h-5 w-5 text-destructive-foreground" />
+                          ) : (
+                            <Clock className="h-5 w-5 text-foreground" />
+                          )}
+                        </div>
+                        <div className="ml-3 flex-1">
+                          <AlertTitle className="text-sm font-medium">
+                            {alert.message || alert.title || 'Invoice Alert'}
+                          </AlertTitle>
+                          <AlertDescription className="text-sm mt-1">
+                            {alert.details || alert.message || 'Review this invoice for more details'}
+                            {alert.amount && (
+                              <span className="block font-medium mt-1">
+                                {formatCurrency(alert.amount)}
+                              </span>
+                            )}
+                            {alert.dueDate && (
+                              <div className="flex items-center mt-1 text-sm">
+                                <Calendar className="h-3.5 w-3.5 mr-1.5 opacity-70" />
+                                Due {formatDate(alert.dueDate)}
+                              </div>
+                            )}
+                          </AlertDescription>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 -mt-1 -mr-2"
+                          onClick={() => handleDismiss(`invoice-${alert.id}`)}
                         >
-                          Review Contracts <ExternalLink className="h-3 w-3 ml-1" />
+                          <X className="h-3.5 w-3.5" />
+                          <span className="sr-only">Dismiss</span>
                         </Button>
-                    </div>
-                  </div>
-                </Alert>
-              ) : (
-                <div className="text-sm text-muted-foreground p-4 text-center border rounded-lg">No contract alerts.</div>
+                      </div>
+                    </Alert>
+                  ))}
+                </div>
+              )}
+              {/* Contract Alerts */}
+              {activeContractAlerts.length > 0 && (
+                <div className="space-y-3">
+                  <h3 className="text-sm font-medium text-muted-foreground">Contract Alerts</h3>
+                  {activeContractAlerts.map(contract => (
+                    <Alert 
+                      key={`contract-${contract.id || (contract._id ? (typeof contract._id === 'string' ? contract._id : contract._id.toString()) : '')}`} 
+                      className="border-amber-200 bg-amber-50 dark:border-amber-800/50 dark:bg-amber-900/20"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-start space-x-3">
+                          <FileClock className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
+                          <div className="flex-1">
+                            <AlertTitle className="text-amber-800 dark:text-amber-200">
+                              Contract Expiring: {contract.contractName || contract.name || 'Unnamed Contract'}
+                            </AlertTitle>
+                            <AlertDescription className="text-amber-700 dark:text-amber-300">
+                              Expires on {formatDate(new Date(contract.endDate))}
+                              {contract.partyA?.name && (
+                                <div className="mt-1">
+                                  With: {contract.partyA.name}
+                                </div>
+                              )}
+                            </AlertDescription>
+                            <div className="mt-2">
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className="text-xs h-7"
+                                onClick={onViewContracts}
+                              >
+                                View Contract
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 -mt-1 -mr-2"
+                          onClick={() => handleDismiss(`contract-${contract.id || (contract._id ? (typeof contract._id === 'string' ? contract._id : contract._id.toString()) : '')}`)}
+                        >
+                          <X className="h-3.5 w-3.5" />
+                          <span className="sr-only">Dismiss</span>
+                        </Button>
+                      </div>
+                    </Alert>
+                  ))}
+                </div>
               )}
             </div>
-
-          </div>
+          )}
         </CardContent>
-      </div>
-    </Card>
+      </Card>
+    </div>
   );
 }

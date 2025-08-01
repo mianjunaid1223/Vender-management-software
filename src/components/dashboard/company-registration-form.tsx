@@ -55,7 +55,7 @@ const getInitialFormData = (company?: Company | null): Partial<Company> => {
         businessType: "",
         addresses: [{ street: "", city: "", state: "", zipCode: "", country: "US" }],
         contacts: [{ id: crypto.randomUUID(), name: "", email: "", phone: "", isPrimary: true }],
-        preferences: { defaultPaymentTerms: "Net 30", defaultCurrency: "USD" },
+        preferences: { defaultPaymentTerms: "Net 30", baseCurrency: "USD" },
     };
 };
 
@@ -291,7 +291,7 @@ export function CompanyRegistrationForm({ isEditing = false, company }: CompanyR
                                     <CardContent className="space-y-4">
                                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                             <div><Label>Default Payment Terms</Label><Input value={formData.preferences?.defaultPaymentTerms} onChange={e => handleInputChange('preferences.defaultPaymentTerms', e.target.value)} /></div>
-                                            <div><Label>Default Currency</Label><Input value={formData.preferences?.defaultCurrency} onChange={e => handleInputChange('preferences.defaultCurrency', e.target.value)} /></div>
+                                            <div><Label>Default Currency</Label><Input value={formData.preferences?.baseCurrency} onChange={e => handleInputChange('preferences.baseCurrency', e.target.value)} /></div>
                                             <div><Label>Default Tax Rate (%)</Label><Input type="number" value={formData.preferences?.defaultTaxRate || 0} onChange={e => handleInputChange('preferences.defaultTaxRate', parseFloat(e.target.value))} /></div>
                                         </div>
                                     </CardContent>

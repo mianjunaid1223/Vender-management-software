@@ -73,7 +73,7 @@ export class AIContextManager {
             contacts: [],
             preferences: {
                 defaultPaymentTerms: 'Net 30',
-                defaultCurrency: 'USD',
+                baseCurrency: 'USD',
                 defaultTaxRate: 0,
                 emailNotifications: true,
                 invoiceReminders: true,

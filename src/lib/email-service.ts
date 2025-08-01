@@ -97,6 +97,34 @@ class EmailService {
       return false;
     }
   }
+
+  async sendVendorApprovalEmail(vendorEmail: string, vendorName: string, loginLink: string): Promise<boolean> {
+    const subject = 'Your Vendor Account Has Been Approved';
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <h2 style="color: #4F46E5;">Welcome to Vendor Management System!</h2>
+        <p>Hello ${vendorName || 'Vendor'},</p>
+        <p>We're excited to inform you that your vendor account has been approved!</p>
+        <p>You can now access your vendor portal using the link below:</p>
+        <p>
+          <a href="${loginLink}" 
+             style="display: inline-block; padding: 10px 20px; background-color: #4F46E5; color: white; text-decoration: none; border-radius: 4px; margin: 20px 0;">
+            Access Vendor Portal
+          </a>
+        </p>
+        <p>If the button above doesn't work, you can copy and paste this link into your browser:</p>
+        <p>${loginLink}</p>
+        <p>If you have any questions or need assistance, please don't hesitate to contact our support team.</p>
+        <p>Best regards,<br>The Vendor Management Team</p>
+      </div>
+    `;
+
+    return this.sendEmail({
+      to: vendorEmail,
+      subject,
+      html
+    });
+  }
 }
 
 // Export singleton instance
