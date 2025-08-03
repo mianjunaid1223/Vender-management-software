@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { useToast } from '@/components/ui/use-toast';
+// Create a simple toast hook replacement
 import { 
   Building2, 
   FileText, 
@@ -12,10 +12,11 @@ import {
   Settings, 
   LogOut,
   Home,
-  FileInvoice,
+  Receipt,
   Users,
   BarChart2
 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 interface VendorData {
   id: string;
@@ -140,7 +141,7 @@ export default function VendorDashboard() {
                 onClick={() => setActiveTab('invoices')}
                 className={`w-full flex items-center px-4 py-2 text-sm font-medium rounded-md ${activeTab === 'invoices' ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-50'}`}
               >
-                <FileInvoice className="mr-3 h-5 w-5 text-gray-500" />
+                <Receipt className="mr-3 h-5 w-5 text-gray-500" />
                 Invoices
               </button>
               <button
@@ -337,44 +338,42 @@ export default function VendorDashboard() {
                   <CardContent className="pt-6">
                     <div className="space-y-6">
                       <div>
-                            <h3 className="text-lg font-medium">Account</h3>
-                            <p className="text-sm text-muted-foreground">
-                              Update your account settings and preferences.
-                            </p>
-                          </div>
-                          <div className="space-y-4">
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700">Email</label>
-                              <p className="mt-1 text-sm text-gray-900">{vendor.email}</p>
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700">Account Status</label>
-                              <div className="mt-1 flex items-center">
-                                <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">
-                                  Active
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="pt-4 border-t">
-                            <h3 className="text-lg font-medium">Danger Zone</h3>
-                            <p className="text-sm text-muted-foreground">
-                              These actions are irreversible. Proceed with caution.
-                            </p>
-                            <div className="mt-4">
-                              <Button variant="destructive" onClick={handleLogout}>
-                                <LogOut className="mr-2 h-4 w-4" />
-                                Sign Out
-                              </Button>
-                            </div>
+                        <h3 className="text-lg font-medium">Account</h3>
+                        <p className="text-sm text-muted-foreground">
+                          Update your account settings and preferences.
+                        </p>
+                      </div>
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700">Email</label>
+                          <p className="mt-1 text-sm text-gray-900">{vendor.email}</p>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700">Account Status</label>
+                          <div className="mt-1 flex items-center">
+                            <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">
+                              Active
+                            </span>
                           </div>
                         </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-                )}
+                      </div>
+                      <div className="pt-4 border-t">
+                        <h3 className="text-lg font-medium">Danger Zone</h3>
+                        <p className="text-sm text-muted-foreground">
+                          These actions are irreversible. Proceed with caution.
+                        </p>
+                        <div className="mt-4">
+                          <Button variant="destructive" onClick={handleLogout}>
+                            <LogOut className="mr-2 h-4 w-4" />
+                            Sign Out
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </main>
