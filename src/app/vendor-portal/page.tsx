@@ -5,7 +5,7 @@ import { SimplifiedVendorForm } from '@/components/vendor-portal/simplified-vend
 import { VendorApplicationStatus } from '../../components/vendor-portal/vendor-application-status';
 import { useSearchParams } from 'next/navigation';
 
-export default function VendorPortalPage() {
+function VendorPortalContent() {
   const searchParams = useSearchParams();
   const [isLoading, setIsLoading] = useState(true);
   const [applicationStatus, setApplicationStatus] = useState<string | null>(null);
@@ -73,17 +73,23 @@ export default function VendorPortalPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      <Suspense fallback={
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
-        </div>
-      }>
-        {applicationStatus ? (
-          <VendorApplicationStatus status={applicationStatus} />
-        ) : (
-          <SimplifiedVendorForm />
-        )}
-      </Suspense>
+      {applicationStatus ? (
+        <VendorApplicationStatus status={applicationStatus} />
+      ) : (
+        <SimplifiedVendorForm />
+      )}
     </div>
+  );
+}
+
+export default function VendorPortalPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+      </div>
+    }>
+      <VendorPortalContent />
+    </Suspense>
   );
 }

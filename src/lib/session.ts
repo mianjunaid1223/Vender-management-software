@@ -61,6 +61,19 @@ export async function verifySession(): Promise<{ isAuth: boolean; userId: string
   return { isAuth: true, userId: session.userId }
 }
 
+export async function getSession() {
+  const { isAuth, userId } = await verifySession()
+  if (!isAuth || !userId) {
+    return null
+  }
+  return {
+    id: userId,
+    name: 'User', // You might want to fetch user details from database
+    userId,
+    isAuth: true
+  }
+}
+
 export async function deleteSession() {
   const cookieStore = await cookies()
   cookieStore.delete('session')

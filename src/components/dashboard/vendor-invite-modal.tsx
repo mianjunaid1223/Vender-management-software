@@ -554,17 +554,7 @@ export function VendorInviteModal({ companyName, trigger }: VendorInviteModalPro
                                 <Copy className="h-3 w-3 mr-1" />
                                 Copy Link
                               </Button>
-                              <Button 
-                                size="sm" 
-                                variant="outline"
-                                onClick={() => {
-                                  setEmailData({ ...emailData, email: '' });
-                                  // You could add resend functionality here
-                                }}
-                              >
-                                <Mail className="h-3 w-3 mr-1" />
-                                Resend
-                              </Button>
+                        
                             </div>
                           </div>
                         )}
@@ -576,102 +566,7 @@ export function VendorInviteModal({ companyName, trigger }: VendorInviteModalPro
             </Card>
               </TabsContent>
 
-              <TabsContent value="history" className="space-y-4 mt-0">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Clock className="h-4 w-4" />
-                      Invite History
-                    </CardTitle>
-                    <CardDescription>
-                      Track all vendor invitations sent from your account
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {isLoadingHistory ? (
-                      <div className="flex items-center justify-center py-8">
-                        <Loader2 className="h-6 w-6 animate-spin mr-2" />
-                        <span>Loading invite history...</span>
-                      </div>
-                    ) : inviteHistory.length === 0 ? (
-                      <div className="text-center py-8 text-muted-foreground">
-                        <UserPlus className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                        <p>No invitations sent yet</p>
-                        <p className="text-sm">Create your first vendor invite to see it here</p>
-                      </div>
-                    ) : (
-                      <div className="space-y-3">
-                        {inviteHistory.map((invite) => (
-                          <div key={invite.inviteId} className="border rounded-lg p-4">
-                            <div className="flex items-center justify-between mb-2">
-                              <div className="font-medium truncate mr-2">{invite.vendorName}</div>
-                              <Badge 
-                                variant={invite.status === 'completed' ? 'default' : 
-                                       invite.status === 'expired' ? 'destructive' : 
-                                       invite.status === 'sent' ? 'secondary' : 'outline'}
-                                className="shrink-0"
-                              >
-                                {invite.status === 'pending' && 'Pending'}
-                                {invite.status === 'sent' && 'Email Sent'}
-                                {invite.status === 'completed' && 'Registered'}
-                                {invite.status === 'expired' && 'Expired'}
-                              </Badge>
-                            </div>
-                            <div className="text-sm text-muted-foreground space-y-1">
-                              <div className="flex items-center gap-2">
-                                <Calendar className="h-3 w-3" />
-                                <span className="truncate">Created: {new Date(invite.createdAt).toLocaleDateString()}</span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <Clock className="h-3 w-3" />
-                                <span className="truncate">Expires: {new Date(invite.expiresAt).toLocaleDateString()}</span>
-                              </div>
-                              {invite.emailSent && (
-                                <div className="flex items-center gap-2">
-                                  <Mail className="h-3 w-3" />
-                                  <span className="truncate">Email sent to: {invite.emailSent}</span>
-                                </div>
-                              )}
-                              {invite.completedAt && (
-                                <div className="flex items-center gap-2">
-                                  <CheckCircle className="h-3 w-3" />
-                                  <span className="truncate">Completed: {new Date(invite.completedAt).toLocaleDateString()}</span>
-                                </div>
-                              )}
-                            </div>
-                            {invite.status === 'pending' && new Date() < new Date(invite.expiresAt) && (
-                              <div className="mt-3 pt-3 border-t">
-                                <div className="flex gap-2 flex-wrap">
-                                  <Button 
-                                    size="sm" 
-                                    variant="outline"
-                                    onClick={() => navigator.clipboard.writeText(invite.inviteUrl)}
-                                    className="flex-1 sm:flex-none"
-                                  >
-                                    <Copy className="h-3 w-3 mr-1" />
-                                    Copy Link
-                                  </Button>
-                                  <Button 
-                                    size="sm" 
-                                    variant="outline"
-                                    onClick={() => {
-                                      setEmailData({ ...emailData, email: '' });
-                                    }}
-                                    className="flex-1 sm:flex-none"
-                                  >
-                                    <Mail className="h-3 w-3 mr-1" />
-                                    Resend
-                                  </Button>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </TabsContent>
+              
               </div>
             </Tabs>
           </div>

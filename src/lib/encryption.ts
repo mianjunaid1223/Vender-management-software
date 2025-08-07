@@ -4,12 +4,15 @@ const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 16;
 const AUTH_TAG_LENGTH = 16;
 
-if (!process.env.ENCRYPTION_KEY || process.env.ENCRYPTION_KEY.length !== 64) {
-  throw new Error('ENCRYPTION_KEY is not defined or is not a 64-character hex string. Please check your .env.local file.');
+function getSecretKey() {
+  if (!process.env.ENCRYPTION_KEY || process.env.ENCRYPTION_KEY.length !== 64) {
+    throw new Error('ENCRYPTION_KEY is not defined or is not a 64-character hex string. Please check your .env.local file.');
+  }
+  return Buffer.from(process.env.ENCRYPTION_KEY, 'hex');
 }
-const secretKey = Buffer.from(process.env.ENCRYPTION_KEY, 'hex');
 
 export function encrypt(text: string) {
+  const secretKey = getSecretKey();
   const iv = crypto.randomBytes(IV_LENGTH);
   const cipher = crypto.createCipheriv(ALGORITHM, secretKey, iv);
   const encrypted = Buffer.concat([cipher.update(text, 'utf8'), cipher.final()]);
@@ -19,6 +22,7 @@ export function encrypt(text: string) {
 
 export function decrypt(token: string) {
   try {
+    const secretKey = getSecretKey();
     const [ivHex, authTagHex, encryptedHex] = token.split('.');
     if (!ivHex || !authTagHex || !encryptedHex) {
       throw new Error('Invalid token format');

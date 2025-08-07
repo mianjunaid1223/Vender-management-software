@@ -1,5 +1,6 @@
 'use client';
 
+import { Suspense } from 'react';
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -26,7 +27,7 @@ interface VendorData {
   applicationId: string;
 }
 
-export default function VendorDashboard() {
+function VendorDashboardContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
@@ -387,5 +388,13 @@ export default function VendorDashboard() {
         </div>
       </footer>
     </div>
+  );
+}
+
+export default function VendorDashboard() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <VendorDashboardContent />
+    </Suspense>
   );
 }
