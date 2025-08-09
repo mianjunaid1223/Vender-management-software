@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vendor Portal Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        .container { max-width: 600px; }
+        .form-group { margin: 20px 0; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input { width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 4px; }
+        button { background: #007bff; color: white; padding: 12px 24px; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .result { margin: 20px 0; padding: 15px; border-radius: 4px; }
+        .success { background: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
+        .error { background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+        .info { background: #d1ecf1; border: 1px solid #bee5eb; color: #0c5460; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Vendor Portal Authentication Test</h1>
+        
+        <div class="form-group">
+            <label for="email">Email:</label>
+            <input type="email" id="email" value="mianjunaid2312@gmail.com">
+        </div>
+        
+        <div class="form-group">
+            <label for="pin">PIN:</label>
+            <input type="text" id="pin" value="D5RMUNSV" maxlength="8">
+        </div>
+        
+        <div class="form-group">
+            <button onclick="testLogin()">Test Login</button>
+            <button onclick="testDashboard()" id="dashboardBtn" disabled>Test Dashboard</button>
+            <button onclick="testProfile()" id="profileBtn" disabled>Test Profile</button>
+        </div>
+        
+        <div id="result"></div>
+    </div>
+
+    <script>
+        let currentToken = null;
+        let currentVendor = null;
+
+        function showResult(message, type = 'info') {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = `<div class="result ${type}">${message}</div>`;
+        }
+
+        async function testLogin() {
+            const email = document.getElementById('email').value;
+            const pin = document.getElementById('pin').value;
+            
+            showResult('Testing login...', 'info');
+            
+            try {
+                const response = await fetch('/api/vendor/pin-auth', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, pin })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    currentToken = data.token;
+                    currentVendor = data.vendor;
+                    
+                    document.getElementById('dashboardBtn').disabled = false;
+                    document.getElementById('profileBtn').disabled = false;
+                    
+                    showResult(`✅ Login Successful!<br>
+                        Vendor: ${data.vendor.name}<br>
+                        Email: ${data.vendor.email}<br>
+                        Company: ${data.vendor.company.name}<br>
+                        Token: ${data.token.substring(0, 20)}...`, 'success');
+                } else {
+                    showResult(`❌ Login Failed: ${data.error || 'Unknown error'}`, 'error');
+                }
+            } catch (error) {
+                showResult(`❌ Network Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testDashboard() {
+            if (!currentToken || !currentVendor) {
+                showResult('❌ Please login first', 'error');
+                return;
+            }
+            
+            showResult('Testing dashboard...', 'info');
+            
+            try {
+                const response = await fetch(`/api/vendor/dashboard/${currentVendor.id}`, {
+                    headers: { 'Authorization': `Bearer ${currentToken}` }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showResult(`✅ Dashboard Loaded!<br>
+                        Total Invoices: ${data.stats.totalInvoices}<br>
+                        Active Contracts: ${data.stats.activeContracts}<br>
+                        Total Revenue: $${data.stats.totalRevenue}<br>
+                        Recent Invoices: ${data.recentInvoices.length}`, 'success');
+                } else {
+                    showResult(`❌ Dashboard Failed: ${data.error || 'Unknown error'}`, 'error');
+                }
+            } catch (error) {
+                showResult(`❌ Network Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testProfile() {
+            if (!currentToken || !currentVendor) {
+                showResult('❌ Please login first', 'error');
+                return;
+            }
+            
+            showResult('Testing profile...', 'info');
+            
+            try {
+                const response = await fetch(`/api/vendor/${currentVendor.id}/profile`, {
+                    headers: { 'Authorization': `Bearer ${currentToken}` }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showResult(`✅ Profile Loaded!<br>
+                        Name: ${data.profile.name}<br>
+                        Email: ${data.profile.email}<br>
+                        Phone: ${data.profile.phone || 'Not set'}<br>
+                        Address: ${data.profile.address || 'Not set'}`, 'success');
+                } else {
+                    showResult(`❌ Profile Failed: ${data.error || 'Unknown error'}`, 'error');
+                }
+            } catch (error) {
+                showResult(`❌ Network Error: ${error.message}`, 'error');
+            }
+        }
+    </script>
+</body>
+</html>

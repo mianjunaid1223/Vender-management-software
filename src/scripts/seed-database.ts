@@ -1,5 +1,9 @@
 import { MongoClient } from 'mongodb';
 import { MOCK_INVOICES, MOCK_VENDORS, MOCK_CONTRACTS } from '../lib/mock-data';
+import dotenv from 'dotenv';
+
+// Load environment variables
+dotenv.config({ path: '.env.local' });
 
 const MONGODB_URI = process.env.MONGODB_URI;
 

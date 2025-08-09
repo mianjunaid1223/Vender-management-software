@@ -27,7 +27,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 
 interface VendorFormData {
-  // Aligned with existing vendor creation form
+  // Core vendor fields matching the database schema
   name: string;           // Company name
   email: string;
   phone: string;
@@ -44,14 +44,14 @@ interface VendorFormData {
   paymentTerms: string;
   notes: string;
   
-  // Company association
+  // Company association for applications
   targetCompanyId: string;
 }
 
 const STEP_TITLES = [
   'Basic Information',
-  'Address & Contact',
-  'Service Details'
+  'Address & Location', 
+  'Business Details'
 ];
 
 export function VendorPortalClient() {
@@ -93,7 +93,7 @@ export function VendorPortalClient() {
       
       if (token) {
         try {
-          const response = await fetch(`/api/vendor-invites?token=${encodeURIComponent(token)}`);
+          const response = await fetch(`/api/vendor/status?token=${encodeURIComponent(token)}`);
           const data = await response.json();
           
           console.log('Token validation response:', data); // Debug log
@@ -107,6 +107,18 @@ export function VendorPortalClient() {
             // Set the target company ID in form data
             setFormData(prev => ({ ...prev, targetCompanyId: data.companyId }));
           } else {
+            // Check if there's an application status
+            if (data.applicationStatus) {
+              if (data.applicationStatus === 'approved') {
+                // Redirect to vendor dashboard
+                window.location.href = '/vendor-portal/dashboard';
+                return;
+              } else if (data.applicationStatus === 'rejected') {
+                setTokenError('Your vendor application has been rejected. Please contact the company administrator if you believe this is an error.');
+                setIsValidating(false);
+                return;
+              }
+            }
             console.log('Token validation failed:', data.error); // Debug log
             setTokenError(data.error || 'Invalid or expired invite link');
           }
@@ -241,6 +253,8 @@ export function VendorPortalClient() {
         body: JSON.stringify(finalFormData)
       });
 
+      const responseData = await response.json();
+
       if (response.ok) {
         toast({
           title: 'Application Submitted!',
@@ -248,10 +262,11 @@ export function VendorPortalClient() {
         });
         setCurrentStep(4); // Success step
       } else {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to submit application');
+        console.error('Application submission error:', responseData);
+        throw new Error(responseData.error || 'Failed to submit application');
       }
     } catch (error) {
+      console.error('Submission error:', error);
       const errorMessage = error instanceof Error ? error.message : 'There was an error submitting your application. Please try again.';
       toast({
         title: 'Submission Failed',
@@ -393,8 +408,8 @@ export function VendorPortalClient() {
                 <Label htmlFor="companyName">Company Name *</Label>
                 <Input
                   id="companyName"
-                  value={formData.companyName}
-                  onChange={(e) => updateFormData('companyName', e.target.value)}
+                  value={formData.name}
+                  onChange={(e) => updateFormData('name', e.target.value)}
                   placeholder="Your Company LLC"
                 />
               </div>
@@ -402,8 +417,8 @@ export function VendorPortalClient() {
                 <Label htmlFor="contactName">Primary Contact Name *</Label>
                 <Input
                   id="contactName"
-                  value={formData.contactName}
-                  onChange={(e) => updateFormData('contactName', e.target.value)}
+                  value={formData.contactPerson}
+                  onChange={(e) => updateFormData('contactPerson', e.target.value)}
                   placeholder="John Smith"
                 />
               </div>
@@ -426,88 +441,22 @@ export function VendorPortalClient() {
                   placeholder="+1 (555) 123-4567"
                 />
               </div>
-              <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="website">Website (Optional)</Label>
-                <Input
-                  id="website"
-                  value={formData.website}
-                  onChange={(e) => updateFormData('website', e.target.value)}
-                  placeholder="https://yourcompany.com"
-                />
-              </div>
             </div>
           )}
 
-          {/* Step 2: Business Details */}
+          {/* Step 2: Address & Location */}
           {currentStep === 2 && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="businessType">Business Type *</Label>
-                <Select value={formData.businessType} onValueChange={(value) => updateFormData('businessType', value)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select business type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="corporation">Corporation</SelectItem>
-                    <SelectItem value="llc">LLC</SelectItem>
-                    <SelectItem value="partnership">Partnership</SelectItem>
-                    <SelectItem value="sole-proprietorship">Sole Proprietorship</SelectItem>
-                    <SelectItem value="nonprofit">Nonprofit</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="industry">Industry *</Label>
-                <Select value={formData.industry} onValueChange={(value) => updateFormData('industry', value)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select industry" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="technology">Technology</SelectItem>
-                    <SelectItem value="consulting">Consulting</SelectItem>
-                    <SelectItem value="manufacturing">Manufacturing</SelectItem>
-                    <SelectItem value="healthcare">Healthcare</SelectItem>
-                    <SelectItem value="finance">Finance</SelectItem>
-                    <SelectItem value="retail">Retail</SelectItem>
-                    <SelectItem value="construction">Construction</SelectItem>
-                    <SelectItem value="other">Other</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="taxId">Tax ID / EIN *</Label>
-                <Input
-                  id="taxId"
-                  value={formData.taxId}
-                  onChange={(e) => updateFormData('taxId', e.target.value)}
-                  placeholder="12-3456789"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="registrationNumber">Business Registration Number</Label>
-                <Input
-                  id="registrationNumber"
-                  value={formData.registrationNumber}
-                  onChange={(e) => updateFormData('registrationNumber', e.target.value)}
-                  placeholder="State registration number"
-                />
-              </div>
-            </div>
-          )}
-
-          {/* Step 3: Address & Services */}
-          {currentStep === 3 && (
             <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="street">Street Address *</Label>
+                <Input
+                  id="street"
+                  value={formData.address.street}
+                  onChange={(e) => updateNestedFormData('address', 'street', e.target.value)}
+                  placeholder="123 Business St"
+                />
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="street">Street Address *</Label>
-                  <Input
-                    id="street"
-                    value={formData.address.street}
-                    onChange={(e) => updateNestedFormData('address', 'street', e.target.value)}
-                    placeholder="123 Business St"
-                  />
-                </div>
                 <div className="space-y-2">
                   <Label htmlFor="city">City *</Label>
                   <Input
@@ -550,76 +499,51 @@ export function VendorPortalClient() {
                   </Select>
                 </div>
               </div>
-              
-              <Separator />
-              
-              <div className="space-y-2">
-                <Label htmlFor="servicesOffered">Services Offered *</Label>
-                <Textarea
-                  id="servicesOffered"
-                  value={formData.servicesOffered}
-                  onChange={(e) => updateFormData('servicesOffered', e.target.value)}
-                  placeholder="Describe the services your company provides..."
-                  rows={4}
-                />
-              </div>
             </div>
           )}
 
-          {/* Step 4: Banking & Compliance */}
-          {currentStep === 4 && (
-            <div className="space-y-6">
-              <div>
-                <h3 className="text-lg font-medium mb-4">Banking Information</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="accountName">Account Name *</Label>
-                    <Input
-                      id="accountName"
-                      value={formData.bankingInfo.accountName}
-                      onChange={(e) => updateNestedFormData('bankingInfo', 'accountName', e.target.value)}
-                      placeholder="Your Company LLC"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="bankName">Bank Name *</Label>
-                    <Input
-                      id="bankName"
-                      value={formData.bankingInfo.bankName}
-                      onChange={(e) => updateNestedFormData('bankingInfo', 'bankName', e.target.value)}
-                      placeholder="First National Bank"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="accountNumber">Account Number</Label>
-                    <Input
-                      id="accountNumber"
-                      value={formData.bankingInfo.accountNumber}
-                      onChange={(e) => updateNestedFormData('bankingInfo', 'accountNumber', e.target.value)}
-                      placeholder="****1234"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="routingNumber">Routing Number</Label>
-                    <Input
-                      id="routingNumber"
-                      value={formData.bankingInfo.routingNumber}
-                      onChange={(e) => updateNestedFormData('bankingInfo', 'routingNumber', e.target.value)}
-                      placeholder="123456789"
-                    />
-                  </div>
-                </div>
-              </div>
-              
-              <Separator />
-              
+          {/* Step 3: Business Details */}
+          {currentStep === 3 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="insuranceInfo">Insurance Information</Label>
+                <Label htmlFor="service">Main Service Offered *</Label>
+                <Input
+                  id="service"
+                  value={formData.service}
+                  onChange={(e) => updateFormData('service', e.target.value)}
+                  placeholder="Web Development, Consulting, etc."
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="taxId">Tax ID / EIN *</Label>
+                <Input
+                  id="taxId"
+                  value={formData.taxId}
+                  onChange={(e) => updateFormData('taxId', e.target.value)}
+                  placeholder="12-3456789"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="paymentTerms">Payment Terms</Label>
+                <Select value={formData.paymentTerms} onValueChange={(value) => updateFormData('paymentTerms', value)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Net 15">Net 15</SelectItem>
+                    <SelectItem value="Net 30">Net 30</SelectItem>
+                    <SelectItem value="Net 45">Net 45</SelectItem>
+                    <SelectItem value="Net 60">Net 60</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="notes">Additional Notes</Label>
                 <Textarea
-                  id="insuranceInfo"
-                  value={formData.insuranceInfo}
-                  onChange={(e) => updateFormData('insuranceInfo', e.target.value)}
-                  placeholder="General liability, professional liability, etc."
+                  id="notes"
+                  value={formData.notes}
+                  onChange={(e) => updateFormData('notes', e.target.value)}
+                  placeholder="Any additional information about your services..."
                   rows={3}
                 />
               </div>
@@ -636,7 +560,7 @@ export function VendorPortalClient() {
               Previous
             </Button>
             
-            {currentStep < 4 ? (
+            {currentStep < 3 ? (
               <Button onClick={nextStep}>
                 Next
                 <ArrowRight className="h-4 w-4 ml-2" />

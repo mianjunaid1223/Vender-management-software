@@ -1,4 +1,5 @@
 import { MongoClient, ServerApiVersion } from 'mongodb'
+import mongoose from 'mongoose'
 
 const MONGODB_URI = process.env.MONGODB_URI;
 
@@ -30,6 +31,29 @@ if (!MONGODB_URI) {
   } else {
     client = new MongoClient(MONGODB_URI, options);
     clientPromise = client.connect();
+  }
+}
+
+// Mongoose connection for the new API endpoints
+let isConnected = false;
+
+export async function connectDB() {
+  if (!MONGODB_URI) {
+    throw new Error('MONGODB_URI environment variable is not set');
+  }
+
+  if (isConnected) {
+    return mongoose.connection;
+  }
+
+  try {
+    const connection = await mongoose.connect(MONGODB_URI);
+    isConnected = true;
+    console.log('✅ Connected to MongoDB with Mongoose');
+    return connection;
+  } catch (error) {
+    console.error('❌ MongoDB connection error:', error);
+    throw error;
   }
 }
 

@@ -82,10 +82,10 @@ export function SimplifiedVendorForm() {
       
       if (token) {
         try {
-          const response = await fetch(`/api/vendor-invites?token=${encodeURIComponent(token)}`);
+          const response = await fetch(`/api/vendor/status?token=${encodeURIComponent(token)}`);
           const data = await response.json();
           
-          if (data.valid) {
+          if (response.ok && data.status === 'pending_registration') {
             setCompanyInfo({
               id: data.companyId,
               name: data.companyName

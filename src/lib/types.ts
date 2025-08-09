@@ -28,7 +28,8 @@ export type Vendor = {
 export type VendorApplication = {
   id: string;
   applicationId: string;
-  name: string;           // Company name
+  name: string;           // Company name (legacy)
+  vendorName?: string;    // New field for vendor name
   contactPerson: string;  // Contact person name
   email: string;
   phone: string;
@@ -43,6 +44,7 @@ export type VendorApplication = {
   reviewedAt?: string;
   reviewedBy?: string;
   inviteToken?: string;
+  inviteId?: string;      // Reference to the invite that created this application
 };
 
 export type InvoiceItem = {

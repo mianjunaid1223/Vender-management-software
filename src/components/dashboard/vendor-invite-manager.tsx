@@ -1,13 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Copy, Mail, Link, Users, Send, CheckCircle } from 'lucide-react';
+import { Copy, Mail, Link, Users, Send, CheckCircle, History, Calendar, User, ExternalLink } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface VendorInviteManagerProps {
@@ -15,11 +15,53 @@ interface VendorInviteManagerProps {
   companyName: string;
 }
 
+interface VendorInvite {
+  vendorName: string;
+  email: string;
+  status: 'pending' | 'completed' | 'expired';
+  createdAt: string;
+  expiresAt: string;
+  inviteUrl: string;
+  message?: string;
+}
+
 export function VendorInviteManager({ companyId, companyName }: VendorInviteManagerProps) {
   const [email, setEmail] = useState('');
+  const [vendorName, setVendorName] = useState('');
   const [customMessage, setCustomMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [inviteHistory, setInviteHistory] = useState<VendorInvite[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(true);
   const { toast } = useToast();
+
+  // Fetch invite history
+  const fetchInviteHistory = async () => {
+    try {
+      setIsLoadingHistory(true);
+      const response = await fetch('/api/vendor-invites');
+      
+      if (response.ok) {
+        const data = await response.json();
+        setInviteHistory(data.invites || []);
+      } else {
+        throw new Error('Failed to fetch invite history');
+      }
+    } catch (error) {
+      console.error('Error fetching invite history:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load invite history',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  };
+
+  // Load invite history on component mount
+  useEffect(() => {
+    fetchInviteHistory();
+  }, []);
 
   // Generate vendor portal link with company ID
   const getVendorPortalLink = () => {
@@ -44,10 +86,10 @@ export function VendorInviteManager({ companyId, companyName }: VendorInviteMana
   };
 
   const sendInviteEmail = async () => {
-    if (!email) {
+    if (!email || !vendorName) {
       toast({
         title: 'Error',
-        description: 'Please enter a vendor email address',
+        description: 'Please enter both vendor name and email address',
         variant: 'destructive'
       });
       return;
@@ -55,30 +97,52 @@ export function VendorInviteManager({ companyId, companyName }: VendorInviteMana
 
     setIsLoading(true);
     try {
-      // TODO: Implement email sending logic
-      const response = await fetch('/api/vendor-invites', {
+      // First generate the invite
+      const generateResponse = await fetch('/api/vendor-invites', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          action: 'generate',
           email,
-          companyId,
-          companyName,
-          customMessage,
-          portalLink: getVendorPortalLink()
+          vendorName,
+          message: customMessage
         })
       });
 
-      if (response.ok) {
+      if (!generateResponse.ok) {
+        throw new Error('Failed to generate invitation');
+      }
+
+      const generateData = await generateResponse.json();
+      
+      // Then send the email
+      const emailResponse = await fetch('/api/vendor-invites', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'send-email',
+          email,
+          vendorName,
+          message: customMessage,
+          inviteUrl: generateData.inviteUrl
+        })
+      });
+
+      if (emailResponse.ok) {
         toast({
           title: 'Success',
           description: `Invitation sent to ${email}`
         });
         setEmail('');
+        setVendorName('');
         setCustomMessage('');
+        // Refresh invite history
+        fetchInviteHistory();
       } else {
-        throw new Error('Failed to send invitation');
+        throw new Error('Failed to send invitation email');
       }
     } catch (error) {
+      console.error('Invitation error:', error);
       toast({
         title: 'Error',
         description: 'Failed to send invitation email',
@@ -89,6 +153,28 @@ export function VendorInviteManager({ companyId, companyName }: VendorInviteMana
     }
   };
 
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return <Badge className="bg-green-100 text-green-800">Completed</Badge>;
+      case 'expired':
+        return <Badge variant="destructive">Expired</Badge>;
+      case 'pending':
+      default:
+        return <Badge variant="outline" className="text-yellow-600">Pending</Badge>;
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
   const defaultMessage = `Hello,
 
 You've been invited to join ${companyName}'s vendor network. Please use the link below to complete your registration and start collaborating with us.
@@ -97,7 +183,6 @@ This portal will allow you to:
 • Complete your vendor profile and documentation
 • Submit and track invoices
 • Access contract information
-• Communicate directly with our team
 
 We look forward to working with you!
 
@@ -151,6 +236,17 @@ ${companyName} Team`;
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
+            <Label htmlFor="vendor-name">Vendor Name</Label>
+            <Input
+              id="vendor-name"
+              type="text"
+              placeholder="Company or vendor name"
+              value={vendorName}
+              onChange={(e) => setVendorName(e.target.value)}
+            />
+          </div>
+
+          <div className="space-y-2">
             <Label htmlFor="vendor-email">Vendor Email Address</Label>
             <Input
               id="vendor-email"
@@ -183,12 +279,96 @@ ${companyName} Team`;
 
           <Button 
             onClick={sendInviteEmail} 
-            disabled={isLoading || !email}
+            disabled={isLoading || !email || !vendorName}
             className="w-full"
           >
             <Send className="h-4 w-4 mr-2" />
             {isLoading ? 'Sending...' : 'Send Invitation'}
           </Button>
+        </CardContent>
+      </Card>
+
+      {/* Invite History Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <History className="h-5 w-5" />
+            Invite History
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isLoadingHistory ? (
+            <div className="text-center py-8 text-muted-foreground">
+              Loading invite history...
+            </div>
+          ) : inviteHistory.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              No invitations sent yet. Send your first vendor invitation above!
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="text-sm text-muted-foreground mb-4">
+                Track all vendor invitations sent from your account
+              </div>
+              <div className="space-y-3">
+                {inviteHistory.map((invite, index) => (
+                  <div key={index} className="border rounded-lg p-4 space-y-3">
+                    <div className="flex items-start justify-between">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <User className="h-4 w-4" />
+                          <span className="font-medium">{invite.vendorName}</span>
+                          {getStatusBadge(invite.status)}
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          {invite.email}
+                        </div>
+                      </div>
+                      <div className="text-right text-sm text-muted-foreground">
+                        <div className="flex items-center gap-1">
+                          <Calendar className="h-3 w-3" />
+                          {formatDate(invite.createdAt)}
+                        </div>
+                        {invite.status === 'pending' && (
+                          <div className="text-xs mt-1">
+                            Expires: {formatDate(invite.expiresAt)}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {invite.message && (
+                      <div className="text-sm text-muted-foreground border-l-2 border-gray-200 pl-3">
+                        <strong>Custom message:</strong> {invite.message}
+                      </div>
+                    )}
+                    
+                    <div className="flex items-center gap-2">
+                      <Input
+                        value={invite.inviteUrl}
+                        readOnly
+                        className="font-mono text-xs"
+                      />
+                      <Button 
+                        onClick={() => navigator.clipboard.writeText(invite.inviteUrl)}
+                        variant="outline" 
+                        size="sm"
+                      >
+                        <Copy className="h-3 w-3" />
+                      </Button>
+                      <Button 
+                        onClick={() => window.open(invite.inviteUrl, '_blank')}
+                        variant="outline" 
+                        size="sm"
+                      >
+                        <ExternalLink className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 

@@ -41,6 +41,9 @@ export default function Home() {
             <Button size="lg" variant="outline" asChild>
               <Link href="/login">Login</Link>
             </Button>
+            <Button size="lg" variant="secondary" asChild>
+              <Link href="/vendor-portal">Vendor Portal</Link>
+            </Button>
           </div>
         </section>
 
@@ -65,6 +68,40 @@ export default function Home() {
                 ))}
             </div>
             </div>
+        </section>
+
+        {/* Vendor Portal Section */}
+        <section className="container mx-auto px-4 py-20 sm:py-24">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold mb-4 font-headline">
+              Are You a Vendor?
+            </h2>
+            <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
+              Access your vendor dashboard to manage invoices, contracts, and communications with ease.
+            </p>
+          </div>
+          
+          <div className="max-w-md mx-auto">
+            <Card className="border-2 border-primary/20 shadow-lg">
+              <CardContent className="p-8 text-center">
+                <div className="bg-primary/10 p-4 rounded-full w-16 h-16 mx-auto mb-6 flex items-center justify-center">
+                  <svg className="h-8 w-8 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-semibold mb-4">Vendor Portal</h3>
+                <p className="text-muted-foreground mb-6">
+                  Secure access to your vendor dashboard with your unique PIN
+                </p>
+                <Button size="lg" className="w-full" asChild>
+                  <Link href="/vendor-portal">Access Vendor Portal</Link>
+                </Button>
+                <p className="text-xs text-muted-foreground mt-4">
+                  Don't have a PIN? Contact your business partner for access.
+                </p>
+              </CardContent>
+            </Card>
+          </div>
         </section>
       </main>
 

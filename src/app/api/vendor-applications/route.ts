@@ -37,10 +37,13 @@ export async function POST(request: Request) {
     
 
     
-    // Validate target company ID
-    if (!ObjectId.isValid(body.targetCompanyId)) {
+    // Validate target company ID - it could be a string from the frontend
+    let targetCompanyObjectId;
+    try {
+      targetCompanyObjectId = new ObjectId(body.targetCompanyId);
+    } catch (error) {
       return NextResponse.json(
-        { error: 'Invalid target company ID' },
+        { error: 'Invalid target company ID format' },
         { status: 400 }
       );
     }
@@ -50,7 +53,7 @@ export async function POST(request: Request) {
       ...body,
       status: 'pending',
       submittedAt: new Date(),
-      targetCompanyId: new ObjectId(body.targetCompanyId),
+      targetCompanyId: targetCompanyObjectId,
       // Generate a unique application ID
       applicationId: `VA-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`
     };
@@ -63,7 +66,7 @@ export async function POST(request: Request) {
       await db.collection('vendorInvites').updateOne(
         { 
           token: body.inviteToken,
-          companyId: new ObjectId(body.targetCompanyId)
+          companyId: targetCompanyObjectId
         },
         { 
           $set: { 

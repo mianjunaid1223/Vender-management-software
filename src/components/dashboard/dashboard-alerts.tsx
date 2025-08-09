@@ -253,13 +253,13 @@ export function DashboardAlerts({
                           <FileClock className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
                           <div className="flex-1">
                             <AlertTitle className="text-amber-800 dark:text-amber-200">
-                              Contract Expiring: {contract.contractName || contract.name || 'Unnamed Contract'}
+                              Contract Expiring: {contract.title || contract.name || 'Unnamed Contract'}
                             </AlertTitle>
                             <AlertDescription className="text-amber-700 dark:text-amber-300">
                               Expires on {formatDate(new Date(contract.endDate))}
                               {contract.partyA?.name && (
                                 <div className="mt-1">
-                                  With: {contract.partyA.name}
+                                  With: {contract.partyA.id == "company"? contract.partyB.name:contract.partyA.name}
                                 </div>
                               )}
                             </AlertDescription>

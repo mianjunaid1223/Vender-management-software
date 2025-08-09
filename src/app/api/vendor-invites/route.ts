@@ -13,22 +13,28 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { action, email, message, vendorName, inviteUrl: existingInviteUrl } = body;
+    const { action, email, message, vendorName, inviteUrl } = body;
 
     if (action === 'generate') {
       const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
       const inviteData = {
-        email,
+        email: email || '',
         companyId: session.companyId,
         expiresAt: expiresAt.toISOString(),
       };
 
       const token = encrypt(JSON.stringify(inviteData));
-      const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL}/vendor-portal?token=${token}`;
+      
+      // Get the base URL properly
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 
+                     request.headers.get('origin') ||
+                     `http://localhost:${process.env.PORT || 9002}`;
+      
+      const inviteUrl = `${baseUrl}/vendor-portal?token=${token}`;
 
       const db = await getDb();
-      await db.collection('vendorInvites').updateOne(
-        { email: email, companyId: session.companyId },
+      const result = await db.collection('vendorInvites').updateOne(
+        { email: email || vendorName, companyId: session.companyId },
         {
           $set: {
             vendorName: vendorName || 'N/A',
@@ -40,18 +46,24 @@ export async function POST(request: NextRequest) {
             inviteUrl,
           },
           $setOnInsert: {
-            email: email,
+            email: email || '',
             companyId: session.companyId,
           }
         },
         { upsert: true }
       );
 
-      return NextResponse.json({ success: true, inviteUrl });
+      return NextResponse.json({ 
+        success: true, 
+        inviteUrl,
+        token,
+        expiresAt: expiresAt.toISOString(),
+        inviteId: result.upsertedId?.toString() || 'existing'
+      });
     }
 
     if (action === 'send-email') {
-      if (!email || !vendorName || !existingInviteUrl) {
+      if (!email || !vendorName || !inviteUrl) {
         return NextResponse.json({ error: 'Missing required fields for sending email.' }, { status: 400 });
       }
 
@@ -62,7 +74,28 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Company not found' }, { status: 404 });
       }
 
-      await sendVendorInvitationEmail(email, company.name, existingInviteUrl, message);
+      const emailResult = await sendVendorInvitationEmail(email, company.name, inviteUrl, message);
+      
+      if (!emailResult.success) {
+        return NextResponse.json({ error: 'Failed to send invitation email' }, { status: 500 });
+      }
+
+      // Update the invite record to track that email was sent
+      await db.collection('vendorInvites').updateOne(
+        { 
+          $or: [
+            { email: email, companyId: session.companyId },
+            { vendorName: vendorName, companyId: session.companyId }
+          ]
+        },
+        {
+          $set: {
+            emailSent: email,
+            emailSentAt: new Date(),
+            status: 'sent'
+          }
+        }
+      );
 
       return NextResponse.json({ success: true, message: 'Invitation email sent successfully.' });
     }
@@ -95,9 +128,10 @@ export async function GET(request: NextRequest) {
       const isExpired = invite.expiresAt && now > new Date(invite.expiresAt);
       const status = invite.used ? 'completed' : 
                     isExpired ? 'expired' : 
-                    'pending';
+                    invite.status || 'pending';
       
       return {
+        inviteId: invite._id?.toString(),
         vendorName: invite.vendorName,
         status,
         createdAt: invite.createdAt,
@@ -105,6 +139,9 @@ export async function GET(request: NextRequest) {
         inviteUrl: invite.inviteUrl,
         email: invite.email,
         message: invite.message,
+        emailSent: invite.emailSent || null,
+        emailSentAt: invite.emailSentAt || null,
+        completedAt: invite.completedAt || null,
       };
     });
 

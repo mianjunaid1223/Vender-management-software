@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
 import { VendorsTable } from "@/components/dashboard/vendors-table";
 import { VendorOnboardingDialog } from "@/components/dashboard/vendor-onboarding-dialog";
-import { VendorInviteModal } from "@/components/dashboard/vendor-invite-modal";
+import { VendorInviteManagerNew } from "@/components/vendor/vendor-invite-manager-new";
 import { PlusCircle } from "lucide-react";
 import { fetchVendors, fetchCompany } from "@/lib/data";
 import { getSession } from "@/lib/auth";
@@ -20,7 +20,10 @@ export default async function VendorsPage() {
         description="Manage your company's vendors and their contact information."
       >
         <div className="flex gap-2">
-          <VendorInviteModal companyName={company?.name || 'Your Company'} />
+          <VendorInviteManagerNew 
+            companyId={session?.companyId || ''} 
+            companyName={company?.name || 'Your Company'} 
+          />
           <VendorOnboardingDialog />
         </div>
       </PageHeader>

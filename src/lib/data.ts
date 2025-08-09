@@ -672,28 +672,46 @@ export async function fetchPendingVendorApplications(): Promise<Array<{
     service: string;
 }>> {
     noStore();
+    
+    console.log('🔍 fetchPendingVendorApplications called');
+    
     const db = await getDb();
     const companyId = await getCurrentUserCompanyId();
     
+    console.log('👤 Current user company ID:', companyId);
+    
     if (!companyId) {
+        console.log('❌ No company ID found - returning empty array');
         return [];
     }
 
     try {
+        console.log('🔍 Searching for pending applications with query:', {
+            targetCompanyId: companyId,
+            status: 'pending'
+        });
+        
         const applications = await db.collection('vendorApplications').find({
-            targetCompanyId: new ObjectId(companyId),
+            targetCompanyId: companyId, // companyId is a string, not ObjectId
             status: 'pending',
         }).sort({ submittedAt: -1 }).toArray();
 
-        return applications.map(app => ({
+        console.log('📋 Raw applications found:', applications.length);
+        console.log('📋 Applications data:', applications);
+
+        const processedApplications = applications.map(app => ({
             id: app._id.toString(),
-            vendorName: app.companyName || 'Unknown Vendor',
+            vendorName: app.vendorName || app.name || 'Unknown Vendor', // Use vendorName, not companyName
             submittedAt: app.submittedAt || new Date(),
             status: app.status || 'pending',
             service: app.service || 'General Services',
         }));
+
+        console.log('✅ Processed applications:', processedApplications);
+
+        return processedApplications;
     } catch (error) {
-        console.error('Error fetching pending vendor applications:', error);
+        console.error('❌ Error fetching pending vendor applications:', error);
         throw new Error('Failed to fetch pending vendor applications');
     }
 }

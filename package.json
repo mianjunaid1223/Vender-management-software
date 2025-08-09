@@ -10,7 +10,9 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "seed": "tsx src/scripts/seed-database.ts"
+    "seed": "tsx src/scripts/seed-database.ts",
+    "test-email": "tsx src/scripts/test-email.ts",
+    "debug-vendor-apps": "tsx src/scripts/debug-vendor-applications.ts"
   },
   "dependencies": {
     "@genkit-ai/googleai": "^1.13.0",

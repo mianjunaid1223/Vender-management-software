@@ -7,47 +7,130 @@ export async function GET(request: NextRequest) {
   const token = searchParams.get('token');
 
   if (!token) {
-    return NextResponse.json({ error: 'Token is required' }, { status: 400 });
+    return NextResponse.json({ 
+      valid: false, 
+      error: 'No invitation token provided' 
+    }, { status: 400 });
   }
 
   try {
     const db = await getDb();
     
-    // Decrypt the token to get the vendor's email
-    const decryptedPayload = decrypt(token);
-    const { email, expiresAt } = JSON.parse(decryptedPayload);
+    // First, check if this token exists in our database
+    const inviteRecord = await db.collection('vendorInvites').findOne({
+      token: token,
+      status: 'active'
+    });
 
-    if (new Date() > new Date(expiresAt)) {
-      return NextResponse.json({ status: 'expired' }, { status: 400 });
+    if (!inviteRecord) {
+      return NextResponse.json({ 
+        valid: false, 
+        error: 'Invalid invitation link - not found in our records' 
+      }, { status: 400 });
     }
 
-    // Find the application using the email from the token
-    const application = await db.collection('vendorApplications').findOne({ email });
-
-    // If an application exists, return its status
-    if (application) {
-      return NextResponse.json({
-        status: application.status, // e.g., 'approved', 'rejected'
-        vendorName: application.vendorName,
-        companyName: application.companyName,
-      });
+    // Check if invite has expired
+    if (new Date() > new Date(inviteRecord.expiresAt)) {
+      // Mark as expired
+      await db.collection('vendorInvites').updateOne(
+        { _id: inviteRecord._id },
+        { $set: { status: 'expired' } }
+      );
+      
+      return NextResponse.json({ 
+        valid: false, 
+        error: 'Invitation link has expired' 
+      }, { status: 400 });
     }
 
-    // If no application is found, the invite is valid but the vendor hasn't registered yet.
-    // The frontend should display the registration form.
-    return NextResponse.json({ status: 'pending_registration' });
+    // Check if invite has already been used
+    if (inviteRecord.used) {
+      return NextResponse.json({ 
+        valid: false, 
+        error: 'Invitation link has already been used' 
+      }, { status: 400 });
+    }
+
+    // Decrypt token to validate structure
+    try {
+      const decryptedPayload = decrypt(token);
+      const tokenData = JSON.parse(decryptedPayload);
+      
+      // Validate token data matches database record
+      if (tokenData.vendorName !== inviteRecord.vendorName || 
+          tokenData.companyId !== inviteRecord.companyId) {
+        return NextResponse.json({ 
+          valid: false, 
+          error: 'Token validation failed - data mismatch' 
+        }, { status: 400 });
+      }
+    } catch (decryptError) {
+      return NextResponse.json({ 
+        valid: false, 
+        error: 'Invalid token format' 
+      }, { status: 400 });
+    }
+
+    // Get company information
+    const company = await db.collection('companies').findOne({ 
+      companyId: inviteRecord.companyId 
+    });
+    
+    if (!company) {
+      return NextResponse.json({ 
+        valid: false, 
+        error: 'Company not found' 
+      }, { status: 400 });
+    }
+
+    // Check if there's already an application for this vendor and company
+    const existingApplication = await db.collection('vendorApplications').findOne({ 
+      vendorName: inviteRecord.vendorName,
+      targetCompanyId: inviteRecord.companyId 
+    });
+
+    if (existingApplication) {
+      // Return application status
+      if (existingApplication.status === 'approved') {
+        return NextResponse.json({
+          valid: false,
+          error: 'Vendor already approved',
+          redirect: '/vendor-portal/dashboard',
+          applicationStatus: existingApplication.status,
+          applicationId: existingApplication.applicationId
+        });
+      } else if (existingApplication.status === 'rejected') {
+        return NextResponse.json({
+          valid: false,
+          error: 'Vendor application was rejected',
+          applicationStatus: existingApplication.status,
+          applicationId: existingApplication.applicationId
+        });
+      } else {
+        return NextResponse.json({
+          valid: false,
+          error: 'Application already submitted and pending review',
+          applicationStatus: existingApplication.status,
+          applicationId: existingApplication.applicationId
+        });
+      }
+    }
+
+    // Return valid token with company information
+    return NextResponse.json({
+      valid: true,
+      vendorName: inviteRecord.vendorName,
+      companyId: inviteRecord.companyId,
+      companyName: company.name,
+      email: inviteRecord.email,
+      inviteId: inviteRecord._id.toString()
+    });
 
   } catch (error) {
-    console.error('Error fetching vendor status:', error);
-
-    // Handle specific errors for better client-side feedback
-    if (error instanceof Error && (error.message.includes('Invalid token') || error.message.includes('bad decrypt'))) {
-        return NextResponse.json({ error: 'Invalid or malformed token' }, { status: 400 });
-    }
-    if (error instanceof SyntaxError) { // JSON.parse error
-        return NextResponse.json({ error: 'Token payload is corrupted' }, { status: 400 });
-    }
-
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    console.error('Error validating vendor token:', error);
+    return NextResponse.json({ 
+      valid: false, 
+      error: 'Failed to validate invitation - please contact support' 
+    }, { status: 500 });
   }
 }

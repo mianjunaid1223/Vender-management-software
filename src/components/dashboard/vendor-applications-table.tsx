@@ -65,6 +65,19 @@ export function VendorApplicationsTable({ data: initialData }: VendorApplication
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedApplication, setSelectedApplication] = useState<VendorApplication | null>(null);
   const [showViewDialog, setShowViewDialog] = useState(false);
+  
+  // Debug logging
+  console.log('VendorApplicationsTable data:', initialData);
+  console.log('Number of applications:', initialData.length);
+  initialData.forEach((app, i) => {
+    console.log(`App ${i}:`, {
+      id: app.id,
+      applicationId: app.applicationId,
+      vendorName: app.vendorName || app.name,
+      status: app.status,
+      targetCompanyId: app.targetCompanyId
+    });
+  });
   const [showApprovalDialog, setShowApprovalDialog] = useState(false);
   const [approvalAction, setApprovalAction] = useState<'approve' | 'reject'>('approve');
   const [reviewNotes, setReviewNotes] = useState("");
@@ -77,6 +90,7 @@ export function VendorApplicationsTable({ data: initialData }: VendorApplication
     const searchLower = searchTerm.toLowerCase();
     return (
       (application.name?.toLowerCase() || '').includes(searchLower) ||
+      (application.vendorName?.toLowerCase() || '').includes(searchLower) ||
       (application.contactPerson?.toLowerCase() || '').includes(searchLower) ||
       (application.email?.toLowerCase() || '').includes(searchLower) ||
       (application.phone?.toLowerCase() || '').includes(searchLower) ||
@@ -101,6 +115,25 @@ export function VendorApplicationsTable({ data: initialData }: VendorApplication
     setApprovalAction(action);
     setReviewNotes('');
     setShowApprovalDialog(true);
+  };
+
+  const copyApplicationLink = async (application: VendorApplication) => {
+    try {
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
+      const applicationLink = `${baseUrl}/vendor-applications/${application.id}`;
+      
+      await navigator.clipboard.writeText(applicationLink);
+      toast({
+        title: "Link Copied!",
+        description: "Application link has been copied to clipboard.",
+      });
+    } catch (error) {
+      toast({
+        title: "Copy Failed",
+        description: "Could not copy link to clipboard.",
+        variant: "destructive",
+      });
+    }
   };
 
   const processApplication = async () => {
@@ -250,7 +283,7 @@ export function VendorApplicationsTable({ data: initialData }: VendorApplication
                 </TableCell>
                 <TableCell>
                   <div>
-                    <div className="font-medium">{application.name}</div>
+                    <div className="font-medium">{application.vendorName || application.name}</div>
                     <div className="text-sm text-muted-foreground">
                       {application.service}
                     </div>
@@ -296,6 +329,10 @@ export function VendorApplicationsTable({ data: initialData }: VendorApplication
                       <DropdownMenuItem onClick={() => handleViewApplication(application)}>
                         <Eye className="mr-2 h-4 w-4" />
                         View Details
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => copyApplicationLink(application)}>
+                        <Copy className="mr-2 h-4 w-4" />
+                        Copy Application Link
                       </DropdownMenuItem>
                       {application.status === 'pending' && (
                         <>

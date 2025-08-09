@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useTransition } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -22,7 +22,8 @@ import {
   Loader2,
   ExternalLink,
   Calendar,
-  Plus
+  Plus,
+  RefreshCw
 } from 'lucide-react';
 
 interface VendorInviteModalProps {
@@ -49,6 +50,7 @@ export function VendorInviteModal({ companyName, trigger }: VendorInviteModalPro
   const [showHistory, setShowHistory] = useState(false);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const { toast } = useToast();
+  const [isPending, startTransition] = useTransition();
 
   const generateInviteLink = async () => {
     if (!vendorName.trim()) {
@@ -171,7 +173,7 @@ export function VendorInviteModal({ companyName, trigger }: VendorInviteModalPro
   const loadInviteHistory = async () => {
     setIsLoadingHistory(true);
     try {
-      const response = await fetch('/api/vendor-invites?action=history');
+      const response = await fetch('/api/vendor-invites');
       const data = await response.json();
       
       if (data.success) {
@@ -193,11 +195,12 @@ export function VendorInviteModal({ companyName, trigger }: VendorInviteModalPro
 
   const resetModal = () => {
     setInviteData(null);
-    setVendorName('');
     setEmailData({
       email: '',
-      message: `Hello! You've been invited to join ${companyName}'s vendor network. Please complete your registration using the link below.`
+      message: `Hello ${vendorName}! You've been invited to join ${companyName}'s vendor network. Please complete your registration using the link below.`
     });
+    setVendorName('');
+    setShowHistory(false);
   };
 
   return (
@@ -491,6 +494,18 @@ export function VendorInviteModal({ companyName, trigger }: VendorInviteModalPro
                 <CardDescription>
                   Track all vendor invitations sent from your account
                 </CardDescription>
+                <Button 
+   variant="outline" 
+            disabled={isPending}
+                              onClick={() => {
+                    loadInviteHistory();
+
+                  }}>
+            <RefreshCw className={`mr-2 h-4 w-4 ${isPending ? 'animate-spin' : ''}`} />
+                      <span className="hidden sm:inline">Refresh History</span>
+                      <span className="sm:hidden">Refresh</span>
+              
+                </Button>
               </CardHeader>
               <CardContent>
                 {isLoadingHistory ? (
