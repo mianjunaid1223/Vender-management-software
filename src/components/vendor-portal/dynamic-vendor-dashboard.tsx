@@ -1,12 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, memo } from 'react';
+import { usePathname } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { VendorProfileSettings } from './vendor-profile-settings';
+import { VendorCompanyProfile } from './vendor-company-profile';
 import { 
   Building2, 
   FileText, 
@@ -82,25 +84,35 @@ interface DynamicVendorDashboardProps {
 
 export function DynamicVendorDashboard({ vendorId }: DynamicVendorDashboardProps) {
   const { toast } = useToast();
+  const pathname = usePathname();
   const [data, setData] = useState<VendorDashboardData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const fetchDashboardData = async () => {
+  // Determine auth mode based on URL pattern
+  const authMode = pathname === '/vendor-portal/dashboard' ? 'vendor' : 'company';
+
+  const fetchDashboardData = useCallback(async () => {
     try {
-      // Get authentication token
-      const token = sessionStorage.getItem('vendorToken');
-      
-      if (!token) {
-        throw new Error('No authentication token available');
+      let headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+
+      // Set authentication headers based on mode
+      if (authMode === 'company') {
+        headers['X-Dashboard-Auth'] = 'true';
+      } else {
+        // For vendor mode, get token from sessionStorage
+        const token = sessionStorage.getItem('vendorToken');
+        if (!token) {
+          throw new Error('No vendor authentication token available');
+        }
+        headers['Authorization'] = `Bearer ${token}`;
       }
 
       const response = await fetch(`/api/vendor/dashboard/${vendorId}`, {
         method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+        headers,
       });
 
       if (!response.ok) {
@@ -123,58 +135,59 @@ export function DynamicVendorDashboard({ vendorId }: DynamicVendorDashboardProps
       setIsLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [vendorId, authMode, toast]);
 
   useEffect(() => {
-    if (vendorId) {
+    // Only fetch data if we have both vendorId and authMode
+    if (vendorId && authMode) {
       fetchDashboardData();
     }
-  }, [vendorId]);
+  }, [fetchDashboardData, vendorId, authMode]);
 
-  const handleRefresh = async () => {
+  const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     await fetchDashboardData();
-  };
+  }, [fetchDashboardData]);
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = useCallback((status: string) => {
     switch (status.toLowerCase()) {
-      case 'paid': return 'bg-green-100 text-green-800';
-      case 'pending': return 'bg-yellow-100 text-yellow-800';
-      case 'overdue': return 'bg-red-100 text-red-800';
-      case 'active': return 'bg-blue-100 text-blue-800';
-      case 'completed': return 'bg-gray-100 text-gray-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'paid': return 'bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100';
+      case 'pending': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-100';
+      case 'overdue': return 'bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-100';
+      case 'active': return 'bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100';
+      case 'completed': return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100';
+      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100';
     }
-  };
+  }, []);
 
-  const getStatusIcon = (status: string) => {
+  const getStatusIcon = useCallback((status: string) => {
     switch (status.toLowerCase()) {
       case 'paid': return <CheckCircle className="h-4 w-4" />;
       case 'pending': return <Clock className="h-4 w-4" />;
       case 'overdue': return <AlertCircle className="h-4 w-4" />;
       default: return <Clock className="h-4 w-4" />;
     }
-  };
+  }, []);
 
-  const formatCurrency = (amount: number, currency: string = 'USD') => {
+  const formatCurrency = useCallback((amount: number, currency: string = 'USD') => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: currency
     }).format(amount);
-  };
+  }, []);
 
-  const formatDate = (dateString: string) => {
+  const formatDate = useCallback((dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
       day: 'numeric'
     });
-  };
+  }, []);
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     );
   }
@@ -183,7 +196,7 @@ export function DynamicVendorDashboard({ vendorId }: DynamicVendorDashboardProps
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-800 mb-4">No Data Available</h2>
+          <h2 className="text-2xl font-bold text-foreground mb-4">No Data Available</h2>
           <Button onClick={fetchDashboardData}>Try Again</Button>
         </div>
       </div>
@@ -195,13 +208,12 @@ export function DynamicVendorDashboard({ vendorId }: DynamicVendorDashboardProps
     : 0;
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-background p-6">
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Vendor Dashboard</h1>
-            <p className="text-gray-600 mt-1">
+            <h1 className="text-3xl font-bold text-foreground">Vendor Dashboard</h1>
+            <p className="text-muted-foreground mt-1">
               Welcome back, {data.vendor.name} • {data.vendor.company.name}
             </p>
           </div>
@@ -303,7 +315,7 @@ export function DynamicVendorDashboard({ vendorId }: DynamicVendorDashboardProps
 
         {/* Main Content Tabs */}
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="overview">
               <BarChart3 className="h-4 w-4 mr-2" />
               Overview
@@ -315,6 +327,10 @@ export function DynamicVendorDashboard({ vendorId }: DynamicVendorDashboardProps
             <TabsTrigger value="contracts">
               <FileText className="h-4 w-4 mr-2" />
               Contracts
+            </TabsTrigger>
+            <TabsTrigger value="company">
+              <Building2 className="h-4 w-4 mr-2" />
+              Company
             </TabsTrigger>
             <TabsTrigger value="profile">
               <User className="h-4 w-4 mr-2" />
@@ -543,6 +559,10 @@ export function DynamicVendorDashboard({ vendorId }: DynamicVendorDashboardProps
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="company">
+            <VendorCompanyProfile companyId={data.vendor.company.id} />
           </TabsContent>
 
           <TabsContent value="profile">

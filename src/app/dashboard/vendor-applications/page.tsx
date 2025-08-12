@@ -1,7 +1,7 @@
-import { PageHeader } from "@/components/page-header";
+import { PageHeader } from "@/components/layout/page-header";
 import { VendorApplicationsTable } from "@/components/dashboard/vendor-applications-table";
 import { getSession } from "@/lib/auth";
-import { getDb } from "@/lib/data";
+import { getDb } from "@/lib/database/queries";
 import { ObjectId } from "mongodb";
 
 async function fetchVendorApplications() {

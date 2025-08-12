@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDb } from '@/lib/data';
+import { getDb } from '@/lib/database/queries';
 import { getSession } from '@/lib/auth';
 import { ObjectId } from 'mongodb';
 
@@ -28,6 +28,14 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return NextResponse.json({ 
+        error: 'Invalid email format' 
+      }, { status: 400 });
+    }
+
     const db = await getDb();
 
     // Verify the company exists
@@ -38,33 +46,73 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // If inviteId provided, verify the invite is valid (but don't mark as used yet)
+    // If inviteId provided, verify the invite exists (allow expired invites if no active applications)
     let validInvite = null;
     if (inviteId) {
       validInvite = await db.collection('vendorInvites').findOne({ 
-        _id: new ObjectId(inviteId),
-        status: 'active' 
+        _id: new ObjectId(inviteId)
       });
       
       if (!validInvite) {
         return NextResponse.json({ 
-          error: 'Invalid or expired invitation' 
+          error: 'Invalid invitation ID' 
         }, { status: 400 });
+      }
+      
+      // Check if invite is active
+      if (validInvite.status !== 'active') {
+        // Allow expired invites only if they haven't been used and there are no active applications
+        if (validInvite.used) {
+          return NextResponse.json({ 
+            error: 'Invitation has already been used' 
+          }, { status: 400 });
+        }
+        
+        console.log(`Using ${validInvite.status} invite ${inviteId} - will validate application eligibility`);
       }
     }
 
-    // Check for existing application (do this BEFORE marking invite as used)
+    // Check for existing active application for the same company
     const existingApplication = await db.collection('vendorApplications').findOne({
       $or: [
         { email, targetCompanyId: companyId },
         { vendorName, targetCompanyId: companyId }
-      ]
+      ],
+      status: { $in: ['pending', 'approved'] } // Only block if there's an active application
     });
 
     if (existingApplication) {
+      const statusMessage = existingApplication.status === 'pending' 
+        ? `A pending application already exists for this vendor/email and company (${company.name})`
+        : `An approved vendor already exists for this email and company (${company.name})`;
+      
       return NextResponse.json({ 
-        error: 'Application already exists for this vendor/email and company' 
+        error: statusMessage,
+        existingApplication: {
+          applicationId: existingApplication.applicationId,
+          status: existingApplication.status,
+          submittedAt: existingApplication.submittedAt,
+          companyName: company.name
+        }
       }, { status: 400 });
+    }
+
+    // Check if there are any previous applications (for logging and context)
+    const previousApplications = await db.collection('vendorApplications').find({
+      $or: [
+        { email, targetCompanyId: companyId },
+        { vendorName, targetCompanyId: companyId }
+      ]
+    }).toArray();
+
+    if (previousApplications.length > 0) {
+      console.log(`Found ${previousApplications.length} previous application(s) for this vendor/email and company (${company.name}):`, 
+        previousApplications.map(app => ({ 
+          status: app.status, 
+          submittedAt: app.submittedAt,
+          applicationId: app.applicationId 
+        }))
+      );
     }
 
     // Generate application ID

@@ -6,9 +6,9 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { DollarSign, Receipt, Users, CreditCard, FileClock, AlertCircle, UserPlus } from "lucide-react";
-import { fetchCardData, fetchInvoices, fetchExpiringContracts, fetchPendingVendorApplications } from "@/lib/data";
+import { fetchCardData, fetchInvoices, fetchExpiringContracts, fetchPendingVendorApplications } from "@/lib/database/queries";
 import { updateInvoiceStatuses } from "@/lib/invoice-status-manager";
-import clientPromise from "@/lib/mongodb";
+import clientPromise from "@/lib/database/mongodb";
 import { DbConfigWarning } from "@/components/db-config-warning";
 import { RecentInvoices } from "@/components/dashboard/recent-invoices";
 import { DashboardAlertsWrapper } from "@/components/dashboard/dashboard-alerts-wrapper";
@@ -17,7 +17,7 @@ import Link from "next/link";
 import { format } from "date-fns";
 import { Contract } from "@/lib/types";
 import { DashboardAlerts } from "@/components/dashboard/dashboard-alerts";
-import { calculateDaysDifference, formatDaysDifference } from "@/lib/date-utils";
+import { calculateDaysDifference, formatDaysDifference } from "@/lib/utils/date";
 import { getSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
 

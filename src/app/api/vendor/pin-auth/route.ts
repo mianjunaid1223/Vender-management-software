@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { SignJWT, jwtVerify } from 'jose';
 import { ObjectId } from 'mongodb';
-import { getDb } from '@/lib/data';
+import { getDb } from '@/lib/database/queries';
 
 const JWT_SECRET = new TextEncoder().encode(
   process.env.JWT_SECRET || 'fallback-vendor-secret-key-change-in-production'

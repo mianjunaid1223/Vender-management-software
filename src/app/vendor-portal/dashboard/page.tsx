@@ -1,11 +1,22 @@
 'use client';
 
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useState, useCallback, memo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { DynamicVendorDashboard } from '@/components/vendor-portal/dynamic-vendor-dashboard';
 import { Button } from '@/components/ui/button';
-import { LogOut } from 'lucide-react';
+import { LogOut, Building, ChevronDown, ExternalLink } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { Logo } from '@/components/layout/logo';
+import { ThemeToggle } from '@/components/theme-toggle';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Badge } from '@/components/ui/badge';
 
 interface VendorData {
   id: string;
@@ -15,14 +26,50 @@ interface VendorData {
   applicationId: string;
 }
 
+interface CompanyData {
+  id: string;
+  name: string;
+  isVendor: boolean;
+  isRegisteredUser: boolean;
+  vendorId: string;
+  dashboardUrl: string | null;
+}
+
 function VendorDashboardContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
   const [vendor, setVendor] = useState<VendorData | null>(null);
+  const [companies, setCompanies] = useState<CompanyData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadingCompanies, setLoadingCompanies] = useState(false);
 
-  useEffect(() => {
+  const fetchCompanies = useCallback(async () => {
+    const token = sessionStorage.getItem('vendorToken');
+    if (!token) return;
+
+    setLoadingCompanies(true);
+    try {
+      const response = await fetch('/api/vendor/companies', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setCompanies(data.companies || []);
+      } else {
+        console.warn('Failed to fetch companies:', response.statusText);
+      }
+    } catch (error) {
+      console.error('Error fetching companies:', error);
+    } finally {
+      setLoadingCompanies(false);
+    }
+  }, []);  useEffect(() => {
     const fetchVendorData = async () => {
       try {
         // First, check if vendor data is already in session storage (from PIN login)
@@ -48,6 +95,10 @@ function VendorDashboardContent() {
                 status: vendorData.status || 'approved',
                 applicationId: vendorData.applicationId || vendorData._id
               });
+              
+              // Fetch companies after setting vendor data
+              await fetchCompanies();
+              
               setIsLoading(false);
               return;
             } else {
@@ -93,6 +144,10 @@ function VendorDashboardContent() {
               status: vendorData.status || 'approved',
               applicationId: vendorData.applicationId || vendorData._id
             });
+            
+            // Fetch companies
+            await fetchCompanies();
+            
             setIsLoading(false);
             return;
           } else {
@@ -148,7 +203,7 @@ function VendorDashboardContent() {
     fetchVendorData();
   }, [router, searchParams, toast]);
 
-  const handleLogout = async () => {
+  const handleLogout = useCallback(async () => {
     try {
       // Call logout API to invalidate token
       const token = sessionStorage.getItem('vendorToken');
@@ -175,22 +230,22 @@ function VendorDashboardContent() {
       
       router.push('/vendor-portal');
     }
-  };
+  }, [router, toast]);
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="flex items-center justify-center min-h-screen bg-background">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     );
   }
 
   if (!vendor) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50 p-4">
+      <div className="flex items-center justify-center min-h-screen bg-background p-4">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-800 mb-4">Vendor Not Found</h2>
-          <p className="text-gray-600 mb-6">We couldn't find your vendor account. Please contact support.</p>
+          <h2 className="text-2xl font-bold text-foreground mb-4">Vendor Not Found</h2>
+          <p className="text-muted-foreground mb-6">We couldn't find your vendor account. Please contact support.</p>
           <Button onClick={() => router.push('/vendor-portal')}>
             Back to Portal
           </Button>
@@ -200,19 +255,30 @@ function VendorDashboardContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header with logout */}
-      <div className="bg-white shadow-sm border-b">
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <div className="border-b border-border bg-card">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-xl font-semibold text-gray-900">Vendor Portal</h1>
-              <p className="text-sm text-gray-600">{vendor.name} • {vendor.email}</p>
+            <div className="flex items-center gap-6">
+              <Logo isLanding={false} />
+              <div className="flex items-center gap-4">
+                <div>
+                  <h1 className="text-xl font-semibold text-foreground">Vendor Portal</h1>
+                  <p className="text-sm text-muted-foreground">{vendor.name} • {vendor.email}</p>
+                </div>
+                
+              
+              </div>
             </div>
-            <Button variant="outline" size="sm" onClick={handleLogout}>
-              <LogOut className="h-4 w-4 mr-2" />
-              Logout
-            </Button>
+            
+            <div className="flex items-center gap-4">
+              <ThemeToggle />
+              <Button variant="outline" size="sm" onClick={handleLogout}>
+                <LogOut className="h-4 w-4 mr-2" />
+                Logout
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -226,8 +292,8 @@ function VendorDashboardContent() {
 export default function VendorDashboardPage() {
   return (
     <Suspense fallback={
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="flex items-center justify-center min-h-screen bg-background">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     }>
       <VendorDashboardContent />

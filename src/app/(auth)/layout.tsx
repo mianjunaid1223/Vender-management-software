@@ -1,7 +1,7 @@
 
-import { Logo } from "@/components/logo";
+import { Logo } from "@/components/layout/logo";
 import { ThemeToggle } from "@/components/theme-toggle";
-import clientPromise from "@/lib/mongodb";
+import clientPromise from "@/lib/database/mongodb";
 import { DbConfigWarning } from "@/components/db-config-warning";
 
 export default function AuthLayout({

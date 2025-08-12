@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { fetchVendors } from '@/lib/data';
+import { fetchVendors } from '@/lib/database/queries';
 
 export async function GET() {
   try {

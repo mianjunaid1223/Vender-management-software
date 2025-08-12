@@ -12,7 +12,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/utils/index"
 
 export function ThemeToggle({ asDropUp = false }: { asDropUp?: boolean }) {
   const { setTheme, theme } = useTheme()

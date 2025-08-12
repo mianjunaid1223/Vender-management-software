@@ -28,9 +28,9 @@ import { PlusCircle, Upload, FileText, Loader2, Wand2 } from "lucide-react";
 import {
   extractInvoiceData,
   type ExtractInvoiceDataOutput,
-} from "@/ai/flows/extract-invoice-data";
+} from "@/lib/ai/genkit/flows/extract-invoice-data";
 import { addInvoice } from "@/app/actions";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/utils/index";
 
 const formSchema = z.object({
   vendorName: z.string().min(1, "Vendor name is required."),

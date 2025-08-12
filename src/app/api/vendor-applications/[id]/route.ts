@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDb } from '@/lib/data';
+import { getDb } from '@/lib/database/queries';
 import { getSession } from '@/lib/auth';
 import { ObjectId } from 'mongodb';
 import { sendVendorApprovalEmail, sendVendorRejectionEmail } from '@/lib/email';

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { updateVendor, deleteVendor } from '@/lib/data';
+import { updateVendor, deleteVendor } from '@/lib/database/queries';
 import { Vendor } from '@/lib/types';
 
 export async function PUT(

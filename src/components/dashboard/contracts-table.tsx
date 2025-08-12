@@ -52,7 +52,7 @@ import {
   Filter
 } from "lucide-react";
 import { Contract, ContractStatus } from "@/lib/types";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/utils/index";
 import { ContractOnboardingDialog } from "./contract-onboarding-dialog";
 
 interface ContractsTableProps {
@@ -67,7 +67,7 @@ export function ContractsTable({ contracts }: ContractsTableProps) {
 
   const filteredContracts = contracts.filter(contract => {
     const matchesSearch = contract.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         contract.vendorName.toLowerCase().includes(searchTerm.toLowerCase());
+                         (contract.vendorName || '').toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === "all" || contract.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
@@ -128,7 +128,11 @@ export function ContractsTable({ contracts }: ContractsTableProps) {
                 Manage and track all your vendor contracts
               </CardDescription>
             </div>
-            <ContractOnboardingDialog />
+            <ContractOnboardingDialog 
+              vendors={[]} 
+              company={null}
+              onContractAdded={() => {}}
+            />
           </div>
         </CardHeader>
         <CardContent>

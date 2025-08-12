@@ -5,11 +5,11 @@ import { redirect } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetTrigger, SheetContent, SheetTitle } from "@/components/ui/sheet";
-import { UserNav } from "@/components/user-nav";
-import { Logo } from "@/components/logo";
+import { UserNav } from "@/components/layout/user-nav";
+import { Logo } from "@/components/layout/logo";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { fetchInvoices, fetchVendors, processAndFetchContracts, fetchCompany } from "@/lib/data";
-import { DashboardNav } from "@/components/dashboard-nav";
+import { fetchInvoices, fetchVendors, processAndFetchContracts, fetchCompany } from "@/lib/database/queries";
+import { DashboardNav } from "@/components/layout/dashboard-nav";
 import { AISpotlight } from "@/components/dashboard/ai-spotlight";
 import { getSession } from "@/lib/auth";
 

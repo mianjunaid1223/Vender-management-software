@@ -4,11 +4,11 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { getDb, getClient, createInvoice, updateInvoice, deleteInvoice, updateInvoiceStatus, updateCompany, createOrUpdateCompany } from "@/lib/data";
-import { sendPaymentConfirmation } from '@/lib/email-notifications';
+import { getDb, getClient, createInvoice, updateInvoice, deleteInvoice, updateInvoiceStatus, updateCompany, createOrUpdateCompany } from "@/lib/database/queries";
+import { sendPaymentConfirmation } from '@/lib/email/notifications';
 import { ObjectId } from 'mongodb';
 import { Invoice, Company } from "@/lib/types";
-import { createSession, deleteSession } from "@/lib/session"; 
+import { createSession, deleteSession } from "@/lib/auth/session"; 
 
 // --- Form Schemas ---
 

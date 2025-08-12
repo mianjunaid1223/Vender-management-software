@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
-import { encrypt } from '@/lib/encryption';
+import { encrypt } from '@/lib/auth/encryption';
 import { sendVendorInvitationEmail } from '@/lib/email';
-import { getDb } from '@/lib/data';
+import { getDb } from '@/lib/database/queries';
 import { ObjectId } from 'mongodb';
 
 // Generate vendor invite
@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
     // Get base URL
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 
                    request.headers.get('origin') ||
-                   'http://localhost:3000';
+                   'https://urban-adventure-r4gvjvqx5rpfppx5-9002.app.github.dev/';
     
     const inviteUrl = `${baseUrl}/vendor-register?token=${encodeURIComponent(token)}`;
 

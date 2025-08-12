@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import { Vendor } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
-import { updateVendor } from "@/lib/data";
+import { updateVendor } from "@/lib/database/queries";
 
 interface VendorEditDialogProps {
   vendor: Vendor;

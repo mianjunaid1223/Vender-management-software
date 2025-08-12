@@ -1,9 +1,9 @@
 'use server';
 
-import { getDb } from '@/lib/data';
+import { getDb } from '@/lib/database/queries';
 import { Invoice } from '@/lib/types';
-import { sendOverdueNotification, sendUpcomingPaymentNotification } from '@/lib/email-notifications';
-import { calculateDaysDifference, formatDaysDifference, getPaymentStatus, getAlertSeverity } from '@/lib/date-utils';
+import { sendOverdueNotification, sendUpcomingPaymentNotification } from '@/lib/email/notifications';
+import { calculateDaysDifference, formatDaysDifference, getPaymentStatus, getAlertSeverity } from '@/lib/utils/date';
 import { getSession } from '@/lib/auth';
 
 export interface InvoiceAlert {

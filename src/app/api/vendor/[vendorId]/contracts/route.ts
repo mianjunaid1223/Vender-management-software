@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { connectDB } from '@/lib/mongodb';
+import { connectDB } from '@/lib/database/mongodb';
 import mongoose from 'mongoose';
 
 // Define Contract schema if not already defined
@@ -235,24 +235,33 @@ export async function POST(
       .populate('vendorId', 'name email')
       .lean();
 
+    // Ensure we have a single contract document (not an array) before accessing fields
+    if (!populatedContract || Array.isArray(populatedContract)) {
+      return NextResponse.json(
+        { error: 'Failed to load created contract' },
+        { status: 500 }
+      );
+    }
+
     return NextResponse.json({
       success: true,
       contract: {
-        id: populatedContract!._id,
-        title: populatedContract!.title,
-        description: populatedContract!.description,
-        value: populatedContract!.value,
-        currency: populatedContract!.currency,
-        status: populatedContract!.status,
-        startDate: populatedContract!.startDate,
-        endDate: populatedContract!.endDate,
-        terms: populatedContract!.terms,
-        company: populatedContract!.companyId,
-        vendor: populatedContract!.vendorId,
-        deliverables: populatedContract!.deliverables || [],
-        paymentTerms: populatedContract!.paymentTerms || {},
-        documents: populatedContract!.documents || [],
-        createdAt: populatedContract!.createdAt
+        // Cast to any to satisfy TS since lean() returns a plain object
+        id: (populatedContract as any)._id,
+        title: (populatedContract as any).title,
+        description: (populatedContract as any).description,
+        value: (populatedContract as any).value,
+        currency: (populatedContract as any).currency,
+        status: (populatedContract as any).status,
+        startDate: (populatedContract as any).startDate,
+        endDate: (populatedContract as any).endDate,
+        terms: (populatedContract as any).terms,
+        company: (populatedContract as any).companyId,
+        vendor: (populatedContract as any).vendorId,
+        deliverables: (populatedContract as any).deliverables || [],
+        paymentTerms: (populatedContract as any).paymentTerms || {},
+        documents: (populatedContract as any).documents || [],
+        createdAt: (populatedContract as any).createdAt
       }
     }, { status: 201 });
 

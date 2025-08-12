@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ObjectId } from 'mongodb';
-import clientPromise from '@/lib/mongodb';
-import { vendorAuthMiddleware, createUnauthorizedResponse } from '@/lib/vendor-auth-middleware';
+import clientPromise from '@/lib/database/mongodb';
+import { vendorAuthMiddleware } from '@/lib/auth/vendor-auth';
+import { getSession } from '@/lib/auth';
 
 // GET /api/vendor/dashboard/[vendorId] - Secure vendor dashboard data by vendorId
 export async function GET(
@@ -16,17 +17,6 @@ export async function GET(
         error: 'Vendor ID is required',
         code: 'VENDOR_ID_REQUIRED'
       }, { status: 400 });
-    }
-
-    const authResult = await vendorAuthMiddleware(request);
-    if (!authResult.isAuthenticated || !authResult.vendor) {
-      return createUnauthorizedResponse(authResult.error);
-    }
-    if (authResult.vendor.id !== vendorId) {
-      return NextResponse.json({ 
-        error: 'Access denied. You can only view your own dashboard.',
-        code: 'ACCESS_DENIED'
-      }, { status: 403 });
     }
 
     // Validate ObjectId format
@@ -50,10 +40,10 @@ export async function GET(
     
     const db = client.db('vendorverse');
 
-    // Find the vendor with proper error handling
+    // Find the vendor first
     const vendor = await db.collection('vendors').findOne({ 
       _id: new ObjectId(vendorId),
-      status: { $regex: /^active$/i } // Case-insensitive status check
+      status: { $regex: /^(active|approved)$/i } // Allow both active and approved status
     });
 
     console.log('🔍 Vendor lookup result:', vendor ? `Found vendor: ${vendor.name}` : 'No vendor found');
@@ -63,6 +53,48 @@ export async function GET(
         error: 'Vendor not found or inactive',
         code: 'VENDOR_NOT_FOUND'
       }, { status: 404 });
+    }
+
+    // Check authentication - dual mode support
+    let isAuthorized = false;
+    let authMode = 'vendor'; // Default to vendor auth
+    
+    // Check if request has special dashboard auth header (from company dashboard)
+    const isDashboardAuth = request.headers.get('X-Dashboard-Auth') === 'true';
+    
+    if (isDashboardAuth) {
+      authMode = 'company';
+      // For company dashboard access, verify user session and email match
+      const userSession = await getSession();
+      
+      if (userSession && userSession.email === vendor.email) {
+        isAuthorized = true;
+        console.log('✅ Company dashboard access authorized for user:', userSession.email);
+      } else {
+        console.log('❌ Company dashboard access denied - no valid session or email mismatch');
+      }
+    } else {
+      authMode = 'vendor';
+      // Regular vendor token authentication for independent access
+      const authResult = await vendorAuthMiddleware(request);
+      if (authResult.isAuthenticated && authResult.vendor && authResult.vendor.id === vendorId) {
+        isAuthorized = true;
+        console.log('✅ Vendor token access authorized');
+      } else {
+        console.log('❌ Vendor token access denied:', authResult.error || 'Invalid vendor token');
+      }
+    }
+
+    if (!isAuthorized) {
+      const errorMessage = authMode === 'company' 
+        ? 'Access denied. Please login to your company account to access this vendor portal.'
+        : 'Access denied. Please login to the vendor portal to continue.';
+        
+      return NextResponse.json({ 
+        error: errorMessage,
+        code: 'ACCESS_DENIED',
+        authMode
+      }, { status: authMode === 'company' ? 401 : 403 });
     }
 
     // Get vendor's company information
@@ -147,6 +179,7 @@ export async function GET(
         name: vendor.name,
         email: vendor.email,
         status: vendor.status,
+        pin: vendor.pin,
         company: {
           name: company.name,
           id: company._id.toString()

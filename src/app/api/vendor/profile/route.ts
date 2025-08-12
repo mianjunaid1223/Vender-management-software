@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { vendorAuthMiddleware, createUnauthorizedResponse } from '@/lib/vendor-auth-middleware';
-import { getDb } from '@/lib/data';
+import { vendorAuthMiddleware, createUnauthorizedResponse } from '@/lib/auth/vendor-auth';
+import { getDb } from '@/lib/database/queries';
 import { ObjectId } from 'mongodb';
 
 // GET /api/vendor/profile - Get current authenticated vendor's profile

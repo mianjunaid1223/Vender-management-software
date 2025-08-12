@@ -25,8 +25,9 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { cn } from "@/lib/utils";
-import { getEnhancedAIAssistantResponse, EnhancedAIAssistantOutput } from "@/ai/flows/enhanced-ai-assistant";
+import { cn } from "@/lib/utils/index";
+import { getEnhancedAIAssistantResponse } from "@/lib/ai/genkit/flows/enhanced-ai-assistant";
+import type { EnhancedAIAssistantOutput } from "@/lib/ai/genkit/flows/enhanced-ai-assistant";
 import { useRouter } from "next/navigation";
 
 interface EnhancedAISpotlightProps {
@@ -268,7 +269,7 @@ export function EnhancedAISpotlight({
                         </CardHeader>
                         <CardContent>
                           <div className="space-y-2">
-                            {response.suggestedActions.map((action, index) => {
+                            {response.suggestedActions.map((action: any, index: number) => {
                               const Icon = getPriorityIcon(action.priority);
                               return (
                                 <div
@@ -303,7 +304,7 @@ export function EnhancedAISpotlight({
                         </CardHeader>
                         <CardContent>
                           <div className="space-y-2">
-                            {response.relevantData.map((data, index) => (
+                            {response.relevantData.map((data: any, index: number) => (
                               <div
                                 key={index}
                                 className="flex items-center justify-between p-2 rounded-lg bg-muted/30"

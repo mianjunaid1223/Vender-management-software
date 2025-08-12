@@ -394,7 +394,7 @@ export function VendorInviteManagerNew({ companyId, companyName }: VendorInviteM
                   {email && (
                     <div className="border-t pt-4">
                       <Button 
-                        onClick={sendEmailInvite}
+                        onClick={()=>({sendEmailInvite})}
                         disabled={isSending}
                         className="w-full bg-green-600 hover:bg-green-700"
                       >

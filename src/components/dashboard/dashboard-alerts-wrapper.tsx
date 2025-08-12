@@ -8,9 +8,16 @@ import type { Contract } from '@/lib/types';
 interface DashboardAlertsWrapperProps {
   invoiceAlerts: InvoiceAlert[];
   contractAlerts: Contract[];
+  vendorApplicationAlerts?: Array<{
+    id: string;
+    vendorName: string;
+    submittedAt: Date;
+    status: "pending" | "approved" | "rejected";
+    service: string;
+  }>;
 }
 
-export function DashboardAlertsWrapper({ invoiceAlerts, contractAlerts }: DashboardAlertsWrapperProps) {
+export function DashboardAlertsWrapper({ invoiceAlerts, contractAlerts, vendorApplicationAlerts = [] }: DashboardAlertsWrapperProps) {
   const router = useRouter();
 
   const handleViewInvoice = (invoiceId: string) => {

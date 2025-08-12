@@ -30,6 +30,10 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
+# local env files
+.env*.local
+.env
+
 # vercel
 .vercel
 
@@ -37,11 +41,29 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# AI/ML
 .genkit/*
-# Environment variables
-# Do not commit .env.local or other sensitive environment files
-.env.local
-.env.*.local
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+Thumbs.db
+
+# temporary files
+*.tmp
+*.temp
+
+# logs
+logs
+*.log
+
+# Database
+*.db
+*.sqlite
 
 # firebase
 firebase-debug.log

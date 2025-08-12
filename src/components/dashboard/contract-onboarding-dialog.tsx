@@ -38,8 +38,8 @@ import {
 } from "lucide-react";
 import { Contract, ContractType, ContractStatus, Vendor, Company, ContractParty } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
-import { createContract } from "@/lib/data";
-import { cn } from "@/lib/utils";
+import { createContract } from "@/lib/database/queries";
+import { cn } from "@/lib/utils/index";
 
 interface ContractFormData {
   title: string;

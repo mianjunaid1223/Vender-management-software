@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDb } from '@/lib/data';
+import { getDb } from '@/lib/database/queries';
 import { ObjectId } from 'mongodb';
-import { vendorAuthMiddleware, createUnauthorizedResponse } from '@/lib/vendor-auth-middleware';
+import { vendorAuthMiddleware } from '@/lib/auth/vendor-auth';
+import { getSession } from '@/lib/auth';
 
 export async function GET(
   request: NextRequest,
@@ -17,20 +18,6 @@ export async function GET(
       );
     }
 
-    // Authenticate vendor
-    const authResult = await vendorAuthMiddleware(request);
-    if (!authResult.isAuthenticated || !authResult.vendor) {
-      return createUnauthorizedResponse(authResult.error);
-    }
-
-    // Ensure vendor can only access their own profile
-    if (authResult.vendor.id !== vendorId) {
-      return NextResponse.json(
-        { error: 'Access denied. You can only view your own profile.' },
-        { status: 403 }
-      );
-    }
-
     const db = await getDb();
     const vendor = await db.collection('vendors').findOne({
       _id: new ObjectId(vendorId)
@@ -43,24 +30,52 @@ export async function GET(
       );
     }
 
-    // Return vendor profile with all fields
+    // Check authentication - dual mode support
+    let isAuthorized = false;
+    const isDashboardAuth = request.headers.get('X-Dashboard-Auth') === 'true';
+    
+    if (isDashboardAuth) {
+      // For company dashboard access, verify user session and email match
+      const userSession = await getSession();
+      if (userSession && userSession.email === vendor.email) {
+        isAuthorized = true;
+      }
+    } else {
+      // Regular vendor token authentication
+      const authResult = await vendorAuthMiddleware(request);
+      if (authResult.isAuthenticated && authResult.vendor && authResult.vendor.id === vendorId) {
+        isAuthorized = true;
+      }
+    }
+
+    if (!isAuthorized) {
+      return NextResponse.json(
+        { error: 'Access denied. You can only view your own profile.' },
+        { status: 403 }
+      );
+    }
+
+    // Return vendor profile with all fields matching actual schema
     const profile = {
-      id: vendor._id.toString(),
+      _id: vendor._id.toString(),
       name: vendor.name,
+      contactPerson: vendor.contactPerson,
       email: vendor.email,
       phone: vendor.phone || '',
-      address: vendor.address || '',
-      city: vendor.city || '',
-      state: vendor.state || '',
-      zipCode: vendor.zipCode || '',
-      country: vendor.country || '',
-      website: vendor.website || '',
-      description: vendor.description || '',
+      service: vendor.service || '',
       taxId: vendor.taxId || '',
-      businessType: vendor.businessType || '',
-      contactPerson: vendor.contactPerson || vendor.name,
+      address: {
+        street: vendor.address?.street || '',
+        city: vendor.address?.city || '',
+        state: vendor.address?.state || '',
+        zipCode: vendor.address?.zipCode || '',
+        country: vendor.address?.country || ''
+      },
+      paymentTerms: vendor.paymentTerms || '',
+      notes: vendor.notes || '',
+      status: vendor.status,
       createdAt: vendor.createdAt,
-      status: vendor.status
+      updatedAt: vendor.updatedAt
     };
 
     return NextResponse.json({ profile });
@@ -87,14 +102,37 @@ export async function PUT(
       );
     }
 
-    // Authenticate vendor
-    const authResult = await vendorAuthMiddleware(request);
-    if (!authResult.isAuthenticated || !authResult.vendor) {
-      return createUnauthorizedResponse(authResult.error);
+    const db = await getDb();
+    const vendor = await db.collection('vendors').findOne({
+      _id: new ObjectId(vendorId)
+    });
+
+    if (!vendor) {
+      return NextResponse.json(
+        { error: 'Vendor not found' },
+        { status: 404 }
+      );
     }
 
-    // Ensure vendor can only update their own profile
-    if (authResult.vendor.id !== vendorId) {
+    // Check authentication - dual mode support
+    let isAuthorized = false;
+    const isDashboardAuth = request.headers.get('X-Dashboard-Auth') === 'true';
+    
+    if (isDashboardAuth) {
+      // For company dashboard access, verify user session and email match
+      const userSession = await getSession();
+      if (userSession && userSession.email === vendor.email) {
+        isAuthorized = true;
+      }
+    } else {
+      // Regular vendor token authentication
+      const authResult = await vendorAuthMiddleware(request);
+      if (authResult.isAuthenticated && authResult.vendor && authResult.vendor.id === vendorId) {
+        isAuthorized = true;
+      }
+    }
+
+    if (!isAuthorized) {
       return NextResponse.json(
         { error: 'Access denied. You can only update your own profile.' },
         { status: 403 }
@@ -104,51 +142,40 @@ export async function PUT(
     const body = await request.json();
     const {
       name,
+      contactPerson,
       email,
       phone,
-      address,
-      city,
-      state,
-      zipCode,
-      country,
-      website,
-      description,
+      service,
       taxId,
-      businessType,
-      contactPerson
+      address,
+      paymentTerms,
+      notes
     } = body;
 
-    const db = await getDb();
+    // Use the existing db connection from the earlier vendor lookup
     
-    // Check if vendor exists
-    const existingVendor = await db.collection('vendors').findOne({
-      _id: new ObjectId(vendorId)
-    });
-
-    if (!existingVendor) {
-      return NextResponse.json(
-        { error: 'Vendor not found' },
-        { status: 404 }
-      );
-    }
-
-    // Update vendor profile
-    const updateData = {
+    // Update vendor profile matching your actual schema
+    const updateData: any = {
       ...(name && { name }),
+      ...(contactPerson && { contactPerson }),
       ...(email && { email }),
       ...(phone !== undefined && { phone }),
-      ...(address !== undefined && { address }),
-      ...(city !== undefined && { city }),
-      ...(state !== undefined && { state }),
-      ...(zipCode !== undefined && { zipCode }),
-      ...(country !== undefined && { country }),
-      ...(website !== undefined && { website }),
-      ...(description !== undefined && { description }),
+      ...(service !== undefined && { service }),
       ...(taxId !== undefined && { taxId }),
-      ...(businessType !== undefined && { businessType }),
-      ...(contactPerson !== undefined && { contactPerson }),
+      ...(paymentTerms !== undefined && { paymentTerms }),
+      ...(notes !== undefined && { notes }),
       updatedAt: new Date()
     };
+
+    // Handle nested address object
+    if (address) {
+      updateData.address = {};
+      if (address.street !== undefined) updateData.address.street = address.street;
+      if (address.city !== undefined) updateData.address.city = address.city;
+      if (address.state !== undefined) updateData.address.state = address.state;
+      if (address.zipCode !== undefined) updateData.address.zipCode = address.zipCode;
+      if (address.country !== undefined) updateData.address.country = address.country;
+    }
 
     const result = await db.collection('vendors').updateOne(
       { _id: new ObjectId(vendorId) },
@@ -168,25 +195,27 @@ export async function PUT(
     });
 
     const profile = {
-      id: updatedVendor!._id.toString(),
+      _id: updatedVendor!._id.toString(),
       name: updatedVendor!.name,
+      contactPerson: updatedVendor!.contactPerson,
       email: updatedVendor!.email,
       phone: updatedVendor!.phone || '',
-      address: updatedVendor!.address || '',
-      city: updatedVendor!.city || '',
-      state: updatedVendor!.state || '',
-      zipCode: updatedVendor!.zipCode || '',
-      country: updatedVendor!.country || '',
-      website: updatedVendor!.website || '',
-      description: updatedVendor!.description || '',
+      service: updatedVendor!.service || '',
       taxId: updatedVendor!.taxId || '',
-      businessType: updatedVendor!.businessType || '',
-      contactPerson: updatedVendor!.contactPerson || updatedVendor!.name,
+      address: {
+        street: updatedVendor!.address?.street || '',
+        city: updatedVendor!.address?.city || '',
+        state: updatedVendor!.address?.state || '',
+        zipCode: updatedVendor!.address?.zipCode || '',
+        country: updatedVendor!.address?.country || ''
+      },
+      paymentTerms: updatedVendor!.paymentTerms || '',
+      notes: updatedVendor!.notes || '',
+      status: updatedVendor!.status,
       createdAt: updatedVendor!.createdAt,
-      status: updatedVendor!.status
+      updatedAt: updatedVendor!.updatedAt
     };
 
-    return NextResponse.json({ profile });
     return NextResponse.json({ profile });
   } catch (error) {
     console.error('Error updating vendor profile:', error);

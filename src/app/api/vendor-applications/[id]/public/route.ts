@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDb } from '@/lib/data';
+import { getDb } from '@/lib/database/queries';
 import { ObjectId } from 'mongodb';
 
 // GET /api/vendor-applications/[id]/public - Public view of vendor application (no auth required)

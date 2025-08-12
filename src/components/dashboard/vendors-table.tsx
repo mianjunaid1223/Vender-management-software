@@ -50,7 +50,7 @@ import {
   Receipt
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { deleteVendor, fetchContractsByVendor, fetchInvoicesByVendor } from "@/lib/data";
+import { deleteVendor, fetchContractsByVendor, fetchInvoicesByVendor } from "@/lib/database/queries";
 import type { Vendor, Contract, Invoice } from "@/lib/types";
 import { VendorEditDialog } from "./vendor-edit-dialog";
 import { ScrollArea } from "../ui/scroll-area";

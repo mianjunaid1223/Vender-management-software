@@ -1,4 +1,4 @@
-import { getDb } from '@/lib/data';
+import { getDb } from '@/lib/database/queries';
 import { NextResponse } from 'next/server';
 
 export async function POST() {

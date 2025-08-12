@@ -1,17 +1,17 @@
 import { Suspense } from "react";
-import { PageHeader } from "@/components/page-header";
+import { PageHeader } from "@/components/layout/page-header";
 import { CompanyRegistrationForm } from "@/components/dashboard/company-registration-form";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Building, MapPin, Phone, Mail, Globe, Users } from "lucide-react";
-import { fetchCompany } from "@/lib/data";
+import { fetchCompany } from "@/lib/database/queries";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default async function CompanyPage() {
   return (
     <div className="space-y-6">
-      <PageHeader 
-        title="Company Profile" 
+      <PageHeader
+        title="Company Profile"
         description="Manage your company information and business details"
       />
 
@@ -146,9 +146,9 @@ async function CompanyContent() {
                   <h4 className="font-medium mb-2">Website</h4>
                   <div className="flex items-center gap-2 text-sm">
                     <Globe className="h-4 w-4 text-muted-foreground" />
-                    <a 
-                      href={company.website} 
-                      target="_blank" 
+                    <a
+                      href={company.website}
+                      target="_blank"
                       rel="noopener noreferrer"
                       className="text-primary hover:underline"
                     >

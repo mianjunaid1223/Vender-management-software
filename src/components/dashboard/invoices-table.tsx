@@ -40,9 +40,9 @@ import {
   FileText
 } from "lucide-react";
 import { InvoiceDialog } from "./invoice-dialog";
-import { cn } from "@/lib/utils";
-import { downloadInvoicePDF, previewInvoicePDF } from "@/lib/pdf-utils";
-import { formatCurrency } from "@/lib/currency-utils";
+import { cn } from "@/lib/utils/index";
+import { downloadInvoicePDF, previewInvoicePDF } from "@/lib/utils/pdf";
+import { formatCurrency } from "@/lib/utils/currency";
 import type { Invoice, Vendor, Contract } from "@/lib/types";
 
 interface InvoicesTableProps {

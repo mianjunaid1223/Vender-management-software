@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,20 +11,23 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, Save, User, Building2, MapPin, Phone, Mail, Globe } from 'lucide-react';
 
 interface VendorProfile {
-  id: string;
+  _id: string;
   name: string;
+  contactPerson: string;
   email: string;
   phone?: string;
-  address?: string;
-  city?: string;
-  state?: string;
-  zipCode?: string;
-  country?: string;
-  website?: string;
-  description?: string;
+  service?: string;
   taxId?: string;
-  businessType?: string;
-  contactPerson?: string;
+  address?: {
+    street?: string;
+    city?: string;
+    state?: string;
+    zipCode?: string;
+    country?: string;
+  };
+  paymentTerms?: string;
+  notes?: string;
+  status?: string;
 }
 
 interface VendorProfileSettingsProps {
@@ -32,10 +36,14 @@ interface VendorProfileSettingsProps {
 
 export function VendorProfileSettings({ vendorId }: VendorProfileSettingsProps) {
   const { toast } = useToast();
+  const pathname = usePathname();
   const [profile, setProfile] = useState<VendorProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState<Partial<VendorProfile>>({});
+
+  // Determine auth mode based on URL pattern
+  const authMode = pathname === '/vendor-portal/dashboard' ? 'vendor' : 'company';
 
   useEffect(() => {
     fetchProfile();
@@ -43,18 +51,25 @@ export function VendorProfileSettings({ vendorId }: VendorProfileSettingsProps) 
 
   const fetchProfile = async () => {
     try {
-      const token = sessionStorage.getItem('vendorToken');
-      
-      if (!token) {
-        throw new Error('No authentication token available');
+      let headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+
+      // Set authentication headers based on mode
+      if (authMode === 'company') {
+        headers['X-Dashboard-Auth'] = 'true';
+      } else {
+        // For vendor mode, get token from sessionStorage
+        const token = sessionStorage.getItem('vendorToken');
+        if (!token) {
+          throw new Error('No vendor authentication token available');
+        }
+        headers['Authorization'] = `Bearer ${token}`;
       }
 
       const response = await fetch(`/api/vendor/${vendorId}/profile`, {
         method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+        headers
       });
       
       if (response.ok) {
@@ -78,28 +93,46 @@ export function VendorProfileSettings({ vendorId }: VendorProfileSettingsProps) 
     }
   };
 
-  const handleInputChange = (field: keyof VendorProfile, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
+  const handleInputChange = (field: string, value: string) => {
+    if (field.startsWith('address.')) {
+      const addressField = field.split('.')[1];
+      setFormData(prev => ({
+        ...prev,
+        address: {
+          ...prev.address,
+          [addressField]: value
+        }
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [field]: value
+      }));
+    }
   };
 
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const token = sessionStorage.getItem('vendorToken');
-      
-      if (!token) {
-        throw new Error('No authentication token available');
+      let headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+
+      // Set authentication headers based on mode
+      if (authMode === 'company') {
+        headers['X-Dashboard-Auth'] = 'true';
+      } else {
+        // For vendor mode, get token from sessionStorage
+        const token = sessionStorage.getItem('vendorToken');
+        if (!token) {
+          throw new Error('No vendor authentication token available');
+        }
+        headers['Authorization'] = `Bearer ${token}`;
       }
 
       const response = await fetch(`/api/vendor/${vendorId}/profile`, {
         method: 'PUT',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
+        headers,
         body: JSON.stringify(formData)
       });
 
@@ -198,21 +231,21 @@ export function VendorProfileSettings({ vendorId }: VendorProfileSettingsProps) 
               />
             </div>
             <div>
-              <Label htmlFor="businessType">Business Type</Label>
+              <Label htmlFor="service">Service/Business Type</Label>
               <Input
-                id="businessType"
-                value={formData.businessType || ''}
-                onChange={(e) => handleInputChange('businessType', e.target.value)}
-                placeholder="e.g., Manufacturing, Services, Technology"
+                id="service"
+                value={formData.service || ''}
+                onChange={(e) => handleInputChange('service', e.target.value)}
+                placeholder="e.g., Data Analytics, Manufacturing, Services"
               />
             </div>
             <div>
-              <Label htmlFor="description">Description</Label>
+              <Label htmlFor="notes">Notes</Label>
               <Textarea
-                id="description"
-                value={formData.description || ''}
-                onChange={(e) => handleInputChange('description', e.target.value)}
-                placeholder="Brief description of your business"
+                id="notes"
+                value={formData.notes || ''}
+                onChange={(e) => handleInputChange('notes', e.target.value)}
+                placeholder="Additional notes about your business"
                 rows={3}
               />
             </div>
@@ -248,12 +281,12 @@ export function VendorProfileSettings({ vendorId }: VendorProfileSettingsProps) 
               />
             </div>
             <div>
-              <Label htmlFor="website">Website</Label>
+              <Label htmlFor="paymentTerms">Payment Terms</Label>
               <Input
-                id="website"
-                value={formData.website || ''}
-                onChange={(e) => handleInputChange('website', e.target.value)}
-                placeholder="https://your-website.com"
+                id="paymentTerms"
+                value={formData.paymentTerms || ''}
+                onChange={(e) => handleInputChange('paymentTerms', e.target.value)}
+                placeholder="e.g., Net 30, Net 45"
               />
             </div>
             <div>
@@ -282,8 +315,8 @@ export function VendorProfileSettings({ vendorId }: VendorProfileSettingsProps) 
                 <Label htmlFor="address">Street Address</Label>
                 <Input
                   id="address"
-                  value={formData.address || ''}
-                  onChange={(e) => handleInputChange('address', e.target.value)}
+                  value={formData.address?.street || ''}
+                  onChange={(e) => handleInputChange('address.street', e.target.value)}
                   placeholder="Enter street address"
                 />
               </div>
@@ -291,8 +324,8 @@ export function VendorProfileSettings({ vendorId }: VendorProfileSettingsProps) 
                 <Label htmlFor="city">City</Label>
                 <Input
                   id="city"
-                  value={formData.city || ''}
-                  onChange={(e) => handleInputChange('city', e.target.value)}
+                  value={formData.address?.city || ''}
+                  onChange={(e) => handleInputChange('address.city', e.target.value)}
                   placeholder="Enter city"
                 />
               </div>
@@ -300,8 +333,8 @@ export function VendorProfileSettings({ vendorId }: VendorProfileSettingsProps) 
                 <Label htmlFor="state">State/Province</Label>
                 <Input
                   id="state"
-                  value={formData.state || ''}
-                  onChange={(e) => handleInputChange('state', e.target.value)}
+                  value={formData.address?.state || ''}
+                  onChange={(e) => handleInputChange('address.state', e.target.value)}
                   placeholder="Enter state or province"
                 />
               </div>
@@ -309,8 +342,8 @@ export function VendorProfileSettings({ vendorId }: VendorProfileSettingsProps) 
                 <Label htmlFor="zipCode">ZIP/Postal Code</Label>
                 <Input
                   id="zipCode"
-                  value={formData.zipCode || ''}
-                  onChange={(e) => handleInputChange('zipCode', e.target.value)}
+                  value={formData.address?.zipCode || ''}
+                  onChange={(e) => handleInputChange('address.zipCode', e.target.value)}
                   placeholder="Enter ZIP or postal code"
                 />
               </div>
@@ -318,8 +351,8 @@ export function VendorProfileSettings({ vendorId }: VendorProfileSettingsProps) 
                 <Label htmlFor="country">Country</Label>
                 <Input
                   id="country"
-                  value={formData.country || ''}
-                  onChange={(e) => handleInputChange('country', e.target.value)}
+                  value={formData.address?.country || ''}
+                  onChange={(e) => handleInputChange('address.country', e.target.value)}
                   placeholder="Enter country"
                 />
               </div>

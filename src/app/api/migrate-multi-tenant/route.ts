@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { migrateDataForMultiTenancy, verifyMigration } from '@/lib/migrate-multi-tenant';
+import { migrateDataForMultiTenancy, verifyMigration } from '@/lib/database/migrations';
 
 export async function POST() {
   try {

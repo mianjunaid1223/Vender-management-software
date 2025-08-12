@@ -30,8 +30,8 @@ import {
 } from "lucide-react";
 import { Vendor } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
-import { createVendor } from "@/lib/data";
-import { cn } from "@/lib/utils";
+import { createVendor } from "@/lib/database/queries";
+import { cn } from "@/lib/utils/index";
 
 interface VendorFormData {
   name: string;

@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { PageHeader } from "@/components/page-header";
+import { PageHeader } from "@/components/layout/page-header";
 import { ContractOnboardingDialog } from "@/components/dashboard/contract-onboarding-dialog";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -37,9 +37,9 @@ import {
   FileClock,
   RefreshCw,
 } from "lucide-react";
-import { processAndFetchContracts, deleteContract, fetchInvoicesByContract, fetchVendors, fetchCompany, updateContract } from "@/lib/data";
+import { processAndFetchContracts, deleteContract, fetchInvoicesByContract, fetchVendors, fetchCompany, updateContract } from "@/lib/database/queries";
 import { Contract, Invoice, ContractStatus, Vendor, Company, ContractParty, ContractType } from "@/lib/types";
-import { downloadContractPDF, previewContractPDF } from "@/lib/pdf-utils";
+import { downloadContractPDF, previewContractPDF } from "@/lib/utils/pdf";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -63,7 +63,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/utils/index";
 import { format, formatDistanceToNow } from "date-fns";
 
 
@@ -106,7 +106,7 @@ export default function ContractsPage() {
   const handleContractAddedOrUpdated = (updatedContract: Contract) => {
     const contractWithId = {
       ...updatedContract,
-      id: updatedContract.id || updatedContract._id?.toString()
+      id: updatedContract.id || (updatedContract as any)._id?.toString()
     };
   
     setContracts(prev => {

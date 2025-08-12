@@ -1,4 +1,4 @@
-import { PageHeader } from "@/components/page-header";
+import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -23,7 +23,7 @@ import {
 import { Calendar } from "@/components/ui/calendar";
 import { Label } from "@/components/ui/label";
 import { Calendar as CalendarIcon, Download } from "lucide-react";
-import { fetchVendors } from "@/lib/data";
+import { fetchVendors } from "@/lib/database/queries";
 
 export default async function ReportsPage() {
   const vendors = await fetchVendors();

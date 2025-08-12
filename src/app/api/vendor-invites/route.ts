@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth'; // Corrected import path
-import { encrypt } from '@/lib/encryption';
+import { encrypt } from '@/lib/auth/encryption';
 import { sendVendorInvitationEmail } from '@/lib/email';
-import { getDb } from '@/lib/data';
+import { getDb } from '@/lib/database/queries';
 
 // Generate or send a secure vendor invite
 export async function POST(request: NextRequest) {

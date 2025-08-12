@@ -1,7 +1,7 @@
 
-import { PageHeader } from "@/components/page-header";
+import { PageHeader } from "@/components/layout/page-header";
 import { InvoiceManagementClient } from "@/components/dashboard/invoice-management-client";
-import { fetchInvoices, fetchVendors, fetchContracts } from "@/lib/data";
+import { fetchInvoices, fetchVendors, fetchContracts } from "@/lib/database/queries";
 
 export default async function InvoicesPage() {
   const [invoices, vendors, contracts] = await Promise.all([

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDb } from '@/lib/data';
-import { decrypt } from '@/lib/encryption';
+import { getDb } from '@/lib/database/queries';
+import { decrypt } from '@/lib/auth/encryption';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -83,10 +83,13 @@ export async function GET(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Check if there's already an application for this vendor and company
+    // Check if there's already an active application for this vendor and company
     const existingApplication = await db.collection('vendorApplications').findOne({ 
-      vendorName: inviteRecord.vendorName,
-      targetCompanyId: inviteRecord.companyId 
+      $or: [
+        { vendorName: inviteRecord.vendorName, targetCompanyId: inviteRecord.companyId },
+        { email: inviteRecord.email, targetCompanyId: inviteRecord.companyId }
+      ],
+      status: { $in: ['pending', 'approved'] }
     });
 
     if (existingApplication) {
@@ -94,25 +97,41 @@ export async function GET(request: NextRequest) {
       if (existingApplication.status === 'approved') {
         return NextResponse.json({
           valid: false,
-          error: 'Vendor already approved',
+          error: 'Vendor already approved for this company',
           redirect: '/vendor-portal/dashboard',
           applicationStatus: existingApplication.status,
           applicationId: existingApplication.applicationId
         });
-      } else if (existingApplication.status === 'rejected') {
+      } else if (existingApplication.status === 'pending') {
         return NextResponse.json({
           valid: false,
-          error: 'Vendor application was rejected',
+          error: 'Application already submitted and pending review for this company',
           applicationStatus: existingApplication.status,
           applicationId: existingApplication.applicationId
         });
-      } else {
-        return NextResponse.json({
-          valid: false,
-          error: 'Application already submitted and pending review',
-          applicationStatus: existingApplication.status,
-          applicationId: existingApplication.applicationId
-        });
+      }
+    }
+
+    // Check for any previous applications for context
+    const previousApplications = await db.collection('vendorApplications').find({
+      $or: [
+        { vendorName: inviteRecord.vendorName, targetCompanyId: inviteRecord.companyId },
+        { email: inviteRecord.email, targetCompanyId: inviteRecord.companyId }
+      ]
+    }).toArray();
+
+    let previousApplicationInfo = null;
+    if (previousApplications.length > 0) {
+      const latestApp = previousApplications.sort((a, b) => 
+        new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime()
+      )[0];
+      
+      if (latestApp.status === 'rejected') {
+        previousApplicationInfo = {
+          status: 'rejected',
+          message: 'Previous application was rejected. You can submit a new application.',
+          rejectedAt: latestApp.reviewedAt
+        };
       }
     }
 
@@ -123,7 +142,8 @@ export async function GET(request: NextRequest) {
       companyId: inviteRecord.companyId,
       companyName: company.name,
       email: inviteRecord.email,
-      inviteId: inviteRecord._id.toString()
+      inviteId: inviteRecord._id.toString(),
+      previousApplication: previousApplicationInfo
     });
 
   } catch (error) {

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getDb } from '@/lib/data';
+import { getDb } from '@/lib/database/queries';
 import { ObjectId } from 'mongodb';
 import type { VendorApplication } from '@/lib/types';
 

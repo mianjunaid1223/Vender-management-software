@@ -13,11 +13,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { Plus, Trash2, FileText } from "lucide-react";
 import type { Invoice, InvoiceItem, Vendor, Contract, CustomField, Company, InvoiceEntity } from "@/lib/types";
-import { fetchCompany } from "@/lib/data";
+import { fetchCompany } from "@/lib/database/queries";
 import { useToast } from "@/hooks/use-toast";
 import { AIInvoiceUpload } from "@/components/invoices/ai-invoice-upload";
-import { ExtractedInvoiceData } from "@/lib/ai-invoice-parser";
-import { formatCurrency, getCurrencySelectOptions, getDefaultCurrency } from "@/lib/currency-utils";
+import { ExtractedInvoiceData } from "@/lib/ai/invoice-parser";
+import { formatCurrency, getCurrencySelectOptions, getDefaultCurrency } from "@/lib/utils/currency";
 
 interface InvoiceDialogProps {
   invoice?: Invoice;

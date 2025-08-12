@@ -28,7 +28,27 @@ const nextConfig: NextConfig = {
       ],
     },
   },
-  webpack: (config, { isServer }) => {
+  // Add optimization for development
+  poweredByHeader: false,
+  compress: true,
+  webpack: (config, { isServer, dev }) => {
+    // Optimize for development
+    if (dev) {
+      config.watchOptions = {
+        poll: 1000,
+        aggregateTimeout: 300,
+        ignored: ['**/node_modules', '**/.git', '**/.next'],
+      };
+      
+      // Reduce memory usage
+      config.optimization = {
+        ...config.optimization,
+        removeAvailableModules: false,
+        removeEmptyChunks: false,
+        splitChunks: false,
+      };
+    }
+    
     // Fix for handlebars webpack compatibility
     if (!isServer) {
       config.resolve.fallback = {

@@ -8,9 +8,9 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Upload, FileText, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
-import { processInvoiceFile, ExtractedInvoiceData } from '@/lib/ai-invoice-parser';
-import { getCurrencySelectOptions } from '@/lib/currency-utils';
-import { convertToBaseCurrency } from '@/lib/currency-conversion';
+import { processInvoiceFile, ExtractedInvoiceData } from '@/lib/ai/invoice-parser';
+import { getCurrencySelectOptions } from '@/lib/utils/currency';
+import { convertToBaseCurrency } from '@/lib/utils/currency-conversion';
 import { useToast } from '@/hooks/use-toast';
 
 interface AIInvoiceUploadProps {

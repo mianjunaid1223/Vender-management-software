@@ -1,165 +1,41 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { connectDB } from '@/lib/mongodb';
-import mongoose from 'mongoose';
-
-// Define Notification schema
-const notificationSchema = new mongoose.Schema({
-  vendorId: { type: mongoose.Schema.Types.ObjectId, ref: 'Vendor', required: true },
-  companyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Company', required: true },
-  type: { 
-    type: String, 
-    enum: ['invoice', 'contract', 'payment', 'general', 'reminder', 'alert'],
-    required: true
-  },
-  title: { type: String, required: true },
-  message: { type: String, required: true },
-  priority: {
-    type: String,
-    enum: ['low', 'medium', 'high', 'urgent'],
-    default: 'medium'
-  },
-  read: { type: Boolean, default: false },
-  readAt: Date,
-  relatedId: mongoose.Schema.Types.ObjectId, // Reference to invoice, contract, etc.
-  relatedModel: String, // Model name (Invoice, Contract, etc.)
-  actionUrl: String, // URL for related action
-  expiresAt: Date, // Optional expiration date
-  createdAt: { type: Date, default: Date.now },
-  updatedAt: { type: Date, default: Date.now }
-});
-
-const Notification = mongoose.models.Notification || mongoose.model('Notification', notificationSchema);
+import { getDb } from '@/lib/database/queries';
+import { vendorAuthMiddleware } from '@/lib/auth/vendor-auth';
+import { ObjectId } from 'mongodb';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ vendorId: string }> }
+  { params }: { params: { vendorId: string } }
 ) {
   try {
-    await connectDB();
-    const { vendorId } = await params;
-
-    if (!vendorId) {
-      return NextResponse.json({ error: 'Vendor ID is required' }, { status: 400 });
+    // Authenticate vendor
+    const authResponse = await vendorAuthMiddleware(request);
+    if (!authResponse.isAuthenticated) {
+      return NextResponse.json({ error: authResponse.error }, { status: 401 });
     }
 
-    // Convert vendorId to ObjectId
-    let vendorObjectId;
-    try {
-      vendorObjectId = new mongoose.Types.ObjectId(vendorId);
-    } catch (error) {
-      return NextResponse.json({ error: 'Invalid vendor ID format' }, { status: 400 });
-    }
-
-    const { searchParams } = new URL(request.url);
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '20');
-    const type = searchParams.get('type');
-    const unreadOnly = searchParams.get('unreadOnly') === 'true';
-    const priority = searchParams.get('priority');
-
-    // Build query
-    const query: any = { 
-      vendorId: vendorObjectId,
-      $or: [
-        { expiresAt: { $exists: false } },
-        { expiresAt: { $gt: new Date() } }
-      ]
-    };
-
-    if (type && type !== 'all') {
-      query.type = type;
-    }
-
-    if (unreadOnly) {
-      query.read = false;
-    }
-
-    if (priority && priority !== 'all') {
-      query.priority = priority;
-    }
-
-    // Get total count for pagination
-    const totalNotifications = await Notification.countDocuments(query);
-
-    // Get notifications with pagination
-    const notifications = await Notification.find(query)
-      .populate('companyId', 'name email')
+    const db = await getDb();
+    
+    const notifications = await db
+      .collection('notifications')
+      .find({ 
+        $or: [
+          { vendorId: params.vendorId },
+          { "targetUsers.id": params.vendorId }
+        ]
+      })
       .sort({ createdAt: -1 })
-      .skip((page - 1) * limit)
-      .limit(limit)
-      .lean();
-
-    // Calculate pagination info
-    const totalPages = Math.ceil(totalNotifications / limit);
-    const hasNextPage = page < totalPages;
-    const hasPrevPage = page > 1;
-
-    // Get unread count
-    const unreadCount = await Notification.countDocuments({
-      vendorId: vendorObjectId,
-      read: false,
-      $or: [
-        { expiresAt: { $exists: false } },
-        { expiresAt: { $gt: new Date() } }
-      ]
-    });
-
-    // Get type breakdown
-    const typeStats = await Notification.aggregate([
-      { 
-        $match: { 
-          vendorId: vendorObjectId,
-          $or: [
-            { expiresAt: { $exists: false } },
-            { expiresAt: { $gt: new Date() } }
-          ]
-        } 
-      },
-      {
-        $group: {
-          _id: '$type',
-          count: { $sum: 1 },
-          unreadCount: {
-            $sum: { $cond: [{ $eq: ['$read', false] }, 1, 0] }
-          }
-        }
-      }
-    ]);
+      .toArray();
+    
+    const serializedNotifications = notifications.map(notification => ({
+      ...notification,
+      id: notification._id.toString(),
+      _id: undefined
+    }));
 
     return NextResponse.json({
-      notifications: notifications.map(notification => ({
-        id: notification._id,
-        type: notification.type,
-        title: notification.title,
-        message: notification.message,
-        priority: notification.priority,
-        read: notification.read,
-        readAt: notification.readAt,
-        relatedId: notification.relatedId,
-        relatedModel: notification.relatedModel,
-        actionUrl: notification.actionUrl,
-        company: notification.companyId,
-        createdAt: notification.createdAt,
-        expiresAt: notification.expiresAt
-      })),
-      pagination: {
-        currentPage: page,
-        totalPages,
-        totalNotifications,
-        hasNextPage,
-        hasPrevPage,
-        limit
-      },
-      summary: {
-        unreadCount,
-        typeBreakdown: typeStats.reduce((acc, stat) => {
-          acc[stat._id] = {
-            total: stat.count,
-            unread: stat.unreadCount
-          };
-          return acc;
-        }, {} as Record<string, { total: number; unread: number }>)
-      }
+      success: true,
+      notifications: serializedNotifications
     });
 
   } catch (error) {
@@ -173,54 +49,57 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ vendorId: string }> }
+  { params }: { params: { vendorId: string } }
 ) {
   try {
-    await connectDB();
-    const { vendorId } = await params;
+    // Authenticate vendor
+    const authResponse = await vendorAuthMiddleware(request);
+    if (!authResponse.isAuthenticated) {
+      return NextResponse.json({ error: authResponse.error }, { status: 401 });
+    }
+
     const body = await request.json();
+    const { type, title, message, priority = 'medium' } = body;
 
-    if (!vendorId) {
-      return NextResponse.json({ error: 'Vendor ID is required' }, { status: 400 });
+    if (!type || !title || !message) {
+      return NextResponse.json(
+        { error: 'Missing required fields: type, title, message' },
+        { status: 400 }
+      );
     }
 
-    // Convert vendorId to ObjectId
-    let vendorObjectId;
-    try {
-      vendorObjectId = new mongoose.Types.ObjectId(vendorId);
-    } catch (error) {
-      return NextResponse.json({ error: 'Invalid vendor ID format' }, { status: 400 });
-    }
-
+    const db = await getDb();
+    
     const notificationData = {
-      ...body,
-      vendorId: vendorObjectId,
-      companyId: new mongoose.Types.ObjectId(body.companyId),
-      createdAt: new Date(),
-      updatedAt: new Date()
+      type,
+      title,
+      message,
+      priority,
+      read: false,
+      vendorId: params.vendorId,
+      companyId: body.companyId,
+      relatedId: body.relatedId,
+      relatedModel: body.relatedModel,
+      actionUrl: body.actionUrl,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     };
 
-    const notification = new Notification(notificationData);
-    await notification.save();
+    const result = await db.collection('notifications').insertOne(notificationData);
+    
+    const newNotification = await db.collection('notifications').findOne({ _id: result.insertedId });
+    
+    if (!newNotification) {
+      throw new Error('Failed to create notification');
+    }
 
-    const populatedNotification = await Notification.findById(notification._id)
-      .populate('companyId', 'name email')
-      .lean();
-
+    const { _id, ...notificationResponse } = newNotification;
+    
     return NextResponse.json({
       success: true,
       notification: {
-        id: populatedNotification!._id,
-        type: populatedNotification!.type,
-        title: populatedNotification!.title,
-        message: populatedNotification!.message,
-        priority: populatedNotification!.priority,
-        read: populatedNotification!.read,
-        relatedId: populatedNotification!.relatedId,
-        relatedModel: populatedNotification!.relatedModel,
-        actionUrl: populatedNotification!.actionUrl,
-        company: populatedNotification!.companyId,
-        createdAt: populatedNotification!.createdAt
+        ...notificationResponse,
+        id: _id.toString()
       }
     }, { status: 201 });
 
@@ -228,65 +107,6 @@ export async function POST(
     console.error('Error creating notification:', error);
     return NextResponse.json(
       { error: 'Failed to create notification' },
-      { status: 500 }
-    );
-  }
-}
-
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ vendorId: string }> }
-) {
-  try {
-    await connectDB();
-    const { vendorId } = await params;
-    const body = await request.json();
-
-    if (!vendorId) {
-      return NextResponse.json({ error: 'Vendor ID is required' }, { status: 400 });
-    }
-
-    // Convert vendorId to ObjectId
-    let vendorObjectId;
-    try {
-      vendorObjectId = new mongoose.Types.ObjectId(vendorId);
-    } catch (error) {
-      return NextResponse.json({ error: 'Invalid vendor ID format' }, { status: 400 });
-    }
-
-    const { notificationIds, markAsRead } = body;
-
-    if (!notificationIds || !Array.isArray(notificationIds)) {
-      return NextResponse.json({ error: 'Notification IDs array is required' }, { status: 400 });
-    }
-
-    const updateData: any = {
-      read: markAsRead !== undefined ? markAsRead : true,
-      updatedAt: new Date()
-    };
-
-    if (markAsRead) {
-      updateData.readAt = new Date();
-    }
-
-    const result = await Notification.updateMany(
-      {
-        _id: { $in: notificationIds.map(id => new mongoose.Types.ObjectId(id)) },
-        vendorId: vendorObjectId
-      },
-      updateData
-    );
-
-    return NextResponse.json({
-      success: true,
-      updatedCount: result.modifiedCount,
-      message: `${result.modifiedCount} notifications updated successfully`
-    });
-
-  } catch (error) {
-    console.error('Error updating notifications:', error);
-    return NextResponse.json(
-      { error: 'Failed to update notifications' },
       { status: 500 }
     );
   }

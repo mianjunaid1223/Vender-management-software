@@ -27,10 +27,10 @@ import {
   ArrowRight,
 } from "lucide-react";
 import type { Invoice, Vendor, User, Contract, Company } from "@/lib/types";
-import { getAIAssistantResponse } from "@/ai/flows/ai-assistant-flow";
+import { getAIAssistantResponse } from "@/lib/ai/genkit/flows/ai-assistant-flow";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRouter } from "next/navigation";
-import { cn } from "@/lib/utils"; // likely needed if `cn` is used below
+import { cn } from "@/lib/utils/index"; // likely needed if `cn` is used below
 
 interface AISpotlightProps {
   user: User;
