@@ -5,9 +5,10 @@ import { ObjectId } from 'mongodb';
 // GET /api/vendor-applications/[id]/public - Public view of vendor application (no auth required)
 export async function GET(
   request: NextRequest,
-  context: { params: { id: string } }
+  context: any
 ) {
-  const { id } = await context.params;
+  const { params } = context;
+  const id = params?.id;
   
   try {
     const db = await getDb();

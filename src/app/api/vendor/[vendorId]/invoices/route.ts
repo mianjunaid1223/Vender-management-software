@@ -6,7 +6,7 @@ import { ObjectId } from 'mongodb';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { vendorId: string } }
+  context: any
 ) {
   try {
     // Authenticate vendor
@@ -15,7 +15,8 @@ export async function GET(
       return NextResponse.json({ error: authResponse.error }, { status: 401 });
     }
 
-    const invoices = await fetchInvoicesByVendor(params.vendorId);
+  const { params } = context;
+  const invoices = await fetchInvoicesByVendor(params.vendorId);
     
     return NextResponse.json({
       success: true,
@@ -33,7 +34,7 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { vendorId: string } }
+  context: any
 ) {
   try {
     // Authenticate vendor
@@ -42,7 +43,8 @@ export async function POST(
       return NextResponse.json({ error: authResponse.error }, { status: 401 });
     }
 
-    const body = await request.json();
+  const body = await request.json();
+  const { params } = context;
     const { invoiceNumber, amount, currency = 'USD', issueDate, dueDate, description, items } = body;
 
     if (!invoiceNumber || !amount || !issueDate || !dueDate) {
@@ -56,7 +58,7 @@ export async function POST(
     
     const invoiceData = {
       invoiceNumber,
-      vendorId: params.vendorId,
+  vendorId: params.vendorId,
       companyId: body.companyId,
       amount: Number(amount),
       currency,

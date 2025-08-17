@@ -3,10 +3,11 @@ import { updateContract, deleteContract } from '@/lib/database/queries';
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: any
 ) {
   try {
     const body = await request.json();
+    const { params } = context;
     const contract = await updateContract(params.id, body);
     const serializedContract = JSON.parse(JSON.stringify(contract));
     return NextResponse.json(serializedContract);
@@ -22,9 +23,10 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: any
 ) {
   try {
+    const { params } = context;
     await deleteContract(params.id);
     return NextResponse.json({ message: 'Contract deleted successfully' });
   } catch (error) {

@@ -5,7 +5,7 @@ import { ObjectId } from 'mongodb';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { vendorId: string } }
+  context: any
 ) {
   try {
     // Authenticate vendor
@@ -16,12 +16,14 @@ export async function GET(
 
     const db = await getDb();
     
-    const notifications = await db
+  const { params } = context;
+
+  const notifications = await db
       .collection('notifications')
       .find({ 
         $or: [
-          { vendorId: params.vendorId },
-          { "targetUsers.id": params.vendorId }
+      { vendorId: params.vendorId },
+      { "targetUsers.id": params.vendorId }
         ]
       })
       .sort({ createdAt: -1 })
@@ -49,7 +51,7 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { vendorId: string } }
+  context: any
 ) {
   try {
     // Authenticate vendor
@@ -58,7 +60,8 @@ export async function POST(
       return NextResponse.json({ error: authResponse.error }, { status: 401 });
     }
 
-    const body = await request.json();
+  const body = await request.json();
+  const { params } = context;
     const { type, title, message, priority = 'medium' } = body;
 
     if (!type || !title || !message) {
@@ -76,7 +79,7 @@ export async function POST(
       message,
       priority,
       read: false,
-      vendorId: params.vendorId,
+  vendorId: params.vendorId,
       companyId: body.companyId,
       relatedId: body.relatedId,
       relatedModel: body.relatedModel,

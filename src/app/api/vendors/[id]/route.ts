@@ -4,10 +4,11 @@ import { Vendor } from '@/lib/types';
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: any
 ) {
   try {
     const body = await request.json();
+    const { params } = context;
     const vendor: Partial<Vendor> = body;
     const updatedVendor = await updateVendor(params.id, vendor);
     return NextResponse.json(updatedVendor);
@@ -23,9 +24,10 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: any
 ) {
   try {
+    const { params } = context;
     await deleteVendor(params.id);
     return NextResponse.json({ message: 'Vendor deleted successfully' });
   } catch (error) {

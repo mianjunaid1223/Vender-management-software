@@ -7,7 +7,7 @@ import { sendVendorApprovalEmail, sendVendorRejectionEmail } from '@/lib/email';
 // PATCH - Update vendor application status (approve/reject)
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: any
 ) {
   try {
     const session = await getSession();
@@ -15,9 +15,9 @@ export async function PATCH(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { status, notes } = await request.json();
-    const resolvedParams = await params;
-    const applicationId = resolvedParams.id;
+  const { status, notes } = await request.json();
+  const { params } = context;
+  const applicationId = params.id;
 
     if (!status || !['approved', 'rejected'].includes(status)) {
       return NextResponse.json({ 
@@ -145,7 +145,7 @@ export async function PATCH(
 // GET - Get specific vendor application
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: any
 ) {
   try {
     const session = await getSession();
@@ -153,8 +153,8 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const resolvedParams = await params;
-    const applicationId = resolvedParams.id;
+  const { params } = context;
+  const applicationId = params.id;
     const db = await getDb();
 
     const application = await db.collection('vendorApplications').findOne({
