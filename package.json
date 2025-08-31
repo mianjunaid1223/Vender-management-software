@@ -13,7 +13,7 @@
     "seed": "FORCE_IN_MEMORY_DB=true tsx scripts/seed.ts",
     "test-email": "tsx src/scripts/test-email.ts",
     "debug-vendor-apps": "tsx src/scripts/debug-vendor-applications.ts",
-    "migrate:vendors": "tsx scripts/migrate-vendors-to-users.ts"
+    "migrate:vendors": "DEBUG=* FORCE_IN_MEMORY_DB=true tsx --no-cache scripts/migrate-vendors-to-users.ts"
   },
   "dependencies": {
     "@genkit-ai/googleai": "^1.13.0",
