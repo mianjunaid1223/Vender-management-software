@@ -1,199 +1,135 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDb } from '@/lib/database/queries';
-import { getSession } from '@/lib/auth';
-import { ObjectId } from 'mongodb';
+import { connectDB } from '@/lib/database/mongodb';
+import { getSession } from '@/lib/auth/session';
+import User from '@/models/user.model';
+import Tenant from '@/models/tenant.model';
+import Vendor from '@/models/vendor.model';
+import VendorApplication from '@/models/vendorApplication.model';
 import { sendVendorApprovalEmail, sendVendorRejectionEmail } from '@/lib/email';
+import { logAudit } from '@/lib/audit/logger';
 
-// PATCH - Update vendor application status (approve/reject)
-export async function PATCH(
-  request: NextRequest,
-  context: any
-) {
+// GET a single vendor application by ID
+export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
+    await connectDB();
     const session = await getSession();
-    if (!session?.companyId) {
+    if (!session?.userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-
-  const { status, notes } = await request.json();
-  const { params } = context;
-  const applicationId = params.id;
-
-    if (!status || !['approved', 'rejected'].includes(status)) {
-      return NextResponse.json({ 
-        error: 'Invalid status. Must be "approved" or "rejected"' 
-      }, { status: 400 });
+    const user = await User.findById(session.userId);
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    const db = await getDb();
-
-    // Find the application
-    const application = await db.collection('vendorApplications').findOne({
-      _id: new ObjectId(applicationId),
-      targetCompanyId: session.companyId // companyId is a string
-    });
-
+    const application = await VendorApplication.findOne({ _id: params.id, tenantId: user.tenantId });
     if (!application) {
-      return NextResponse.json({ 
-        error: 'Application not found' 
-      }, { status: 404 });
+      return NextResponse.json({ error: 'Application not found' }, { status: 404 });
     }
 
-    if (application.status !== 'pending') {
-      return NextResponse.json({ 
-        error: 'Application has already been reviewed' 
-      }, { status: 400 });
-    }
-
-    // Update application status
-    const updateResult = await db.collection('vendorApplications').updateOne(
-      { _id: new ObjectId(applicationId) },
-      {
-        $set: {
-          status,
-          reviewedAt: new Date(),
-          reviewedBy: session.email || 'admin',
-          reviewNotes: notes || ''
-        }
-      }
-    );
-
-    if (updateResult.matchedCount === 0) {
-      return NextResponse.json({ 
-        error: 'Failed to update application' 
-      }, { status: 500 });
-    }
-
-    // Get company info for email
-    const company = await db.collection('companies').findOne({ 
-      companyId: session.companyId 
-    });
-
-    if (!company) {
-      return NextResponse.json({ 
-        error: 'Company not found' 
-      }, { status: 404 });
-    }
-
-    // Send email notification
-    try {
-      if (status === 'approved') {
-        // For approved applications, generate a secure login PIN and create vendor account
-        const vendorPin = Math.random().toString(36).substr(2, 8).toUpperCase();
-        const dashboardUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:9002'}/vendor-portal/dashboard`;
-
-        // Create vendor record in the system
-        await db.collection('vendors').insertOne({
-          _id: new ObjectId(),
-          companyId: session.companyId,
-          name: application.vendorName,
-          contactPerson: application.contactPerson,
-          email: application.email,
-          phone: application.phone,
-          service: application.service,
-          taxId: application.taxId,
-          address: application.address,
-          paymentTerms: application.paymentTerms,
-          notes: application.notes,
-          status: 'active',
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          applicationId: application.applicationId,
-          vendorPin: vendorPin // Store the PIN for login
-        });
-
-        console.log('📧 Sending approval email to:', application.email);
-        await sendVendorApprovalEmail(
-          application.email,
-          application.vendorName,
-          `${dashboardUrl}?pin=${vendorPin}`,
-          vendorPin
-        );
-      } else {
-        console.log('📧 Sending rejection email to:', application.email);
-        await sendVendorRejectionEmail(
-          application.email,
-          application.vendorName,
-          company.name,
-          notes || 'Your application did not meet our current requirements.'
-        );
-      }
-    } catch (emailError) {
-      console.error('Email sending failed:', emailError);
-      // Don't fail the whole operation if email fails
-    }
-
-    return NextResponse.json({
-      success: true,
-      message: `Application ${status} successfully`,
-      application: {
-        id: application._id.toString(),
-        status,
-        reviewedAt: new Date(),
-        vendorName: application.vendorName
-      }
-    });
-
+    return NextResponse.json(application);
   } catch (error) {
-    console.error('Error updating vendor application:', error);
-    return NextResponse.json({ 
-      error: 'Failed to update application' 
-    }, { status: 500 });
+    console.error('Error fetching vendor application:', error);
+    return NextResponse.json({ error: 'Failed to fetch application' }, { status: 500 });
   }
 }
 
-// GET - Get specific vendor application
-export async function GET(
-  request: NextRequest,
-  context: any
-) {
+// PATCH - Update vendor application status (approve/reject)
+export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
   try {
+    await connectDB();
     const session = await getSession();
-    if (!session?.companyId) {
+    if (!session?.userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-  const { params } = context;
-  const applicationId = params.id;
-    const db = await getDb();
-
-    const application = await db.collection('vendorApplications').findOne({
-      _id: new ObjectId(applicationId),
-      targetCompanyId: session.companyId
-    });
-
-    if (!application) {
-      return NextResponse.json({ 
-        error: 'Application not found' 
-      }, { status: 404 });
+    const user = await User.findById(session.userId);
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    return NextResponse.json({
-      success: true,
-      application: {
-        id: application._id.toString(),
-        applicationId: application.applicationId,
-        vendorName: application.vendorName,
-        contactPerson: application.contactPerson,
-        email: application.email,
-        phone: application.phone,
-        service: application.service,
-        taxId: application.taxId,
-        address: application.address,
-        paymentTerms: application.paymentTerms,
-        notes: application.notes,
-        status: application.status,
-        submittedAt: application.submittedAt,
-        reviewedAt: application.reviewedAt,
-        reviewedBy: application.reviewedBy,
-        reviewNotes: application.reviewNotes
-      }
+    const { status, notes } = await request.json();
+    if (!status || !['APPROVED', 'REJECTED'].includes(status)) {
+      return NextResponse.json({ error: 'Invalid status. Must be "APPROVED" or "REJECTED"' }, { status: 400 });
+    }
+
+    const originalApplication = await VendorApplication.findOne({ _id: params.id, tenantId: user.tenantId }).lean();
+    if (!originalApplication) {
+      return NextResponse.json({ error: 'Application not found or access denied' }, { status: 404 });
+    }
+    if (originalApplication.status !== 'PENDING') {
+      return NextResponse.json({ error: 'Application has already been reviewed' }, { status: 400 });
+    }
+
+    // Update application status
+    const updatedApplication = await VendorApplication.findByIdAndUpdate(params.id, {
+      status,
+      reviewedAt: new Date(),
+      reviewedBy: user._id,
+      notes: notes || originalApplication.notes,
+    }, { new: true });
+
+    if (!updatedApplication) {
+      // This should not happen if the findOne check passed, but as a safeguard:
+      return NextResponse.json({ error: 'Failed to update application' }, { status: 500 });
+    }
+
+    await logAudit({
+      tenantId: user.tenantId,
+      actorId: user._id,
+      actorType: 'USER',
+      entityType: 'VendorApplication',
+      entityId: updatedApplication._id,
+      action: 'UPDATE',
+      details: { newStatus: status },
+      beforeState: originalApplication,
+      afterState: updatedApplication.toObject(),
     });
 
+    const tenant = await Tenant.findById(user.tenantId);
+    if (!tenant) {
+      return NextResponse.json({ error: 'Tenant not found' }, { status: 404 });
+    }
+
+    if (status === 'APPROVED') {
+      const pin = Math.random().toString(36).substring(2, 10).toUpperCase();
+      const pinExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+      const newVendor = await Vendor.create({
+        tenantId: user.tenantId,
+        name: updatedApplication.vendorName,
+        contactPerson: updatedApplication.contactPerson,
+        email: updatedApplication.email,
+        phone: updatedApplication.phone,
+        service: updatedApplication.service,
+        taxId: updatedApplication.taxId,
+        address: updatedApplication.address,
+        notes: updatedApplication.notes,
+        status: 'ACTIVE',
+        pin: pin,
+        pinExpiresAt: pinExpiresAt,
+      });
+
+      await logAudit({
+        tenantId: user.tenantId,
+        actorId: user._id,
+        actorType: 'USER',
+        entityType: 'Vendor',
+        entityId: newVendor._id,
+        action: 'CREATE',
+        details: { source: 'VendorApplication', applicationId: updatedApplication._id },
+        afterState: newVendor.toObject(),
+      });
+
+      const dashboardUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:9002'}/vendor-portal/dashboard`;
+      await sendVendorApprovalEmail(updatedApplication.email, updatedApplication.vendorName, `${dashboardUrl}?pin=${pin}`, pin);
+    } else {
+      await sendVendorRejectionEmail(updatedApplication.email, updatedApplication.vendorName, tenant.name, notes || 'Your application did not meet our current requirements.');
+    }
+
+    return NextResponse.json(updatedApplication);
+
   } catch (error) {
-    console.error('Error fetching vendor application:', error);
-    return NextResponse.json({ 
-      error: 'Failed to fetch application' 
-    }, { status: 500 });
+    console.error('Error updating vendor application:', error);
+    return NextResponse.json({ error: 'Failed to update application' }, { status: 500 });
   }
 }

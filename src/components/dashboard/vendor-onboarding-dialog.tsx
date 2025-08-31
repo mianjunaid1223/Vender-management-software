@@ -30,8 +30,11 @@ import {
 } from "lucide-react";
 import { Vendor } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
-import { createVendor } from "@/lib/database/queries";
 import { cn } from "@/lib/utils/index";
+
+interface VendorOnboardingDialogProps {
+  onVendorCreated: (vendor: Vendor) => void;
+}
 
 interface VendorFormData {
   name: string;
@@ -119,7 +122,7 @@ const commonServices = [
   "Other"
 ];
 
-export function VendorOnboardingDialog() {
+export function VendorOnboardingDialog({ onVendorCreated }: VendorOnboardingDialogProps) {
   const [open, setOpen] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState<VendorFormData>(initialFormData);
@@ -207,30 +210,36 @@ export function VendorOnboardingDialog() {
   const handleSubmit = async () => {
     setIsSubmitting(true);
     try {
-      const vendorData: Partial<Vendor> = {
-        ...formData,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
+      // The backend now handles createdAt and updatedAt
+      const response = await fetch('/api/vendors', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
 
-      await createVendor(vendorData);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create vendor');
+      }
+
+      const newVendor = await response.json();
       
       toast({
         title: "Success",
         description: "Vendor onboarded successfully!",
       });
       
+      onVendorCreated(newVendor); // Use callback to update parent state
+
       setOpen(false);
       setCurrentStep(1);
       setFormData(initialFormData);
       
-      // Refresh the page to show the new vendor
-      window.location.reload();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating vendor:', error);
       toast({
         title: "Error",
-        description: "Failed to onboard vendor. Please try again.",
+        description: error.message || "Failed to onboard vendor. Please try again.",
         variant: "destructive",
       });
     } finally {

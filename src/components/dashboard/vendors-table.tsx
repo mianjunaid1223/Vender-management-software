@@ -50,9 +50,9 @@ import {
   Receipt
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { deleteVendor, fetchContractsByVendor, fetchInvoicesByVendor } from "@/lib/database/queries";
 import type { Vendor, Contract, Invoice } from "@/lib/types";
 import { VendorEditDialog } from "./vendor-edit-dialog";
+import { VendorOnboardingDialog } from "./vendor-onboarding-dialog";
 import { ScrollArea } from "../ui/scroll-area";
 
 interface VendorsTableProps {
@@ -71,8 +71,12 @@ export function VendorsTable({ data: initialData }: VendorsTableProps) {
   const { toast } = useToast();
 
   const handleVendorUpdate = (updatedVendor: Vendor) => {
-    setData(prev => prev.map(v => v.id === updatedVendor.id ? updatedVendor : v));
+    setData(prev => prev.map(v => v._id === updatedVendor._id ? updatedVendor : v));
     setShowEditDialog(false);
+  };
+
+  const handleVendorCreated = (newVendor: Vendor) => {
+    setData(prev => [newVendor, ...prev]);
   };
 
   const filteredData = data.filter(vendor => 
@@ -91,35 +95,31 @@ export function VendorsTable({ data: initialData }: VendorsTableProps) {
     setShowEditDialog(true);
   };
 
-  const handleDeleteVendor = async (vendor: Vendor) => {
+  const handleDeleteVendor = (vendor: Vendor) => {
     setSelectedVendor(vendor);
-    try {
-      const [contracts, invoices] = await Promise.all([
-        fetchContractsByVendor(vendor.id),
-        fetchInvoicesByVendor(vendor.id)
-      ]);
-      setAssociatedData({ contracts, invoices });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Could not fetch associated data for this vendor.",
-        variant: "destructive"
-      });
-      setAssociatedData({ contracts: [], invoices: [] });
-    }
+    // TODO: Re-enable fetching of associated contracts and invoices once those APIs are refactored.
+    // For now, we will just show the delete confirmation directly.
+    setAssociatedData({ contracts: [], invoices: [] });
     setShowDeleteDialog(true);
   };
 
   const confirmDelete = async () => {
     if (!selectedVendor) return;
-    
+
     setIsDeleting(true);
     try {
-      await deleteVendor(selectedVendor.id);
-      setData(prev => prev.filter(v => v.id !== selectedVendor.id));
+      const response = await fetch(`/api/vendors/${selectedVendor._id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete vendor');
+      }
+
+      setData(prev => prev.filter(v => v._id !== selectedVendor._id));
       toast({
         title: "Success",
-        description: "Vendor and all associated data deleted successfully.",
+        description: "Vendor deleted successfully.",
       });
       setShowDeleteDialog(false);
       setSelectedVendor(null);
@@ -156,7 +156,7 @@ export function VendorsTable({ data: initialData }: VendorsTableProps) {
   return (
     <div className="space-y-4">
       {/* Search */}
-      <div className="flex items-center gap-2">
+      <div className="flex justify-between items-center gap-2">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
@@ -166,6 +166,7 @@ export function VendorsTable({ data: initialData }: VendorsTableProps) {
             className="pl-8"
           />
         </div>
+        <VendorOnboardingDialog onVendorCreated={handleVendorCreated} />
       </div>
 
       {/* Vendors Table */}
@@ -186,7 +187,7 @@ export function VendorsTable({ data: initialData }: VendorsTableProps) {
           </TableHeader>
           <TableBody>
             {filteredData.map((vendor) => (
-              <TableRow key={vendor.id}>
+              <TableRow key={vendor._id}>
                 <TableCell>
                   <div className="flex items-center gap-3">
                     <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">

@@ -53,20 +53,18 @@ import {
   Copy
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import type { VendorApplication } from "@/lib/types";
 import { ScrollArea } from "../ui/scroll-area";
 
 interface VendorApplicationsTableProps {
-  data: VendorApplication[];
+  data: any[];
 }
 
 export function VendorApplicationsTable({ data: initialData }: VendorApplicationsTableProps) {
   const [data, setData] = useState(initialData);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedApplication, setSelectedApplication] = useState<VendorApplication | null>(null);
+  const [selectedApplication, setSelectedApplication] = useState<any | null>(null);
   const [showViewDialog, setShowViewDialog] = useState(false);
   
-  // Debug logging
   console.log('VendorApplicationsTable data:', initialData);
   console.log('Number of applications:', initialData.length);
   initialData.forEach((app, i) => {
@@ -105,22 +103,22 @@ export function VendorApplicationsTable({ data: initialData }: VendorApplication
     );
   });
 
-  const handleViewApplication = (application: VendorApplication) => {
+  const handleViewApplication = (application: any) => {
     setSelectedApplication(application);
     setShowViewDialog(true);
   };
 
-  const handleApprovalAction = (application: VendorApplication, action: 'approve' | 'reject') => {
+  const handleApprovalAction = (application: any, action: 'approve' | 'reject') => {
     setSelectedApplication(application);
     setApprovalAction(action);
     setReviewNotes('');
     setShowApprovalDialog(true);
   };
 
-  const copyApplicationLink = async (application: VendorApplication) => {
+  const copyApplicationLink = async (application: any) => {
     try {
       const baseUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
-      const applicationLink = `${baseUrl}/vendor-applications/${application.id}`;
+      const applicationLink = `${baseUrl}/vendor-applications/${application._id}`;
       
       await navigator.clipboard.writeText(applicationLink);
       toast({
@@ -141,29 +139,22 @@ export function VendorApplicationsTable({ data: initialData }: VendorApplication
     
     setIsProcessing(true);
     try {
-      const response = await fetch(`/api/vendor-applications/${selectedApplication.id}`, {
+      const response = await fetch(`/api/vendor-applications/${selectedApplication._id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          status: approvalAction === 'approve' ? 'approved' : 'rejected',
+          status: approvalAction === 'approve' ? 'APPROVED' : 'REJECTED',
           notes: reviewNotes,
-          // Only generate a token for approval
-          generateToken: approvalAction === 'approve'
         })
       });
 
       if (response.ok) {
         const result = await response.json();
         
-        // Update local state
+        // Update local state with the data from the API response
         setData(prev => prev.map(app => 
-          app.id === selectedApplication.id 
-            ? { 
-                ...app, 
-                status: approvalAction === 'approve' ? 'approved' : 'rejected', 
-                notes: reviewNotes,
-                inviteToken: result.inviteToken || null
-              }
+          app._id === selectedApplication._id
+            ? result
             : app
         ));
         

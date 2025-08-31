@@ -22,10 +22,9 @@ import {
 } from "lucide-react";
 import { Vendor } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
-import { updateVendor } from "@/lib/database/queries";
 
 interface VendorEditDialogProps {
-  vendor: Vendor;
+  vendor: any;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onVendorUpdated: (vendor: Vendor) => void;
@@ -81,7 +80,18 @@ export function VendorEditDialog({ vendor, open, onOpenChange, onVendorUpdated }
     setIsSubmitting(true);
     
     try {
-      const updatedVendor = await updateVendor(vendor.id, formData);
+      const response = await fetch(`/api/vendors/${vendor._id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update vendor');
+      }
+
+      const updatedVendor = await response.json();
       
       toast({
         title: "Success",
@@ -91,11 +101,11 @@ export function VendorEditDialog({ vendor, open, onOpenChange, onVendorUpdated }
       onVendorUpdated(updatedVendor);
       onOpenChange(false);
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating vendor:', error);
       toast({
         title: "Error",
-        description: "Failed to update vendor. Please try again.",
+        description: error.message || "Failed to update vendor. Please try again.",
         variant: "destructive",
       });
     } finally {

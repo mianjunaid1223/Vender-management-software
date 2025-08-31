@@ -56,11 +56,11 @@ export default function VendorApplicationStatusPage() {
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'approved':
+      case 'APPROVED':
         return <CheckCircle className="h-16 w-16 text-green-600" />;
-      case 'rejected':
+      case 'REJECTED':
         return <XCircle className="h-16 w-16 text-red-600" />;
-      case 'pending':
+      case 'PENDING':
         return <Clock className="h-16 w-16 text-yellow-600" />;
       default:
         return <AlertCircle className="h-16 w-16 text-gray-600" />;
@@ -69,11 +69,11 @@ export default function VendorApplicationStatusPage() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'approved':
+      case 'APPROVED':
         return 'bg-green-100 text-green-800 border-green-300';
-      case 'rejected':
+      case 'REJECTED':
         return 'bg-red-100 text-red-800 border-red-300';
-      case 'pending':
+      case 'PENDING':
         return 'bg-yellow-100 text-yellow-800 border-yellow-300';
       default:
         return 'bg-gray-100 text-gray-800 border-gray-300';

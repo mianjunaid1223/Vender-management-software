@@ -1,16 +1,31 @@
-import { MongoClient, ServerApiVersion } from 'mongodb'
-import mongoose from 'mongoose'
+import { MongoClient, ServerApiVersion } from 'mongodb';
+import mongoose from 'mongoose';
+import { MongoMemoryServer } from 'mongodb-memory-server';
+import { config } from 'dotenv';
 
-const MONGODB_URI = process.env.MONGODB_URI;
+config({ path: '.env.local' });
 
+let mongoServer: MongoMemoryServer;
 let client: MongoClient;
 let clientPromise: Promise<MongoClient> | null = null;
 
-if (!MONGODB_URI) {
-  console.warn('WARNING: MONGODB_URI environment variable is not set. The application will run without database access.');
-} else if (MONGODB_URI.includes('<user>') || MONGODB_URI.includes('<password>') || MONGODB_URI.includes('<cluster-url>')) {
-  console.warn('WARNING: MONGODB_URI is using placeholder values. Please update your .env file with the actual connection string from MongoDB Atlas. The application will run without database access.');
-} else {
+async function getMongoUri() {
+  if (process.env.FORCE_IN_MEMORY_DB === 'true') {
+    console.log('FORCE_IN_MEMORY_DB is set, starting in-memory MongoDB server...');
+    mongoServer = await MongoMemoryServer.create();
+    return mongoServer.getUri();
+  }
+  if (process.env.MONGODB_URI) {
+    return process.env.MONGODB_URI;
+  }
+  // If no URI is set, start an in-memory server as a fallback
+  console.log('MONGODB_URI not found, starting in-memory MongoDB server as fallback...');
+  mongoServer = await MongoMemoryServer.create();
+  return mongoServer.getUri();
+}
+
+async function initializeMongo() {
+  const uri = await getMongoUri();
   const options = {
     serverApi: {
       version: ServerApiVersion.v1,
@@ -18,36 +33,40 @@ if (!MONGODB_URI) {
       deprecationErrors: true,
     },
   };
-  
+
   if (process.env.NODE_ENV === 'development') {
     let globalWithMongo = global as typeof globalThis & {
       _mongoClientPromise?: Promise<MongoClient>
-    }
+    };
     if (!globalWithMongo._mongoClientPromise) {
-      client = new MongoClient(MONGODB_URI, options);
+      client = new MongoClient(uri, options);
       globalWithMongo._mongoClientPromise = client.connect();
     }
     clientPromise = globalWithMongo._mongoClientPromise;
   } else {
-    client = new MongoClient(MONGODB_URI, options);
+    client = new MongoClient(uri, options);
     clientPromise = client.connect();
   }
 }
+
+// We only initialize once
+if (!clientPromise) {
+  initializeMongo().catch(console.error);
+}
+
 
 // Mongoose connection for the new API endpoints
 let isConnected = false;
 
 export async function connectDB() {
-  if (!MONGODB_URI) {
-    throw new Error('MONGODB_URI environment variable is not set');
-  }
-
   if (isConnected) {
     return mongoose.connection;
   }
 
+  const uri = await getMongoUri();
+
   try {
-    const connection = await mongoose.connect(MONGODB_URI);
+    const connection = await mongoose.connect(uri);
     isConnected = true;
     console.log('✅ Connected to MongoDB with Mongoose');
     return connection;
@@ -56,5 +75,14 @@ export async function connectDB() {
     throw error;
   }
 }
+
+export async function stopDB() {
+    if (mongoServer) {
+        await mongoose.connection.close();
+        await mongoServer.stop();
+        console.log('In-memory MongoDB server stopped.');
+    }
+}
+
 
 export default clientPromise;

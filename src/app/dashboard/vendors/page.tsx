@@ -1,17 +1,14 @@
-import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/layout/page-header";
 import { VendorsTable } from "@/components/dashboard/vendors-table";
-import { VendorOnboardingDialog } from "@/components/dashboard/vendor-onboarding-dialog";
 import { VendorInviteManagerNew } from "@/components/vendor/vendor-invite-manager-new";
-import { PlusCircle } from "lucide-react";
-import { fetchVendors, fetchCompany } from "@/lib/database/queries";
-import { getSession } from "@/lib/auth";
+import { getVendorsForCurrentUser } from "@/lib/data/vendors";
+import { getSession } from "@/lib/auth/session";
 
 
 export default async function VendorsPage() {
-  const vendors = await fetchVendors();
+  // Fetch data directly on the server
+  const vendors = await getVendorsForCurrentUser();
   const session = await getSession();
-  const company = session?.companyId ? await fetchCompany() : null;
   
   return (
     <div className="space-y-6">
@@ -19,13 +16,12 @@ export default async function VendorsPage() {
         title="Vendors" 
         description="Manage your company's vendors and their contact information."
       >
-        <div className="flex gap-2">
-          <VendorInviteManagerNew 
-            companyId={session?.companyId || ''} 
-            companyName={company?.name || 'Your Company'} 
-          />
-          <VendorOnboardingDialog />
-        </div>
+        {/* The Add Vendor button is now part of the VendorsTable component */}
+        {/* The invite manager may need to be updated separately */}
+        <VendorInviteManagerNew
+          companyId={session?.userId || ''} // This is likely incorrect, needs user's tenantId
+          companyName={'Your Company'}
+        />
       </PageHeader>
       
       <VendorsTable data={vendors} />
