@@ -1,0 +1,425 @@
+{
+  "applicationName": "VendorVerse",
+  "applicationVersion": "0.1.0",
+  "description": "Comprehensive Next.js 15 Full-Stack Application for managing vendors, invoices, contracts, and business relationships with AI integration",
+  "tagline": "Streamline Your Vendor Management & Invoice Tracking",
+  
+  "overview": {
+    "purpose": "A complete vendor management ecosystem that helps businesses manage vendor relationships, track invoices, handle contracts, and gain AI-powered insights into their vendor operations",
+    "targetAudience": "Businesses of all sizes that need to manage vendor relationships, track expenses, process invoices, and maintain compliance through contract management",
+    "businessValue": "Reduces manual vendor management overhead, provides AI-driven spending insights, automates invoice processing, and streamlines contract lifecycle management"
+  },
+
+  "technicalArchitecture": {
+    "framework": "Next.js 15 with App Router",
+    "frontend": {
+      "language": "TypeScript",
+      "runtime": "React 18",
+      "styling": "Tailwind CSS",
+      "uiLibrary": "Radix UI + Custom Components (shadcn/ui)",
+      "stateManagement": "React Hooks + Server State",
+      "formHandling": "React Hook Form + Zod validation"
+    },
+    "backend": {
+      "runtime": "Node.js",
+      "apiArchitecture": "Next.js API Routes",
+      "authentication": "Custom JWT implementation with sessions",
+      "dataValidation": "Zod schemas"
+    },
+    "database": {
+      "primary": "MongoDB with Mongoose ODM",
+      "connectionLibrary": "MongoDB Native Client",
+      "collections": [
+        "companies",
+        "vendors", 
+        "contracts",
+        "invoices",
+        "users",
+        "vendorApplications",
+        "notifications",
+        "action_logs"
+      ]
+    },
+    "aiIntegration": {
+      "provider": "Google AI (Gemini)",
+      "framework": "Google Genkit",
+      "capabilities": [
+        "Invoice data extraction",
+        "Spending pattern analysis",
+        "Business insights generation",
+        "Context-aware assistance"
+      ]
+    },
+    "emailService": {
+      "provider": "Nodemailer",
+      "features": [
+        "Vendor invite notifications",
+        "Contract expiration alerts",
+        "Invoice reminders",
+        "Application status updates"
+      ]
+    }
+  },
+
+  "coreFeatures": {
+    "vendorManagement": {
+      "description": "Comprehensive vendor lifecycle management",
+      "capabilities": [
+        "Vendor onboarding with 4-step guided process",
+        "Vendor profile management with ratings and tags", 
+        "Status tracking (Active, Inactive, Pending)",
+        "Advanced search and filtering",
+        "Duplicate prevention",
+        "Bulk operations support",
+        "Performance tracking and notes"
+      ],
+      "workflow": [
+        "Company creates vendor invite or vendor applies",
+        "Vendor completes application with business details",
+        "Company reviews and approves/rejects application",
+        "Approved vendors gain access to vendor portal",
+        "Ongoing relationship management and performance tracking"
+      ]
+    },
+    
+    "invoiceManagement": {
+      "description": "AI-powered invoice processing and tracking",
+      "capabilities": [
+        "AI-driven invoice data extraction",
+        "Invoice creation and editing",
+        "Multi-currency support with base currency conversion",
+        "Payment status tracking",
+        "Automated payment reminders",
+        "PDF generation and export",
+        "File upload and attachment management",
+        "Payment schedule management"
+      ],
+      "workflow": [
+        "Upload invoice documents or create manually",
+        "AI extracts key data (amount, due date, vendor, items)",
+        "Review and validate extracted information",
+        "Track payment status and send reminders",
+        "Generate reports and insights"
+      ]
+    },
+
+    "contractManagement": {
+      "description": "Complete contract lifecycle management",
+      "capabilities": [
+        "Contract creation with guided 4-step process",
+        "Multiple contract types (Service, Product, Subscription, One-time, Framework)",
+        "Status management (Draft, Active, Pending, Expired, Terminated, Suspended)",
+        "Milestone and deliverable tracking",
+        "KPI monitoring and performance metrics",
+        "Auto-renewal settings and notifications",
+        "File attachment and document management",
+        "Expiration tracking and alerts"
+      ],
+      "workflow": [
+        "Create contract with vendor and basic terms",
+        "Define payment terms, milestones, and KPIs",
+        "Set up auto-renewal and reminder preferences",
+        "Track contract performance and compliance",
+        "Manage renewals and modifications"
+      ]
+    },
+
+    "companyManagement": {
+      "description": "Multi-tenant company registration and profile management",
+      "capabilities": [
+        "Company registration with comprehensive business details",
+        "Multi-address support with primary address designation",
+        "Multiple contact management with roles",
+        "Business preferences and default settings",
+        "Tax ID and legal identifier management",
+        "Industry and business type classification",
+        "Website and description management"
+      ],
+      "workflow": [
+        "Register company with basic information",
+        "Set up business addresses and contacts",
+        "Configure preferences and default settings",
+        "Manage ongoing company profile updates"
+      ]
+    },
+
+    "vendorPortal": {
+      "description": "Dedicated portal for vendor interactions",
+      "capabilities": [
+        "Secure vendor authentication with PIN/token access",
+        "Company profile viewing for approved vendors",
+        "Invoice submission and tracking",
+        "Document upload and management",
+        "Communication with client companies",
+        "Application status monitoring"
+      ],
+      "workflow": [
+        "Vendor receives invite link or uses PIN access",
+        "Complete vendor application process",
+        "Access portal after approval",
+        "Submit invoices and track payments",
+        "Manage ongoing business relationship"
+      ]
+    },
+
+    "aiAssistant": {
+      "description": "Context-aware AI assistant for business operations",
+      "capabilities": [
+        "Business context analysis with access to all company data",
+        "Spending trend analysis and insights",
+        "Vendor performance recommendations",
+        "Contract renewal suggestions",
+        "Invoice processing assistance",
+        "Business process optimization advice",
+        "Predictive analytics for vendor relationships"
+      ],
+      "workflow": [
+        "AI builds context from user's business data",
+        "Provides intelligent recommendations based on patterns",
+        "Assists with decision-making through data analysis",
+        "Generates actionable insights for business optimization"
+      ]
+    }
+  },
+
+  "userWorkflows": {
+    "companySetup": {
+      "steps": [
+        "Register new company account",
+        "Complete company profile with business details",
+        "Set up addresses and contact information", 
+        "Configure business preferences and defaults",
+        "Invite team members if needed"
+      ],
+      "estimatedTime": "10-15 minutes"
+    },
+
+    "vendorOnboarding": {
+      "steps": [
+        "Create vendor invite or receive vendor application",
+        "Vendor completes 4-step application process",
+        "Company reviews vendor application",
+        "Approve/reject vendor application",
+        "Vendor gains access to portal (if approved)"
+      ],
+      "estimatedTime": "15-30 minutes"
+    },
+
+    "contractCreation": {
+      "steps": [
+        "Initiate new contract with vendor selection",
+        "Define contract terms and payment details",
+        "Set up milestones and performance metrics",
+        "Configure reminders and auto-renewal settings",
+        "Activate contract and begin tracking"
+      ],
+      "estimatedTime": "20-45 minutes"
+    },
+
+    "invoiceProcessing": {
+      "steps": [
+        "Upload invoice document or create manually",
+        "AI extracts and populates invoice data",
+        "Review and validate extracted information",
+        "Submit invoice for processing",
+        "Track payment status and manage reminders"
+      ],
+      "estimatedTime": "5-10 minutes per invoice"
+    }
+  },
+
+  "apiEndpoints": {
+    "vendor": {
+      "/api/vendor/portal-data": "Fetch vendor portal data",
+      "/api/vendor/profile": "Manage vendor profile information",
+      "/api/vendor/invoices": "Submit and manage vendor invoices",
+      "/api/vendor/companies": "Access client company information",
+      "/api/vendor/check-session": "Validate vendor session",
+      "/api/vendor/verify-session": "Verify vendor authentication"
+    },
+    "vendorApplications": {
+      "/api/vendor-applications": "Submit and manage vendor applications",
+      "/api/vendor-invites": "Handle vendor invitation system"
+    },
+    "vendors": {
+      "/api/vendors": "CRUD operations for vendor management"
+    },
+    "contracts": {
+      "/api/contracts": "Contract lifecycle management operations"
+    },
+    "emailService": {
+      "/api/email-service": "Handle email notifications and communications"
+    },
+    "user": {
+      "/api/user": "User authentication and profile management"
+    }
+  },
+
+  "databaseSchema": {
+    "companies": {
+      "description": "Multi-tenant company profiles",
+      "keyFields": ["companyId", "name", "businessType", "addresses", "contacts", "preferences"]
+    },
+    "vendors": {
+      "description": "Vendor information and relationships",
+      "keyFields": ["companyId", "name", "email", "service", "status", "rating", "tags"]
+    },
+    "contracts": {
+      "description": "Contract management and tracking",
+      "keyFields": ["companyId", "vendor", "type", "status", "startDate", "endDate", "value", "milestones"]
+    },
+    "invoices": {
+      "description": "Invoice processing and payment tracking",
+      "keyFields": ["companyId", "vendorId", "amount", "dueDate", "status", "items", "paymentSchedule"]
+    },
+    "vendorApplications": {
+      "description": "Vendor application submissions and approvals",
+      "keyFields": ["applicationId", "vendorName", "email", "targetCompanyId", "status", "submittedAt"]
+    },
+    "users": {
+      "description": "User accounts and authentication",
+      "keyFields": ["email", "companyId", "role", "name"]
+    }
+  },
+
+  "securityFeatures": {
+    "authentication": {
+      "method": "JWT-based session management",
+      "features": [
+        "Secure password handling",
+        "Session timeout management",
+        "Multi-tenant isolation",
+        "Role-based access control"
+      ]
+    },
+    "dataProtection": {
+      "features": [
+        "Input validation with Zod schemas",
+        "SQL injection prevention",
+        "XSS protection",
+        "CSRF protection",
+        "Data sanitization"
+      ]
+    },
+    "multiTenancy": {
+      "description": "Complete data isolation between companies",
+      "implementation": "CompanyId-based filtering on all operations"
+    }
+  },
+
+  "integrations": {
+    "ai": {
+      "provider": "Google AI/Genkit",
+      "useCases": [
+        "Invoice data extraction from PDFs",
+        "Spending pattern analysis",
+        "Vendor performance insights",
+        "Business process recommendations"
+      ]
+    },
+    "email": {
+      "provider": "Nodemailer",
+      "useCases": [
+        "Vendor invitation emails",
+        "Contract expiration notifications",
+        "Invoice payment reminders",
+        "Application status updates"
+      ]
+    },
+    "pdf": {
+      "libraries": ["jspdf", "html2canvas"],
+      "useCases": [
+        "Invoice PDF generation",
+        "Contract document creation",
+        "Report generation"
+      ]
+    }
+  },
+
+  "developmentInfo": {
+    "environment": {
+      "development": {
+        "port": 9002,
+        "command": "npm run dev",
+        "features": ["Hot reload", "Turbopack", "Development debugging"]
+      },
+      "production": {
+        "buildCommand": "npm run build",
+        "startCommand": "npm run start",
+        "optimizations": ["Code splitting", "Tree shaking", "Image optimization"]
+      }
+    },
+    "scripts": {
+      "npm run dev": "Start development server with Turbopack",
+      "npm run build": "Build for production",
+      "npm run lint": "Run ESLint",
+      "npm run typecheck": "TypeScript type checking",
+      "npm run seed": "Seed database with sample data",
+      "npm run test-email": "Test email configuration"
+    },
+    "environmentVariables": [
+      "MONGODB_URI",
+      "JWT_SECRET", 
+      "EMAIL_HOST",
+      "EMAIL_USER",
+      "EMAIL_PASSWORD",
+      "GOOGLE_AI_API_KEY"
+    ]
+  },
+
+  "deploymentOptions": [
+    "Vercel (Recommended for Next.js)",
+    "Netlify",
+    "Docker containers", 
+    "Node.js hosting platforms",
+    "Cloud providers (AWS, GCP, Azure)"
+  ],
+
+  "businessMetrics": {
+    "dashboardKPIs": [
+      "Total vendor count",
+      "Active contracts",
+      "Outstanding invoices", 
+      "Total spending",
+      "Upcoming contract expirations",
+      "Pending vendor applications"
+    ],
+    "analyticsCapabilities": [
+      "Spending trends over time",
+      "Vendor performance analysis",
+      "Contract renewal forecasting",
+      "Payment pattern insights",
+      "Vendor relationship health scoring"
+    ]
+  },
+
+  "futureRoadmap": {
+    "enhancedAI": [
+      "Advanced predictive analytics",
+      "Automated contract term optimization",
+      "Smart vendor matching",
+      "Risk assessment algorithms"
+    ],
+    "integrations": [
+      "Accounting software connections (QuickBooks, Xero)",
+      "Payment gateway integrations",
+      "CRM system connections",
+      "ERP system integrations"
+    ],
+    "mobileApp": [
+      "Native mobile applications",
+      "Offline capability",
+      "Push notifications",
+      "Mobile document scanning"
+    ]
+  },
+
+  "license": "Proprietary software - All rights reserved",
+  "lastUpdated": "2024-01-15",
+  "maintainer": "Development Team",
+  "supportChannels": [
+    "Repository issues",
+    "Documentation portal",
+    "Development team contact"
+  ]
+}
