@@ -1,13 +1,76 @@
 
 import { NextRequest, NextResponse } from 'next/server'
-import { verifySession } from '@/lib/session'
+import { jwtVerify } from 'jose'
 
 const protectedRoutes = ['/dashboard']
 const authRoutes = ['/login', '/signup']
+const vendorPortalProtectedRoutes = ['/vendor-portal/dashboard']
+const vendorAuthRoutes = ['/vendor-portal', '/vendor-portal/login', '/vendor-portal/signup']
+
+// Edge-compatible session verification (JWT only, no database)
+async function verifySessionToken(token?: string): Promise<boolean> {
+  if (!token) return false;
+  
+  try {
+    const secret = new TextEncoder().encode(process.env.AUTH_SECRET || process.env.SESSION_SECRET);
+    const { payload } = await jwtVerify(token, secret);
+    return !!payload.userId && new Date() < new Date(payload.expiresAt as string);
+  } catch {
+    return false;
+  }
+}
+
+// Edge-compatible vendor session verification (JWT only, no database)
+async function verifyVendorSessionToken(token?: string): Promise<boolean> {
+  if (!token) return false;
+  
+  try {
+    const secret = new TextEncoder().encode(process.env.VENDOR_AUTH_SECRET || process.env.AUTH_SECRET);
+    const { payload } = await jwtVerify(token, secret);
+    return !!payload.vendorId; // Ensure it's a vendor token
+  } catch {
+    return false;
+  }
+}
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
-  const { isAuth } = await verifySession()
+  
+  // Check if this is a vendor portal route
+  const isVendorPortalProtectedRoute = vendorPortalProtectedRoutes.some((route) =>
+    pathname.startsWith(route)
+  )
+  const isVendorAuthRoute = vendorAuthRoutes.some((route) =>
+    pathname.startsWith(route)
+  )
+
+  // Handle vendor portal routes
+  if (isVendorPortalProtectedRoute || isVendorAuthRoute) {
+    const vendorSessionToken = request.cookies.get('vendor-session')?.value
+    const isVendorAuth = await verifyVendorSessionToken(vendorSessionToken)
+
+    // Protect vendor portal routes (except auth routes)
+    if (isVendorPortalProtectedRoute && !isVendorAuth) {
+      return NextResponse.redirect(new URL('/vendor-portal', request.url))
+    }
+
+    // Redirect authenticated vendors away from auth routes (except the main login page)
+    if (isVendorAuthRoute && isVendorAuth && pathname !== '/vendor-portal') {
+      return NextResponse.redirect(new URL('/vendor-portal/dashboard', request.url))
+    }
+
+    // Add security headers for vendor portal
+    const response = NextResponse.next()
+    response.headers.set('X-Frame-Options', 'DENY')
+    response.headers.set('X-Content-Type-Options', 'nosniff')
+    response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
+    
+    return response
+  }
+
+  // Handle regular company portal routes
+  const sessionToken = request.cookies.get('session')?.value
+  const isAuth = await verifySessionToken(sessionToken)
 
   const isProtectedRoute = protectedRoutes.some((route) =>
     pathname.startsWith(route)

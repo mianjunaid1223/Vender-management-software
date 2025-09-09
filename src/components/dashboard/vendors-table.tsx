@@ -47,12 +47,14 @@ import {
   Phone, 
   MapPin,
   FileText,
-  Receipt
+  Receipt,
+  Globe
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { deleteVendor, fetchContractsByVendor, fetchInvoicesByVendor } from "@/lib/data";
 import type { Vendor, Contract, Invoice } from "@/lib/types";
 import { VendorEditDialog } from "./vendor-edit-dialog";
+import { VendorPortalManagement } from "./vendor-portal-management";
 import { ScrollArea } from "../ui/scroll-area";
 
 interface VendorsTableProps {
@@ -67,6 +69,7 @@ export function VendorsTable({ data: initialData }: VendorsTableProps) {
   const [showViewDialog, setShowViewDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showPortalManagement, setShowPortalManagement] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const { toast } = useToast();
 
@@ -89,6 +92,11 @@ export function VendorsTable({ data: initialData }: VendorsTableProps) {
   const handleEditVendor = (vendor: Vendor) => {
     setSelectedVendor(vendor);
     setShowEditDialog(true);
+  };
+
+  const handlePortalManagement = (vendor: Vendor) => {
+    setSelectedVendor(vendor);
+    setShowPortalManagement(true);
   };
 
   const handleDeleteVendor = async (vendor: Vendor) => {
@@ -255,6 +263,10 @@ export function VendorsTable({ data: initialData }: VendorsTableProps) {
                         <Edit className="mr-2 h-4 w-4" />
                         Edit
                       </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handlePortalManagement(vendor)}>
+                        <Globe className="mr-2 h-4 w-4" />
+                        Manage Portal Access
+                      </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem 
                         onClick={() => handleDeleteVendor(vendor)}
@@ -404,6 +416,15 @@ export function VendorsTable({ data: initialData }: VendorsTableProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Vendor Portal Management Dialog */}
+      {selectedVendor && (
+        <VendorPortalManagement
+          vendor={selectedVendor}
+          open={showPortalManagement}
+          onOpenChange={setShowPortalManagement}
+        />
+      )}
     </div>
   );
 }

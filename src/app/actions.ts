@@ -10,6 +10,7 @@ import { ObjectId } from 'mongodb';
 import { Invoice, Company } from "@/lib/types";
 import { createSession, deleteSession } from "@/lib/session"; 
 import { getSession } from "@/lib/auth";
+import bcrypt from 'bcryptjs';
 
 // --- Form Schemas ---
 
@@ -59,7 +60,32 @@ export async function loginUser(prevState: any, formData: FormData) {
   try {
     const user = await db.collection("users").findOne({ email });
 
-    if (!user || user.password !== password) {
+    if (!user) {
+      return { 
+        message: "Invalid email or password.",
+        errors: {}
+      };
+    }
+
+    // Check if password is hashed or plain text (for backward compatibility)
+    let isPasswordValid = false;
+    if (user.password.startsWith('$2a$') || user.password.startsWith('$2b$')) {
+      // Password is hashed, use bcrypt
+      isPasswordValid = await bcrypt.compare(password, user.password);
+    } else {
+      // Password is plain text (legacy), compare directly and upgrade
+      isPasswordValid = user.password === password;
+      if (isPasswordValid) {
+        // Upgrade to hashed password
+        const hashedPassword = await bcrypt.hash(password, 12);
+        await db.collection("users").updateOne(
+          { _id: user._id },
+          { $set: { password: hashedPassword } }
+        );
+      }
+    }
+
+    if (!isPasswordValid) {
       return { 
         message: "Invalid email or password.",
         errors: {}
@@ -182,11 +208,14 @@ export async function registerCompany(prevState: any, formData: FormData) {
         
         const companyId = companyResult.insertedId.toString();
 
+        // Hash the password before storing
+        const hashedPassword = await bcrypt.hash(userPassword, 12);
+
         // Step 2: Create the user and assign them the new company's ID
         const userResult = await usersCollection.insertOne({
             name: userFullName,
             email: primaryContactEmail,
-            password: userPassword,
+            password: hashedPassword,
             companyId: companyId,
             image: `https://placehold.co/100x100.png?text=${userFullName.charAt(0)}`,
             role: "admin",

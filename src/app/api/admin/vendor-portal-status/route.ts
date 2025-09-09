@@ -1,0 +1,83 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { getSession } from '@/lib/auth';
+import { ObjectId } from 'mongodb';
+import { getDb } from '@/lib/data';
+
+export async function GET(request: NextRequest) {
+  try {
+    const session = await getSession();
+    if (!session || (session.role !== 'company_admin' && session.role !== 'admin')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const vendorId = searchParams.get('vendorId');
+
+    if (!vendorId) {
+      return NextResponse.json(
+        { error: 'Vendor ID is required' },
+        { status: 400 }
+      );
+    }
+
+    const db = await getDb();
+
+    // Get the current portal access status from the company document
+    const company = await db.collection('companies').findOne(
+      { _id: new ObjectId(session.companyId) },
+      { projection: { vendorPortalAccess: 1 } }
+    );
+
+    if (!company) {
+      return NextResponse.json({ error: 'Company not found' }, { status: 404 });
+    }
+
+    // Find the vendor's portal access in the array
+    const vendorAccess = company.vendorPortalAccess?.find((access: any) => access.vendorId === vendorId);
+
+    if (!vendorAccess) {
+      // No portal access configured, return default disabled state
+      return NextResponse.json({
+        enabled: false,
+        features: [],
+        mfaRequired: false,
+        sessionTimeout: 480,
+        lastLogin: null
+      });
+    }
+
+    // Convert the database features object to an array of enabled feature IDs
+    const enabledFeatures: string[] = [];
+    const features = vendorAccess.features || {};
+
+    // Map database feature flags to frontend feature IDs
+    if (features.viewInvoices || features.canViewInvoices) enabledFeatures.push('view_invoices');
+    if (features.downloadInvoices || features.canDownloadInvoices) enabledFeatures.push('download_invoices');
+    if (features.uploadDocuments || features.canUploadInvoices) enabledFeatures.push('upload_invoices');
+    if (features.profileManagement || features.canEditProfile) enabledFeatures.push('edit_profile');
+    if (features.viewContracts || features.canViewContracts) enabledFeatures.push('view_contracts');
+    if (features.canSignContracts) enabledFeatures.push('sign_contracts');
+    if (features.viewComplianceRequirements || features.canUploadCompliance) enabledFeatures.push('upload_compliance');
+    if (features.paymentStatus || features.canViewPayments) enabledFeatures.push('view_payments');
+    if (features.updatePaymentInfo || features.canUpdatePaymentInfo) enabledFeatures.push('update_payment_info');
+    if (features.communicationTools || features.communicateWithBuyer || features.canCommunicate) enabledFeatures.push('communication');
+    if (features.communicateWithBuyer || features.canCommunicate) enabledFeatures.push('communicate_with_buyer');
+    if (features.uploadDocuments || features.documentUpload) enabledFeatures.push('upload_documents');
+    if (features.viewComplianceRequirements || features.canViewCompliance) enabledFeatures.push('view_compliance_requirements');
+
+    return NextResponse.json({
+      enabled: vendorAccess.enabled || false,
+      features: enabledFeatures,
+      mfaRequired: vendorAccess.mfaRequired || false,
+      sessionTimeout: vendorAccess.sessionTimeout || 480,
+      lastLogin: vendorAccess.lastLoginAt || null
+    });
+
+  } catch (error) {
+    console.error('Error checking vendor portal status:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}

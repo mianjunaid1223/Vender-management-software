@@ -4,9 +4,9 @@ import 'server-only'
 import { SignJWT, jwtVerify } from 'jose'
 import { cookies } from 'next/headers'
 
-const secretKey = process.env.SESSION_SECRET
+const secretKey = process.env.AUTH_SECRET || process.env.SESSION_SECRET
 if (!secretKey) {
-  throw new Error('SESSION_SECRET is not set in the environment variables')
+  throw new Error('AUTH_SECRET or SESSION_SECRET is not set in the environment variables')
 }
 const encodedKey = new TextEncoder().encode(secretKey)
  

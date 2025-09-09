@@ -15,6 +15,9 @@ export default function Home() {
         <div className="flex items-center gap-4">
           <ThemeToggle />
           <Button variant="ghost" asChild>
+            <Link href="/vendor-portal">Vendor Portal</Link>
+          </Button>
+          <Button variant="ghost" asChild>
             <Link href="/login">Login</Link>
           </Button>
           <Button asChild>
