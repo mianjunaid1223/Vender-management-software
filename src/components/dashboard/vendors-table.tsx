@@ -47,7 +47,8 @@ import {
   Phone, 
   MapPin,
   FileText,
-  Receipt
+  Receipt,
+  Shield
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { deleteVendor, fetchContractsByVendor, fetchInvoicesByVendor } from "@/lib/database/queries";

@@ -63,12 +63,12 @@ export default function VendorDashboardPage({ params }: VendorDashboardProps) {
   const [error, setError] = useState<string | null>(null);
   const [authMode, setAuthMode] = useState<'company' | 'vendor'>('company');
   const [dashboardData, setDashboardData] = useState<any>(null);
+  const [dashboardData, setDashboardData] = useState<any>(null);
   
   // Unwrap the params Promise
   const { vendorId } = use(params);
 
   const fetchVendorData = useCallback(async () => {
-      try {
         setIsLoading(true);
         setError(null);
 
@@ -81,6 +81,7 @@ export default function VendorDashboardPage({ params }: VendorDashboardProps) {
           headers['X-Dashboard-Auth'] = 'true';
         }
 
+        // Fetch dashboard data with permissions
         // Fetch dashboard data with permissions
         const response = await fetch(`/api/vendor/dashboard-with-permissions/${vendorId}`, {
           headers
@@ -110,6 +111,7 @@ export default function VendorDashboardPage({ params }: VendorDashboardProps) {
         const data = await response.json();
         setVendor(data.vendor);
         setDashboardData(data);
+        setDashboardData(data);
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'An error occurred';
         setError(errorMessage);
@@ -123,6 +125,7 @@ export default function VendorDashboardPage({ params }: VendorDashboardProps) {
       }
   }, [vendorId, authMode, router, toast]);
 
+  useEffect(() => {
   useEffect(() => {
     if (vendorId) {
       fetchVendorData();
@@ -207,6 +210,10 @@ export default function VendorDashboardPage({ params }: VendorDashboardProps) {
       <main className="container mx-auto px-4 py-6">
         <Suspense fallback={<VendorDashboardLoading />}>
           <PermissionAwareDashboard 
+            vendorId={vendorId} 
+            companyId={vendor.company?.id || ''}
+            initialData={dashboardData}
+          />
             vendorId={vendorId} 
             companyId={vendor.company?.id || ''}
             initialData={dashboardData}
