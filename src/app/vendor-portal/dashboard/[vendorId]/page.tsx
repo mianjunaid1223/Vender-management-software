@@ -1,8 +1,8 @@
 'use client';
 
-import { Suspense, useEffect, useState, use } from 'react';
+import { Suspense, useEffect, useState, use, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { DynamicVendorDashboard } from '@/components/vendor-portal/dynamic-vendor-dashboard';
+import { PermissionAwareDashboard } from '@/components/vendor-portal/permission-aware-dashboard';
 import { Button } from '@/components/ui/button';
 import { LogOut, ArrowLeft, Building } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -62,12 +62,12 @@ export default function VendorDashboardPage({ params }: VendorDashboardProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [authMode, setAuthMode] = useState<'company' | 'vendor'>('company');
+  const [dashboardData, setDashboardData] = useState<any>(null);
   
   // Unwrap the params Promise
   const { vendorId } = use(params);
 
-  useEffect(() => {
-    const fetchVendorData = async () => {      
+  const fetchVendorData = useCallback(async () => {
       try {
         setIsLoading(true);
         setError(null);
@@ -81,7 +81,8 @@ export default function VendorDashboardPage({ params }: VendorDashboardProps) {
           headers['X-Dashboard-Auth'] = 'true';
         }
 
-        const response = await fetch(`/api/vendor/dashboard/${vendorId}`, {
+        // Fetch dashboard data with permissions
+        const response = await fetch(`/api/vendor/dashboard-with-permissions/${vendorId}`, {
           headers
         });
         
@@ -108,6 +109,7 @@ export default function VendorDashboardPage({ params }: VendorDashboardProps) {
 
         const data = await response.json();
         setVendor(data.vendor);
+        setDashboardData(data);
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'An error occurred';
         setError(errorMessage);
@@ -119,12 +121,13 @@ export default function VendorDashboardPage({ params }: VendorDashboardProps) {
       } finally {
         setIsLoading(false);
       }
-    };
+  }, [vendorId, authMode, router, toast]);
 
+  useEffect(() => {
     if (vendorId) {
       fetchVendorData();
     }
-  }, [vendorId, authMode, router, toast]);
+  }, [fetchVendorData, vendorId]);
 
   const handleBackToDashboard = () => {
     router.push('/dashboard');
@@ -203,7 +206,11 @@ export default function VendorDashboardPage({ params }: VendorDashboardProps) {
       {/* Main Content */}
       <main className="container mx-auto px-4 py-6">
         <Suspense fallback={<VendorDashboardLoading />}>
-          <DynamicVendorDashboard vendorId={vendorId} />
+          <PermissionAwareDashboard 
+            vendorId={vendorId} 
+            companyId={vendor.company?.id || ''}
+            initialData={dashboardData}
+          />
         </Suspense>
       </main>
     </div>
