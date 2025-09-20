@@ -334,7 +334,7 @@ export async function updateVendorProfile(
   if (!currentVendor) throw new Error('Vendor not found');
 
   // Only allow certain fields to be updated by vendor
-  const allowedFields = ['phone', 'address', 'contactPerson', 'notes'];
+  const allowedFields = ['name', 'email', 'website', 'phone', 'address', 'contactPerson', 'notes'];
   const filteredUpdates = Object.keys(updates)
     .filter(key => allowedFields.includes(key))
     .reduce((obj: any, key) => {
