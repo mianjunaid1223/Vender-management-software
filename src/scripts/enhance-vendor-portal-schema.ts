@@ -37,7 +37,7 @@ async function enhanceSchema() {
       { key: { userId: 1 } },
       { key: { vendorId: 1, companyId: 1 } },
       { key: { isActive: 1 } },
-      { key: { expiresAt: 1 }, expireAfterSeconds: 0 } // TTL index
+      { key: { expiresAt: 1 }, expireAfterSeconds: 86400 } // TTL index (expires after 24 hours)
     ]);
     console.log('✓ Created vendor_sessions collection with indexes');
 
