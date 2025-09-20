@@ -13,7 +13,7 @@ async function migratePasswords() {
     const usersWithPlainPasswords = await usersCollection.find({
       password: { 
         $exists: true, 
-        $not: { $regex: /^\$2[ab]\$/ } 
+        $not: { $regex: /^\$2[abxy]\$/ } 
       }
     }).toArray();
     
