@@ -3,6 +3,7 @@ import { ObjectId } from 'mongodb';
 import { getDb } from '@/lib/data';
 import { getSession } from '@/lib/auth';
 import { createAuditLog } from '@/lib/audit';
+import type { VendorPortalAccess } from '@/lib/types/vendor-portal';
 
 export async function POST(request: NextRequest) {
   try {
@@ -108,7 +109,7 @@ export async function POST(request: NextRequest) {
       { projection: { vendorPortalAccess: 1, name: 1 } }
     );
 
-    const portalAccess = company?.vendorPortalAccess?.find((access: any) => access.vendorId === vendorId);
+    const portalAccess = company?.vendorPortalAccess?.find((access: VendorPortalAccess) => access.vendorId === vendorId);
 
     // Create audit log
     await createAuditLog({

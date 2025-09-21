@@ -3,6 +3,7 @@ import { enableVendorPortalAccess, disableVendorPortalAccess } from '@/lib/auth/
 import { getSession } from '@/lib/auth';
 import { ObjectId } from 'mongodb';
 import { getDb } from '@/lib/data';
+import type { VendorPortalAccess } from '@/lib/types/vendor-portal';
 
 export async function POST(request: NextRequest) {
   try {
@@ -117,7 +118,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Find the vendor's portal access in the array
-    const vendorAccess = company.vendorPortalAccess?.find((access: any) => access.vendorId === vendorId);
+    const vendorAccess = company.vendorPortalAccess?.find((access: VendorPortalAccess) => access.vendorId === vendorId);
 
     if (!vendorAccess) {
       // No portal access configured, return default disabled state

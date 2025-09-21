@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuditLogs, getAuditSummary } from '@/lib/audit';
 import { getSession } from '@/lib/auth';
+import type { AuditAction } from '@/lib/types/vendor-portal';
+import { PAGINATION } from '@/config/constants';
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,11 +16,16 @@ export async function GET(request: NextRequest) {
     const vendorId = searchParams.get('vendorId');
     const userId = searchParams.get('userId');
     const resource = searchParams.get('resource');
-    const action = searchParams.get('action');
+    const action = searchParams.get('action') as AuditAction | null;
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
-    const limit = parseInt(searchParams.get('limit') || '100');
-    const offset = parseInt(searchParams.get('offset') || '0');
+    
+    // Validate and sanitize numeric inputs
+    const limitParam = searchParams.get('limit');
+    const offsetParam = searchParams.get('offset');
+    const limit = Math.min(Math.max(parseInt(limitParam || PAGINATION.AUDIT_LOG_LIMIT.toString(), 10) || PAGINATION.AUDIT_LOG_LIMIT, 1), PAGINATION.AUDIT_LOG_MAX_LIMIT);
+    const offset = Math.max(parseInt(offsetParam || '0', 10) || 0, 0);
+    
     const timeRange = searchParams.get('timeRange') as 'day' | 'week' | 'month' | 'year' || 'week';
 
     if (type === 'summary') {
@@ -36,7 +43,7 @@ export async function GET(request: NextRequest) {
       vendorId: vendorId || undefined,
       userId: userId || undefined,
       resource: resource || undefined,
-      action: action as any,
+      action: action || undefined,
       startDate: startDate || undefined,
       endDate: endDate || undefined,
       limit,

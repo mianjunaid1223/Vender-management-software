@@ -1,4 +1,4 @@
-import { getSession } from '@/lib/session'
+import { getSession } from '@/lib/auth'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 

@@ -2,6 +2,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { jwtVerify } from 'jose'
 
+// Environment validation - fail fast if secrets are missing
+const AUTH_SECRET = process.env.AUTH_SECRET || process.env.SESSION_SECRET;
+const VENDOR_AUTH_SECRET = process.env.VENDOR_AUTH_SECRET || process.env.AUTH_SECRET;
+
+if (!AUTH_SECRET) {
+  throw new Error('AUTH_SECRET or SESSION_SECRET is required in environment variables');
+}
+
+if (!VENDOR_AUTH_SECRET) {
+  throw new Error('VENDOR_AUTH_SECRET or AUTH_SECRET is required in environment variables');
+}
+
 const protectedRoutes = ['/dashboard']
 const authRoutes = ['/login', '/signup']
 const vendorPortalProtectedRoutes = ['/vendor-portal/dashboard']
@@ -12,7 +24,7 @@ async function verifySessionToken(token?: string): Promise<boolean> {
   if (!token) return false;
   
   try {
-    const secret = new TextEncoder().encode(process.env.AUTH_SECRET || process.env.SESSION_SECRET);
+    const secret = new TextEncoder().encode(AUTH_SECRET);
     const { payload } = await jwtVerify(token, secret);
     return !!payload.userId && new Date() < new Date(payload.expiresAt as string);
   } catch {
@@ -25,7 +37,7 @@ async function verifyVendorSessionToken(token?: string): Promise<boolean> {
   if (!token) return false;
   
   try {
-    const secret = new TextEncoder().encode(process.env.VENDOR_AUTH_SECRET || process.env.AUTH_SECRET);
+    const secret = new TextEncoder().encode(VENDOR_AUTH_SECRET);
     const { payload } = await jwtVerify(token, secret);
     return !!payload.vendorId; // Ensure it's a vendor token
   } catch {

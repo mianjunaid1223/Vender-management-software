@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getVendorSession } from '@/lib/auth/vendor-auth';
 import { getDb } from '@/lib/data';
+import type { AuditLog } from '@/lib/types/vendor-portal';
+import { PAGINATION } from '@/config/constants';
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,7 +16,8 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
-    const limit = parseInt(searchParams.get('limit') || '10');
+    const limitParam = searchParams.get('limit');
+    const limit = Math.min(Math.max(parseInt(limitParam || PAGINATION.DEFAULT_LIMIT.toString(), 10) || PAGINATION.DEFAULT_LIMIT, 1), PAGINATION.MAX_LIMIT);
 
     const db = await getDb();
 
@@ -55,32 +58,37 @@ export async function GET(request: NextRequest) {
   }
 }
 
-function formatActivityDescription(log: any): string {
-  const details = log.details || {};
+function formatActivityDescription(log: Record<string, any>): string {
+  const details = log.details || log.metadata || {};
   
   switch (log.action) {
     case 'login':
       return 'Logged into vendor portal';
     case 'logout':
       return 'Logged out of vendor portal';
+    case 'upload':
     case 'invoice_uploaded':
       return `Uploaded invoice ${details.invoiceNumber || 'N/A'}`;
+    case 'sign':
     case 'contract_signed':
       return `Signed contract: ${details.contractTitle || 'Unknown'}`;
+    case 'update':
     case 'profile_updated':
       return 'Updated profile information';
     case 'payment_received':
-      return `Payment received for ${details.invoiceNumber || 'invoice'}`;
+      return `Payment received: ${details.amount ? `$${details.amount}` : 'N/A'}`;
     case 'document_uploaded':
       return `Uploaded document: ${details.fileName || 'Unknown'}`;
     case 'read':
-      return `Viewed ${log.resource || log.targetType}`;
-    case 'update':
-      return `Updated ${log.resource || log.targetType}`;
+      return `Viewed ${log.resource || log.targetType || 'item'}`;
+    case 'create':
+      return `Created ${log.resource || log.targetType || 'item'}`;
+    case 'delete':
+      return `Deleted ${log.resource || log.targetType || 'item'}`;
     case 'download':
-      return `Downloaded ${log.resource || log.targetType}`;
+      return `Downloaded ${log.resource || log.targetType || 'item'}`;
     default:
-      return log.action ? log.action.replace(/_/g, ' ').replace(/\b\w/g, (letter: string) => letter.toUpperCase()) : 'Unknown activity';
+      return `Performed ${log.action} action`;
   }
 }
 

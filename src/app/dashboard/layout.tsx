@@ -10,7 +10,7 @@ import { Logo } from "@/components/logo";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { fetchInvoices, fetchVendors, processAndFetchContracts, fetchCompany } from "@/lib/data";
 import { DashboardNav } from "@/components/dashboard-nav";
-import { AISpotlight } from "@/components/dashboard/ai-spotlight";
+import { EnhancedAISpotlight as AISpotlight } from "@/components/dashboard/ai-spotlight";
 import { getSession } from "@/lib/auth";
 
 export default async function DashboardLayout({ children }: { children: ReactNode }) {
@@ -76,11 +76,8 @@ export default async function DashboardLayout({ children }: { children: ReactNod
                 <div className="flex flex-1 justify-center px-4 md:px-8">
                     <div className="w-full max-w-sm">
                         <AISpotlight 
-                          user={serializedUser} 
-                          invoices={serializedInvoices} 
-                          vendors={serializedVendors} 
-                          contracts={serializedContracts} 
-                          company={serializedCompany}
+                          userId={user.id} 
+                          currentModule="dashboard"
                         />
                     </div>
                 </div>

@@ -5,8 +5,9 @@ import { redirect } from 'next/navigation';
 import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/data';
 import { ObjectId } from 'mongodb';
-import type { VendorUser, UserRole, VendorSession } from '@/lib/types/vendor-portal';
+import type { VendorUser, UserRole, VendorSession, VendorPortalAccess, Permission, AccessRestriction, PermissionAction } from '@/lib/types/vendor-portal';
 import { createAuditLog } from '@/lib/audit';
+import { SESSION } from '@/config/constants';
 
 const secretKey = process.env.AUTH_SECRET;
 const vendorSecretKey = process.env.VENDOR_AUTH_SECRET || process.env.AUTH_SECRET;
@@ -22,7 +23,7 @@ if (!vendorSecretKey) {
 const key = new TextEncoder().encode(secretKey);
 const vendorKey = new TextEncoder().encode(vendorSecretKey);
 
-export const VENDOR_SESSION_TIMEOUT = 8 * 60 * 60 * 1000; // 8 hours in milliseconds
+export const VENDOR_SESSION_TIMEOUT = SESSION.VENDOR_TIMEOUT;
 export const VENDOR_REFRESH_TIMEOUT = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 // === VENDOR AUTHENTICATION ===
@@ -169,7 +170,7 @@ export async function getVendorSession(): Promise<VendorUser | null> {
 
     // Find the vendor's portal access in the array
     const portalAccess = company.vendorPortalAccess?.find(
-      (access: any) => access.vendorId === vendorId
+      (access: VendorPortalAccess) => access.vendorId === vendorId
     );
 
     if (!portalAccess || !portalAccess.enabled) {
@@ -331,7 +332,7 @@ export async function checkVendorPortalAccess(vendorId: string, companyId: strin
 
   // Find portal access for this vendor
   const access = company.vendorPortalAccess?.find(
-    (access: any) => access.vendorId === vendorId
+    (access: VendorPortalAccess) => access.vendorId === vendorId
   );
 
   if (!access || !access.enabled) {
@@ -345,7 +346,7 @@ export async function hasVendorPermission(
   userId: string, 
   vendorId: string, 
   resource: string, 
-  action: string
+  action: PermissionAction
 ): Promise<boolean> {
   const db = await getDb();
   
@@ -362,7 +363,7 @@ export async function hasVendorPermission(
   if (!user) return false;
 
   // Check if user has permission for this resource and action
-  const hasPermission = user.permissions?.some((permission: any) => 
+  const hasPermission = user.permissions?.some((permission: Permission) => 
     permission.resource === resource && 
     permission.actions.includes(action)
   );
@@ -380,7 +381,7 @@ export async function enableVendorPortalAccess(
   options: {
     mfaRequired?: boolean;
     sessionTimeout?: number;
-    restrictions?: any[];
+    restrictions?: AccessRestriction[];
   } = {}
 ): Promise<void> {
   const db = await getDb();
@@ -528,7 +529,7 @@ export async function disableVendorPortalAccess(
 
 // === MIDDLEWARE HELPERS ===
 
-export async function getVendorSessionFromCookies(): Promise<{ isAuth: boolean; user?: VendorUser; session?: any }> {
+export async function getVendorSessionFromCookies(): Promise<{ isAuth: boolean; user?: VendorUser; session?: VendorSession }> {
   try {
     const user = await getVendorSession();
     if (!user) {

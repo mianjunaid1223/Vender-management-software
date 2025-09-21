@@ -1,5 +1,3 @@
-'use server';
-
 import { AIContext, Company, ActionLog, User, Contract, Vendor, Invoice } from '@/lib/types';
 import { fetchCompany, fetchRecentActions, fetchContracts, fetchVendors, fetchInvoices, getUser } from '@/lib/data';
 

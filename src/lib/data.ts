@@ -2,7 +2,7 @@
 'use server';
 
 import clientPromise from '@/lib/mongodb';
-import { ObjectId } from 'mongodb';
+import { ObjectId, type Document as MongoDocument } from 'mongodb';
 import type { Invoice, Vendor, User, Contract, Company, Notification, ActionLog, SearchFilters } from '@/lib/types';
 import { unstable_noStore as noStore } from 'next/cache';
 import { add } from 'date-fns';
@@ -517,30 +517,47 @@ export async function updateContract(id: string, updates: Partial<Contract>): Pr
     noStore();
     const db = await getDb();
     const companyId = await getCurrentUserCompanyId();
+    const session = (await clientPromise)!.startSession();
     
     if (!companyId) {
         throw new Error('User not authenticated or no company associated');
     }
     
     try {
-        const { id: _, _id, ...updateData } = updates as any;
-        updateData.updatedAt = new Date().toISOString();
+        let result: MongoDocument | null = null;
         
-        const result = await db.collection('contracts').findOneAndUpdate(
-            { _id: new ObjectId(id), companyId },
-            { $set: updateData },
-            { returnDocument: 'after' }
-        );
+        await session.withTransaction(async () => {
+            const updateData: Record<string, any> = {};
+            Object.keys(updates).forEach(key => {
+                if (key !== 'id' && key !== '_id') {
+                    updateData[key] = (updates as any)[key];
+                }
+            });
+            updateData.updatedAt = new Date().toISOString();
+            
+            result = await db.collection('contracts').findOneAndUpdate(
+                { _id: new ObjectId(id), companyId },
+                { $set: updateData },
+                { returnDocument: 'after', session }
+            );
+            
+            if (!result) {
+                throw new Error('Contract not found or access denied');
+            }
+        });
         
         if (!result) {
             throw new Error('Contract not found or access denied');
         }
         
-        const newDoc = { ...result, id: result._id.toString() };
+        const docWithId = result as any;
+        const newDoc = { ...docWithId, id: docWithId._id.toString() };
         return JSON.parse(JSON.stringify(newDoc));
     } catch (error) {
         console.error('Database Error:', error);
         throw new Error('Failed to update contract.');
+    } finally {
+        await session.endSession();
     }
 }
 
@@ -799,7 +816,7 @@ export async function searchVendors(filters: SearchFilters): Promise<Vendor[]> {
     const db = await getDb();
     
     try {
-        const query: any = {};
+        const query: Record<string, any> = {};
         
         if (filters.query) {
             query.$or = [

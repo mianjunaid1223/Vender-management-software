@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Building2, Shield, Eye, EyeOff, ArrowLeft } from 'lucide-react';
@@ -13,7 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { Logo } from '@/components/logo';
 
-export default function VendorPortalPage() {
+function VendorPortalContent() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -190,5 +190,13 @@ export default function VendorPortalPage() {
         </div>
       </main>
     </div>
+  );
+}
+
+export default function VendorPortalPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <VendorPortalContent />
+    </Suspense>
   );
 }

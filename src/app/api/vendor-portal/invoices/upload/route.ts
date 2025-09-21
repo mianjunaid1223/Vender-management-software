@@ -5,13 +5,18 @@ import { getDb } from '@/lib/data';
 import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 import { existsSync } from 'fs';
+import type { VendorPortalAccess } from '@/lib/types/vendor-portal';
+import { FILE_UPLOAD, VALIDATION } from '@/config/constants';
+import { handleAPIError, ValidationErrors } from '@/lib/error-handling';
 
 export async function POST(request: NextRequest) {
+  let session: any = null;
+  
   try {
-    const session = await getVendorSession();
+    session = await getVendorSession();
     
     if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      throw ValidationErrors.UNAUTHORIZED();
     }
 
     // Check if vendor has upload permission
@@ -21,11 +26,11 @@ export async function POST(request: NextRequest) {
     });
 
     const portalAccess = company?.vendorPortalAccess?.find(
-      (access: any) => access.vendorId === session.vendorId
+      (access: VendorPortalAccess) => access.vendorId === session.vendorId
     );
 
     if (!portalAccess?.features?.uploadInvoices && !portalAccess?.features?.canUploadInvoices) {
-      return NextResponse.json({ error: 'Upload permission denied' }, { status: 403 });
+      throw ValidationErrors.FORBIDDEN('Upload invoices');
     }
 
     const formData = await request.formData();
@@ -47,19 +52,35 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate file type
-    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
-    if (!allowedTypes.includes(file.type)) {
+    // Validate file type and extension
+    if (!FILE_UPLOAD.ALLOWED_TYPES.includes(file.type as any)) {
       return NextResponse.json(
         { error: 'Only PDF and image files are allowed' },
         { status: 400 }
       );
     }
 
-    // Validate file size (5MB max)
-    if (file.size > 5 * 1024 * 1024) {
+    // Additional security: validate file extension matches MIME type
+    const originalExtension = file.name.split('.').pop()?.toLowerCase();
+    const mimeToExtension: { [key: string]: string[] } = {
+      'application/pdf': ['pdf'],
+      'image/jpeg': ['jpg', 'jpeg'],
+      'image/jpg': ['jpg', 'jpeg'],
+      'image/png': ['png']
+    };
+    
+    const allowedExtensions = mimeToExtension[file.type];
+    if (!allowedExtensions || !originalExtension || !allowedExtensions.includes(originalExtension)) {
       return NextResponse.json(
-        { error: 'File size must be less than 5MB' },
+        { error: 'File extension does not match file type' },
+        { status: 400 }
+      );
+    }
+
+    // Validate file size (configurable max)
+    if (file.size > FILE_UPLOAD.MAX_SIZE) {
+      return NextResponse.json(
+        { error: `File size must be less than ${Math.round(FILE_UPLOAD.MAX_SIZE / 1024 / 1024)}MB` },
         { status: 400 }
       );
     }
@@ -67,24 +88,12 @@ export async function POST(request: NextRequest) {
     // Create unique filename with secure extension
     const timestamp = Date.now();
     
-    // Map MIME type to safe extension
-    const mimeToExtension: { [key: string]: string } = {
-      'application/pdf': 'pdf',
-      'image/jpeg': 'jpg',
-      'image/jpg': 'jpg',
-      'image/png': 'png'
-    };
-    const safeExtension = mimeToExtension[file.type];
-    if (!safeExtension) {
-      return NextResponse.json(
-        { error: 'Invalid file type extension' },
-        { status: 400 }
-      );
-    }
+    // Map MIME type to safe extension (reuse from validation)
+    const safeExtension = allowedExtensions[0]; // Use first allowed extension
     const fileName = `invoice_${session.vendorId}_${timestamp}.${safeExtension}`;
     
     // Ensure uploads directory exists
-    const uploadsDir = join(process.cwd(), 'public', 'uploads', 'invoices');
+    const uploadsDir = join(process.cwd(), FILE_UPLOAD.UPLOAD_DIR, 'invoices');
     try {
       if (!existsSync(uploadsDir)) {
         await mkdir(uploadsDir, { recursive: true });
@@ -100,9 +109,28 @@ export async function POST(request: NextRequest) {
     const filePath = join(uploadsDir, fileName);
     const publicPath = `/uploads/invoices/${fileName}`;
 
-    // Save file
+    // Save file with additional security checks
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
+    
+    // Basic content validation - check file signature/magic bytes
+    const magicBytes = buffer.slice(0, 4);
+    const isPDF = magicBytes.toString() === '%PDF';
+    const isJPEG = magicBytes[0] === 0xFF && magicBytes[1] === 0xD8;
+    const isPNG = magicBytes[0] === 0x89 && magicBytes[1] === 0x50 && 
+                  magicBytes[2] === 0x4E && magicBytes[3] === 0x47;
+    
+    const validContent = (file.type === 'application/pdf' && isPDF) ||
+                        ((file.type === 'image/jpeg' || file.type === 'image/jpg') && isJPEG) ||
+                        (file.type === 'image/png' && isPNG);
+    
+    if (!validContent) {
+      return NextResponse.json(
+        { error: 'File content does not match declared type' },
+        { status: 400 }
+      );
+    }
+    
     await writeFile(filePath, buffer);
 
     // Save invoice to database
@@ -151,10 +179,15 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Error uploading invoice:', error);
-    return NextResponse.json(
-      { error: 'Failed to upload invoice' },
-      { status: 500 }
-    );
+    return handleAPIError(error, {
+      userId: session?.id,
+      userRole: 'vendor_user',
+      vendorId: session?.vendorId,
+      companyId: session?.companyId,
+      action: 'upload',
+      resource: 'invoice',
+      ipAddress: request.headers.get('x-forwarded-for') || undefined,
+      userAgent: request.headers.get('user-agent') || undefined
+    });
   }
 }

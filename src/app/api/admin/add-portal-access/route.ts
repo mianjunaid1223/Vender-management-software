@@ -34,8 +34,8 @@ export async function POST(request: NextRequest) {
     console.log('Adding portal access for vendor:', vendorId);
     console.log('Company ID:', companyId);
 
-    // Define standard feature set for reuse
-    const standardFeatures = {
+    // Define default feature set for reuse
+    const defaultFeatures = {
       viewInvoices: true,
       downloadInvoices: true,
       updatePaymentInfo: true,
@@ -65,17 +65,6 @@ export async function POST(request: NextRequest) {
       },
       { $set: { vendorPortalAccess: [] } }
     );
-
-    // Define the default features once
-    const defaultFeatures = {
-      viewInvoices: true,
-      downloadInvoices: true,
-      updatePaymentInfo: true,
-      viewContracts: true,
-      communicateWithBuyer: true,
-      viewComplianceRequirements: true,
-      uploadDocuments: true
-    };
 
     const now = new Date().toISOString();
 

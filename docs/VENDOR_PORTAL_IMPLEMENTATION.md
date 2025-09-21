@@ -22,8 +22,11 @@ Add the following to your `.env` file:
 
 ```env
 # Vendor Portal Authentication
-VENDOR_AUTH_SECRET=your-vendor-specific-jwt-secret-here
-AUTH_SECRET=your-existing-auth-secret
+# SECURITY: Use cryptographically secure secrets of at least 256 bits (32+ characters)
+# Generate with: openssl rand -hex 32 or node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+# Store in secrets manager or environment vault - NEVER commit to source control
+VENDOR_AUTH_SECRET=a8f5f167f44f4964e6c998dee827110c4a6f7c2e2a7e5c3c2e2d2a2e2a2e2a2e
+AUTH_SECRET=your-existing-auth-secret-minimum-32-chars-long
 
 # Enable vendor portal features
 VENDOR_PORTAL_ENABLED=true
@@ -63,7 +66,8 @@ Use the admin API to enable portal access for a vendor:
 
 ```bash
 # Example: Enable portal access for vendor
-curl -X POST http://localhost:9002/api/admin/vendor-portal-access \
+# PRODUCTION SECURITY: Use HTTPS only - HTTP is for local testing only
+curl -X POST https://your-domain.com/api/admin/vendor-portal-access \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_ADMIN_TOKEN" \
   -d '{
@@ -78,6 +82,12 @@ curl -X POST http://localhost:9002/api/admin/vendor-portal-access \
     "mfaRequired": false,
     "sessionTimeout": 480
   }'
+
+# PRODUCTION NOTES:
+# - HTTPS is mandatory in production
+# - Never send tokens over plain HTTP
+# - Ensure TLS certificates are valid
+# - Use reverse proxy or managed TLS solution
 ```
 
 ### 6. Create Vendor User Account
@@ -112,7 +122,10 @@ db.vendor_users.insertOne({
   isActive: true,
   lastLoginAt: null,
   mfaEnabled: false,
-  passwordHash: "$2a$12$HASHED_PASSWORD_HERE", // Use bcrypt to hash
+  passwordHash: "$2a$12$XeH0pzTNlz8H2zKQ8/Qq5e1J8F7B.K4dD7rL5rQhF6r7GGqPQM2A6", // Generated with: await bcrypt.hash('userPassword', 12)
+  // SECURITY NOTE: Always hash passwords with bcrypt/bcryptjs using salt rounds >=12
+  // Example: import bcrypt from 'bcryptjs'; const hash = await bcrypt.hash('userPassword', 12);
+  // NEVER store plaintext passwords in the database
   emailVerified: true,
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),

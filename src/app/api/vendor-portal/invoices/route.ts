@@ -3,9 +3,11 @@ import { getVendorSession } from '@/lib/auth/vendor-auth';
 import { getMyInvoices } from '@/lib/data/vendor-data';
 import { getDb } from '@/lib/data';
 import { ObjectId } from 'mongodb';
+import type { VendorUser, VendorPortalAccess } from '@/lib/types/vendor-portal';
+import { VALIDATION } from '@/config/constants';
 
 // Check if vendor has permission for a specific action
-async function checkPermission(session: any, action: 'read' | 'edit' | 'create') {
+async function checkPermission(session: VendorUser, action: 'read' | 'edit' | 'create') {
   const db = await getDb();
   const company = await db.collection('companies').findOne({
     _id: new ObjectId(session.companyId)
@@ -14,7 +16,7 @@ async function checkPermission(session: any, action: 'read' | 'edit' | 'create')
   if (!company) return false;
 
   const vendorAccess = company.vendorPortalAccess?.find(
-    (access: any) => access.vendorId === session.vendorId
+    (access: VendorPortalAccess) => access.vendorId === session.vendorId
   );
 
   if (!vendorAccess || !vendorAccess.enabled) return false;
@@ -85,18 +87,33 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { invoiceNumber, amount, dueDate, description, documentUrl } = body;
 
-    const parsedAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
-    const due = new Date(dueDate);
-    if (
-      typeof invoiceNumber !== 'string' ||
-      !invoiceNumber.trim() ||
-      !Number.isFinite(parsedAmount) ||
-      parsedAmount <= 0 ||
-      !dueDate ||
-      Number.isNaN(due.getTime())
-    ) {
+    // Enhanced input validation
+    if (typeof invoiceNumber !== 'string' || !invoiceNumber.trim() || invoiceNumber.length > VALIDATION.INVOICE_NUMBER_MAX_LENGTH) {
       return NextResponse.json(
-        { error: 'Invalid invoice number, amount, or due date' },
+        { error: `Invoice number must be a non-empty string with max ${VALIDATION.INVOICE_NUMBER_MAX_LENGTH} characters` },
+        { status: 400 }
+      );
+    }
+
+    const parsedAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
+    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0 || parsedAmount > VALIDATION.MAX_AMOUNT) {
+      return NextResponse.json(
+        { error: `Amount must be a positive number less than ${VALIDATION.MAX_AMOUNT.toLocaleString()}` },
+        { status: 400 }
+      );
+    }
+
+    const due = new Date(dueDate);
+    if (!dueDate || Number.isNaN(due.getTime()) || due < new Date()) {
+      return NextResponse.json(
+        { error: 'Due date must be a valid future date' },
+        { status: 400 }
+      );
+    }
+
+    if (description && (typeof description !== 'string' || description.length > VALIDATION.DESCRIPTION_MAX_LENGTH)) {
+      return NextResponse.json(
+        { error: `Description must be a string with max ${VALIDATION.DESCRIPTION_MAX_LENGTH} characters` },
         { status: 400 }
       );
     }
