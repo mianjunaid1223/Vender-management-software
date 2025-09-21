@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getVendorSession } from '@/lib/auth/vendor-auth';
+import { getMyContracts } from '@/lib/data/vendor-data';
 import { getDb } from '@/lib/data';
 import { ObjectId } from 'mongodb';
 
@@ -43,23 +44,19 @@ export async function GET(request: NextRequest) {
 
     const db = await getDb();
     
-    // Get contracts for this vendor
-    const contracts = await db.collection('contracts').find({
-      vendorId: session.vendorId,
-      companyId: session.companyId
-    }).sort({ createdAt: -1 }).toArray();
+    // Use the new session-derived function for maximum security
+    const contracts = await getMyContracts();
 
     return NextResponse.json({
       contracts: contracts.map(contract => ({
-        id: contract._id.toString(),
-        title: contract.title || contract.name,
+        id: contract.id,
+        title: contract.title,
         type: contract.type || 'service',
         status: contract.status || 'draft',
         startDate: contract.startDate,
         endDate: contract.endDate,
-        value: contract.value || contract.amount || 0,
-        description: contract.description,
-        documentUrl: contract.documentUrl
+        value: contract.value || 0,
+        description: contract.description
       }))
     });
 

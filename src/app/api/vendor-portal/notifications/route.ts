@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
 
     if (portalAccess?.features?.viewInvoices) {
       const pendingInvoices = await db.collection('invoices').find({
-        'vendor.id': vendorSession.vendorId,
+        vendorId: vendorSession.vendorId,
         companyId: vendorSession.companyId,
         status: 'pending'
       }).limit(5).toArray();
@@ -55,7 +55,8 @@ export async function GET(request: NextRequest) {
 
     // Check for expiring contracts (if vendor has access)
     if (portalAccess?.features?.viewContracts) {
-      const oneMonthFromNow = new Date();
+      const now = new Date();
+      const oneMonthFromNow = new Date(now.getTime());
       oneMonthFromNow.setMonth(oneMonthFromNow.getMonth() + 1);
 
       const expiringContracts = await db.collection('contracts').find({
@@ -64,7 +65,7 @@ export async function GET(request: NextRequest) {
           { 'partyB.id': vendorSession.vendorId }
         ],
         companyId: vendorSession.companyId,
-        endDate: { $lte: oneMonthFromNow.toISOString() },
+        endDate: { $gte: now, $lte: oneMonthFromNow },
         status: 'active'
       }).limit(3).toArray();
 

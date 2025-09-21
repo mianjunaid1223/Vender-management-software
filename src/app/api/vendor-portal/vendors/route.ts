@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/data';
+import { getVendorSession } from '@/lib/auth/vendor-auth';
 
 export async function GET(request: NextRequest) {
   try {
-    // Get company ID from session/auth
-    const companyId = request.headers.get('x-company-id') || 'comp_001'; // Fallback for demo
+    const session = await getVendorSession();
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const companyId = session.companyId;
+    const vendorId = session.vendorId;
     
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
@@ -12,8 +17,8 @@ export async function GET(request: NextRequest) {
 
     const db = await getDb();
     
-    // Build query
-    let query: any = { companyId };
+    // Build query - scope to authenticated vendor only
+    let query: any = { companyId, vendorId };
     
     if (status && status !== 'all') {
       query.status = status;
@@ -92,18 +97,35 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const session = await getVendorSession();
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    
     const body = await request.json();
     const { name, type, contactEmail, contractValue, status = 'pending' } = body;
 
-    // Get company ID from session/auth
-    const companyId = request.headers.get('x-company-id') || 'comp_001'; // Fallback for demo
-
-    if (!name || !type || !contactEmail) {
-      return NextResponse.json(
-        { error: 'Name, type, and contact email are required' },
-        { status: 400 }
-      );
+    // Enhanced input validation
+    if (typeof name !== 'string' || !name.trim() || name.length > 255 ||
+        typeof type !== 'string' || !type.trim() || type.length > 100 ||
+        typeof contactEmail !== 'string' || contactEmail.length > 255 ||
+        !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail)) {
+      return NextResponse.json({ error: 'Invalid name, type, or email format' }, { status: 400 });
     }
+
+    // Validate type enum
+    const validTypes = ['supplier', 'partner', 'contractor', 'service_provider', 'consultant'];
+    if (!validTypes.includes(type.toLowerCase())) {
+      return NextResponse.json({ error: 'Invalid vendor type' }, { status: 400 });
+    }
+
+    // Validate contract value
+    const contractValueNum = contractValue == null ? 0 : Number(contractValue);
+    if (!Number.isFinite(contractValueNum) || contractValueNum < 0) {
+      return NextResponse.json({ error: 'Invalid contract value' }, { status: 400 });
+    }
+
+    const companyId = session.companyId;
 
     const db = await getDb();
     
@@ -111,10 +133,10 @@ export async function POST(request: NextRequest) {
     const vendor = {
       vendorId: `vendor_${Date.now()}`,
       companyId,
-      name,
-      type,
-      contactEmail,
-      contractValue: contractValue || 0,
+      name: name.trim(),
+      type: type.toLowerCase(),
+      contactEmail: contactEmail.toLowerCase(),
+      contractValue: contractValueNum,
       status,
       createdAt: new Date(),
       updatedAt: new Date()

@@ -69,20 +69,23 @@ export async function loginUser(prevState: any, formData: FormData) {
 
     // Check if password is hashed or plain text (for backward compatibility)
     let isPasswordValid = false;
-    if (user.password.startsWith('$2a$') || user.password.startsWith('$2b$')) {
-      // Password is hashed, use bcrypt
-      isPasswordValid = await bcrypt.compare(password, user.password);
-    } else {
-      // Password is plain text (legacy), compare directly and upgrade
-      isPasswordValid = user.password === password;
+    const stored = user.password;
+    if (typeof stored === 'string' && /^\$2[aby]\$/.test(stored)) {
+      // Hashed password ($2a/$2b/$2y)
+      isPasswordValid = await bcrypt.compare(password, stored);
+    } else if (typeof stored === 'string') {
+      // Plain text (legacy)
+      isPasswordValid = stored === password;
       if (isPasswordValid) {
-        // Upgrade to hashed password
         const hashedPassword = await bcrypt.hash(password, 12);
         await db.collection("users").updateOne(
           { _id: user._id },
-          { $set: { password: hashedPassword } }
+          { $set: { password: hashedPassword, passwordMigratedAt: new Date().toISOString() } }
         );
       }
+    } else {
+      // Unexpected shape
+      isPasswordValid = false;
     }
 
     if (!isPasswordValid) {

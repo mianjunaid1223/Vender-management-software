@@ -10,6 +10,15 @@ import { createAuditLog } from '@/lib/audit';
 
 const secretKey = process.env.AUTH_SECRET;
 const vendorSecretKey = process.env.VENDOR_AUTH_SECRET || process.env.AUTH_SECRET;
+
+if (!secretKey) {
+  throw new Error('AUTH_SECRET is required');
+}
+
+if (!vendorSecretKey) {
+  throw new Error('VENDOR_AUTH_SECRET or AUTH_SECRET is required');
+}
+
 const key = new TextEncoder().encode(secretKey);
 const vendorKey = new TextEncoder().encode(vendorSecretKey);
 
@@ -68,7 +77,7 @@ export async function createVendorSession(userId: string, vendorId: string, comp
     createdAt: now.toISOString(),
   };
 
-  await db.collection('vendor_sessions').insertOne(session);
+  const { insertedId } = await db.collection('vendor_sessions').insertOne(session);
 
   // Create audit log
   await createAuditLog({
@@ -78,10 +87,10 @@ export async function createVendorSession(userId: string, vendorId: string, comp
     companyId,
     action: 'login',
     resource: 'session',
-    resourceId: sessionToken,
+    resourceId: insertedId.toString(),
     ipAddress,
     userAgent,
-    sessionId: sessionToken,
+    sessionId: insertedId.toString(),
   });
 
   return { sessionToken, refreshToken };
@@ -130,10 +139,14 @@ export async function getVendorSession(): Promise<VendorUser | null> {
   const sessionToken = cookieStore.get('vendor-session')?.value;
 
   const { isAuth, userId, vendorId, companyId } = await verifyVendorSession(sessionToken);
-  if (!isAuth || !userId || !vendorId) return null;
+  if (!isAuth || !userId || !vendorId || !companyId) return null;
 
   try {
     const db = await getDb();
+    
+    if (!ObjectId.isValid(userId) || !ObjectId.isValid(companyId)) {
+      return null;
+    }
     
     // Get vendor user
     const vendorUser = await db.collection('vendor_users').findOne({
@@ -289,10 +302,10 @@ export async function revokeVendorSession(sessionToken: string, reason: string =
       companyId: session.companyId,
       action: 'logout',
       resource: 'session',
-      resourceId: sessionToken,
+      resourceId: session._id.toString(),
       ipAddress: session.ipAddress,
       userAgent: session.userAgent,
-      sessionId: sessionToken,
+      sessionId: session._id.toString(),
       metadata: { reason }
     });
   }
@@ -302,6 +315,10 @@ export async function revokeVendorSession(sessionToken: string, reason: string =
 
 export async function checkVendorPortalAccess(vendorId: string, companyId: string): Promise<any | null> {
   const db = await getDb();
+  
+  if (!ObjectId.isValid(companyId)) {
+    return null;
+  }
   
   // Get company and check portal access
   const company = await db.collection('companies').findOne({
@@ -331,6 +348,10 @@ export async function hasVendorPermission(
   action: string
 ): Promise<boolean> {
   const db = await getDb();
+  
+  if (!ObjectId.isValid(userId)) {
+    return false;
+  }
   
   const user = await db.collection('vendor_users').findOne({
     _id: new ObjectId(userId),
@@ -364,6 +385,10 @@ export async function enableVendorPortalAccess(
 ): Promise<void> {
   const db = await getDb();
   const now = new Date().toISOString();
+
+  if (!ObjectId.isValid(companyId)) {
+    throw new Error('Invalid company ID');
+  }
 
   const accessData = {
     vendorId,
@@ -418,15 +443,15 @@ export async function enableVendorPortalAccess(
   await db.collection('companies').updateOne(
     { _id: new ObjectId(companyId) },
     { 
-      $pull: { "vendorPortalAccess": { vendorId: vendorId } } as any
-    }
+      $pull: { vendorPortalAccess: { vendorId: vendorId } }
+    } as any
   );
 
   await db.collection('companies').updateOne(
     { _id: new ObjectId(companyId) },
     { 
-      $push: { "vendorPortalAccess": accessData } as any
-    }
+      $push: { vendorPortalAccess: accessData }
+    } as any
   );
 
   // Create audit log
@@ -453,6 +478,10 @@ export async function disableVendorPortalAccess(
 ): Promise<void> {
   const db = await getDb();
   const now = new Date().toISOString();
+
+  if (!ObjectId.isValid(companyId)) {
+    throw new Error('Invalid company ID');
+  }
 
   // Disable access by updating the vendorPortalAccess array in the company
   await db.collection('companies').updateOne(

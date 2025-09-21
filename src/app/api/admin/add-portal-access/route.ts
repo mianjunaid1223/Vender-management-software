@@ -13,10 +13,37 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Validate vendorId format
+    if (typeof vendorId !== 'string' || !vendorId.trim()) {
+      return NextResponse.json(
+        { error: 'Invalid vendorId format' },
+        { status: 400 }
+      );
+    }
+
+    // Validate companyId is a valid ObjectId string
+    if (!ObjectId.isValid(companyId)) {
+      return NextResponse.json(
+        { error: 'Invalid companyId format' },
+        { status: 400 }
+      );
+    }
+
     const db = await getDb();
 
     console.log('Adding portal access for vendor:', vendorId);
     console.log('Company ID:', companyId);
+
+    // Define standard feature set for reuse
+    const standardFeatures = {
+      viewInvoices: true,
+      downloadInvoices: true,
+      updatePaymentInfo: true,
+      viewContracts: true,
+      communicateWithBuyer: true,
+      viewComplianceRequirements: true,
+      uploadDocuments: true
+    };
 
     // Check if company exists
     const company = await db.collection('companies').findOne({
@@ -30,68 +57,67 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Initialize vendorPortalAccess array if it doesn't exist
-    if (!company.vendorPortalAccess) {
-      await db.collection('companies').updateOne(
-        { _id: new ObjectId(companyId) },
-        { $set: { vendorPortalAccess: [] } }
-      );
-    }
+    // Atomically initialize vendorPortalAccess array if it doesn't exist
+    await db.collection('companies').updateOne(
+      { 
+        _id: new ObjectId(companyId),
+        vendorPortalAccess: { $exists: false }
+      },
+      { $set: { vendorPortalAccess: [] } }
+    );
 
-    // Check if portal access already exists
-    const existingAccessIndex = company.vendorPortalAccess?.findIndex(
-      (access: any) => access.vendorId === vendorId
-    ) ?? -1;
+    // Define the default features once
+    const defaultFeatures = {
+      viewInvoices: true,
+      downloadInvoices: true,
+      updatePaymentInfo: true,
+      viewContracts: true,
+      communicateWithBuyer: true,
+      viewComplianceRequirements: true,
+      uploadDocuments: true
+    };
 
-    if (existingAccessIndex >= 0) {
-      console.log('Portal access already exists. Updating...');
-      
-      // Update existing access
-      await db.collection('companies').updateOne(
-        { _id: new ObjectId(companyId) },
-        {
-          $set: {
-            [`vendorPortalAccess.${existingAccessIndex}.enabled`]: true,
-            [`vendorPortalAccess.${existingAccessIndex}.features`]: {
-              viewInvoices: true,
-              downloadInvoices: true,
-              updatePaymentInfo: true,
-              viewContracts: true,
-              communicateWithBuyer: true,
-              viewComplianceRequirements: true,
-              uploadDocuments: true
-            },
-            [`vendorPortalAccess.${existingAccessIndex}.updatedAt`]: new Date().toISOString()
-          }
+    const now = new Date().toISOString();
+
+    // Try to update existing access first using positional operator
+    const updateResult = await db.collection('companies').updateOne(
+      { 
+        _id: new ObjectId(companyId),
+        'vendorPortalAccess.vendorId': vendorId
+      },
+      {
+        $set: {
+          'vendorPortalAccess.$.enabled': true,
+          'vendorPortalAccess.$.features': defaultFeatures,
+          'vendorPortalAccess.$.updatedAt': now
         }
-      );
-    } else {
+      }
+    );
+
+    // If no existing access was updated, add new one
+    if (updateResult.matchedCount === 0) {
       console.log('Creating new portal access...');
       
-      // Add new portal access
       const newAccess = {
         vendorId,
         enabled: true,
-        features: {
-          viewInvoices: true,
-          downloadInvoices: true,
-          updatePaymentInfo: true,
-          viewContracts: true,
-          communicateWithBuyer: true,
-          viewComplianceRequirements: true,
-          uploadDocuments: true
-        },
-        sessionTimeout: 8,
+        features: defaultFeatures,
+        sessionTimeout: 480, // 8 hours in minutes
         requireMFA: false,
         allowedIPs: [],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        createdAt: now,
+        updatedAt: now
       };
 
       await db.collection('companies').updateOne(
-        { _id: new ObjectId(companyId) },
+        { 
+          _id: new ObjectId(companyId),
+          'vendorPortalAccess.vendorId': { $ne: vendorId } // Ensure no duplicate
+        },
         { $addToSet: { vendorPortalAccess: newAccess } }
       );
+    } else {
+      console.log('Portal access already exists. Updated.');
     }
 
     return NextResponse.json({

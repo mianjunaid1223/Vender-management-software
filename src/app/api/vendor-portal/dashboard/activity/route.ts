@@ -18,18 +18,21 @@ export async function GET(request: NextRequest) {
 
     const db = await getDb();
 
-    // Get recent audit logs for this vendor using different possible field names
-    const recentActivity = await db.collection('audit_logs').find({
+    // Get recent audit logs for this vendor with proper company scoping and field names
+    const filter = {
+      companyId: vendorSession.companyId,
       $or: [
         { vendorId: vendorSession.vendorId },
-        { userId: vendorSession.id },
-        { userId: vendorSession.vendorId }
+        { userId: vendorSession.id }
       ],
-      userType: { $in: ['vendor', undefined] }
-    })
-    .sort({ timestamp: -1 })
-    .limit(limit)
-    .toArray();
+      userRole: 'vendor'
+    };
+    const recentActivity = await db
+      .collection('audit_logs')
+      .find(filter, { projection: { action: 1, resource: 1, targetType: 1, details: 1, timestamp: 1, createdAt: 1 } })
+      .sort({ timestamp: -1 })
+      .limit(limit)
+      .toArray();
 
     // Format activity for display
     const formattedActivity = recentActivity.map(log => ({

@@ -5,6 +5,7 @@ import { emailService } from '@/lib/email-service';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { createAuditLog } from '@/lib/audit';
+import { ObjectId } from 'mongodb';
 
 export async function POST(request: NextRequest) {
   try {
@@ -23,12 +24,63 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(vendorEmail)) {
+      return NextResponse.json(
+        { error: 'Invalid email format' },
+        { status: 400 }
+      );
+    }
+
+    // Validate vendorId format
+    if (typeof vendorId !== 'string' || !vendorId.trim()) {
+      return NextResponse.json(
+        { error: 'Invalid Vendor ID format' },
+        { status: 400 }
+      );
+    }
+
+    // Validate vendorName format
+    if (typeof vendorName !== 'string' || !vendorName.trim()) {
+      return NextResponse.json(
+        { error: 'Invalid Vendor name format' },
+        { status: 400 }
+      );
+    }
+
     const db = await getDb();
+
+    // Check if vendor exists and belongs to the company
+    const vendor = await db.collection('vendors').findOne({
+      _id: new ObjectId(vendorId),
+      companyId: new ObjectId(session.companyId)
+    });
+    
+    if (!vendor) {
+      return NextResponse.json(
+        { error: 'Vendor not found or does not belong to this company' },
+        { status: 404 }
+      );
+    }
+
+    // Check for existing email
+    const existingUser = await db.collection('vendor_users').findOne({
+      email: vendorEmail
+    });
+
+    if (existingUser) {
+      return NextResponse.json(
+        { error: 'Email already exists in the system' },
+        { status: 409 }
+      );
+    }
     const vendorUsersCollection = db.collection('vendor_users');
 
-    // Generate a temporary password
-    const tempPassword = crypto.randomBytes(8).toString('hex');
-    const hashedPassword = await bcrypt.hash(tempPassword, 12);
+    // Generate a secure password setup token instead of plaintext password
+    const setupToken = crypto.randomBytes(32).toString('hex'); // 256-bit token
+    const hashedToken = await bcrypt.hash(setupToken, 12);
+    const tokenExpiry = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
 
     // Check if vendor user already exists
     const existingVendorUser = await vendorUsersCollection.findOne({ 
@@ -37,12 +89,13 @@ export async function POST(request: NextRequest) {
     });
 
     if (existingVendorUser) {
-      // Update existing user with new password
+      // Update existing user with password setup token
       await vendorUsersCollection.updateOne(
         { _id: existingVendorUser._id },
         { 
           $set: { 
-            password: hashedPassword,
+            passwordResetToken: hashedToken,
+            passwordResetExpiry: tokenExpiry,
             mustChangePassword: true,
             updatedAt: new Date().toISOString(),
             updatedBy: session.id
@@ -50,13 +103,15 @@ export async function POST(request: NextRequest) {
         }
       );
     } else {
-      // Create new vendor user
+      // Create new vendor user with password setup token
       await vendorUsersCollection.insertOne({
         vendorId,
         companyId: session.companyId,
         email: vendorEmail,
         name: vendorName,
-        password: hashedPassword,
+        password: null, // No password set yet
+        passwordResetToken: hashedToken,
+        passwordResetExpiry: tokenExpiry,
         role: 'vendor_user',
         mustChangePassword: true,
         isActive: true,
@@ -65,8 +120,9 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Send email with credentials
+    // Send email with secure setup link instead of plaintext password
     const portalUrl = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/vendor-portal`;
+    const setupUrl = `${portalUrl}/auth/set-password?token=${setupToken}&email=${encodeURIComponent(vendorEmail)}`;
     
     const emailHtml = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -74,15 +130,15 @@ export async function POST(request: NextRequest) {
         
         <p>Hello ${vendorName},</p>
         
-        <p>You have been granted access to our vendor portal. Use the following credentials to log in:</p>
+        <p>You have been granted access to our vendor portal. Click the link below to set up your account:</p>
         
         <div style="background: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
           <p><strong>Portal URL:</strong> <a href="${portalUrl}">${portalUrl}</a></p>
           <p><strong>Email:</strong> ${vendorEmail}</p>
-          <p><strong>Temporary Password:</strong> <code style="background: #fff; padding: 4px 8px; border-radius: 4px;">${tempPassword}</code></p>
+          <p><strong>Setup Link:</strong> <a href="${setupUrl}" style="background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px; display: inline-block;">Set Up Your Password</a></p>
         </div>
         
-        <p style="color: #d73027;"><strong>Important:</strong> You will be required to change this password upon your first login.</p>
+        <p style="color: #d73027;"><strong>Important:</strong> This setup link expires in 30 minutes for security reasons. If it expires, please contact your administrator for a new link.</p>
         
         <p>Through the vendor portal, you can:</p>
         <ul>
@@ -100,7 +156,7 @@ export async function POST(request: NextRequest) {
 
     await emailService.sendEmail({
       to: vendorEmail,
-      subject: 'Vendor Portal Access Credentials',
+      subject: 'Vendor Portal Account Setup',
       html: emailHtml,
     });
 
@@ -117,16 +173,17 @@ export async function POST(request: NextRequest) {
       userAgent: request.headers.get('user-agent') || 'unknown',
       sessionId: 'web-session',
       metadata: {
-        action_type: 'vendor_credentials_sent',
+        action_type: 'vendor_setup_link_sent',
         vendorEmail,
         vendorName,
+        tokenExpiry: tokenExpiry.toISOString(),
         sentAt: new Date().toISOString()
       }
     });
 
     return NextResponse.json({
       success: true,
-      message: 'Login credentials sent successfully'
+      message: 'Account setup link sent successfully'
     });
 
   } catch (error) {

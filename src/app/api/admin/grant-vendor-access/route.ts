@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { ObjectId } from 'mongodb';
 import { getDb } from '@/lib/data';
 import { createAuditLog } from '@/lib/audit';
 
@@ -14,10 +15,44 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Validate companyId format
+    if (!ObjectId.isValid(companyId)) {
+      return NextResponse.json(
+        { error: 'Invalid Company ID format' },
+        { status: 400 }
+      );
+    }
+
+    // Validate vendorId format
+    if (typeof vendorId !== 'string' || !vendorId.trim()) {
+      return NextResponse.json(
+        { error: 'Invalid Vendor ID format' },
+        { status: 400 }
+      );
+    }
+
+    // Calculate and validate expiration date (default 90 days if not provided)
+    const expirationDate = expiresAt ? new Date(expiresAt) : new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
+    if (isNaN(expirationDate.getTime())) {
+      return NextResponse.json(
+        { error: 'Invalid expiresAt date format' },
+        { status: 400 }
+      );
+    }
+
     const db = await getDb();
     
-    // Calculate expiration date (default 90 days if not provided)
-    const expirationDate = expiresAt ? new Date(expiresAt) : new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
+    // Validate that the company exists
+    const company = await db.collection('companies').findOne({
+      _id: new ObjectId(companyId)
+    });
+
+    if (!company) {
+      return NextResponse.json(
+        { error: 'Company not found' },
+        { status: 404 }
+      );
+    }
     
     // Default features if not provided
     const defaultFeatures = {
@@ -35,31 +70,64 @@ export async function POST(request: NextRequest) {
       uploadDocuments: true,
       viewComplianceRequirements: true
     };
+
+    // Validate and filter features to prevent privilege escalation
+    const allowedFeatureKeys = Object.keys(defaultFeatures);
+    const validatedFeatures = 
+      features && typeof features === 'object'
+        ? Object.fromEntries(
+            Object.entries(features).filter(([k]) =>
+              allowedFeatureKeys.includes(k as string)
+            )
+          )
+        : defaultFeatures;
     
-    // Re-grant portal access
-    const updateResult = await db.collection('vendorPortalAccess').updateOne(
+    // Try to update existing portal access entry using positional operator
+    const updateResult = await db.collection('companies').updateOne(
       { 
-        companyId, 
-        vendorId 
+        _id: new ObjectId(companyId),
+        'vendorPortalAccess.vendorId': vendorId
       },
       { 
         $set: { 
-          portalAccess: true,
-          expiresAt: expirationDate,
-          features: features || defaultFeatures,
-          accessRevokedAt: null,
-          revokeReason: null,
-          accessGrantedAt: new Date(),
-          updatedAt: new Date()
+          'vendorPortalAccess.$.enabled': true,
+          'vendorPortalAccess.$.expiresAt': expirationDate,
+          'vendorPortalAccess.$.features': validatedFeatures,
+          'vendorPortalAccess.$.accessRevokedAt': null,
+          'vendorPortalAccess.$.revokeReason': null,
+          'vendorPortalAccess.$.accessGrantedAt': new Date(),
+          'vendorPortalAccess.$.updatedAt': new Date()
         }
-      },
-      { upsert: true }
+      }
     );
+
+    // If no existing access was found, create a new entry
+    if (updateResult.matchedCount === 0) {
+      const newAccess = {
+        vendorId,
+        enabled: true,
+        expiresAt: expirationDate,
+        features: validatedFeatures,
+        sessionTimeout: 480, // 8 hours in minutes
+        requireMFA: false,
+        allowedIPs: [],
+        accessRevokedAt: null,
+        revokeReason: null,
+        accessGrantedAt: new Date(),
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+
+      await db.collection('companies').updateOne(
+        { _id: new ObjectId(companyId) },
+        { $addToSet: { vendorPortalAccess: newAccess } }
+      );
+    }
 
     // Create notification for company
     await db.collection('notifications').insertOne({
       notificationId: `notif_${Date.now()}`,
-      companyId,
+      companyId: companyId,
       type: 'vendor_access_granted',
       title: 'Vendor Access Granted',
       message: `Portal access for vendor ${vendorId} has been granted until ${expirationDate.toLocaleDateString()}`,
@@ -69,21 +137,21 @@ export async function POST(request: NextRequest) {
 
     // Log the access grant
     await createAuditLog({
-      userId: 'admin',
+      userId: 'system', // TODO: Replace with actual admin user ID when auth is implemented
       userRole: 'company_admin',
-      companyId,
+      companyId: companyId,
       vendorId,
       action: 'create',
       resource: 'vendor_portal_access',
       resourceId: vendorId,
       newValues: { 
-        portalAccess: true, 
+        enabled: true, 
         expiresAt: expirationDate,
-        features: features || defaultFeatures
+        features: validatedFeatures
       },
       ipAddress: request.headers.get('x-forwarded-for') || 'unknown',
       userAgent: request.headers.get('user-agent') || 'unknown',
-      sessionId: 'admin_' + Date.now(),
+      sessionId: 'system_' + Date.now(), // TODO: Replace with actual session ID when auth is implemented
       metadata: { expirationDate: expirationDate.toISOString() }
     });
 
@@ -93,7 +161,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       message: 'Vendor portal access granted successfully',
-      expiresAt: expirationDate
+      expiresAt: expirationDate.toISOString()
     });
 
   } catch (error) {

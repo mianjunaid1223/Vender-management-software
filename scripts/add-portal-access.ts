@@ -1,7 +1,5 @@
-import { MongoClient, ObjectId } from 'mongodb';
-
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/vendor_management';
-const client = new MongoClient(MONGODB_URI);
+import { ObjectId } from 'mongodb';
+import { getDb } from '../src/lib/data';
 
 async function addPortalAccess() {
   try {
@@ -81,7 +79,7 @@ async function addPortalAccess() {
               updatedAt: new Date().toISOString()
             }
           }
-        }
+        } as any
       );
     }
 
@@ -101,8 +99,6 @@ async function addPortalAccess() {
 
   } catch (error) {
     console.error('Error:', error);
-  } finally {
-    await client.close();
   }
 }
 

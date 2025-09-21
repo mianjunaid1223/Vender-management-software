@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       user: {
-        id: vendorSession.userId,
+        id: vendorSession.id,
         name: vendorSession.name,
         email: vendorSession.email,
         vendorId: vendorSession.vendorId,

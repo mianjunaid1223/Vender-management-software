@@ -62,23 +62,20 @@ export async function GET(request: NextRequest) {
     if (allowedFeatures.viewInvoices) {
       // Get invoice statistics
       const invoices = await db.collection('invoices').find({
-        'vendor.id': vendorSession.vendorId,
+        vendorId: vendorSession.vendorId,
         companyId: vendorSession.companyId
       }).toArray();
 
       stats.totalInvoices = invoices.length;
       stats.pendingInvoices = invoices.filter(inv => inv.status === 'pending').length;
       stats.paidInvoices = invoices.filter(inv => inv.status === 'paid').length;
-      stats.totalAmount = invoices.reduce((sum, inv) => sum + (inv.total || 0), 0);
+      stats.totalAmount = invoices.reduce((sum, inv) => sum + (inv.amount || 0), 0);
     }
 
     if (allowedFeatures.viewContracts) {
       // Get contract statistics
       const contracts = await db.collection('contracts').find({
-        $or: [
-          { 'partyA.id': vendorSession.vendorId },
-          { 'partyB.id': vendorSession.vendorId }
-        ],
+        vendorId: vendorSession.vendorId,
         companyId: vendorSession.companyId,
         status: 'active'
       }).toArray();

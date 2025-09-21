@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getVendorProfile, updateVendorProfile } from '@/lib/data/vendor-data';
+import { getVendorProfile, updateVendorProfile, getMyProfile, updateMyProfile } from '@/lib/data/vendor-data';
 import { getVendorSession } from '@/lib/auth/vendor-auth';
 
 export async function GET(request: NextRequest) {
@@ -9,7 +9,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const profile = await getVendorProfile(session.vendorId, session.companyId);
+    // Use the new session-derived function for maximum security
+    const profile = await getMyProfile();
     
     if (!profile) {
       return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
@@ -34,7 +35,8 @@ export async function PATCH(request: NextRequest) {
 
     const body = await request.json();
     
-    await updateVendorProfile(session.vendorId, session.companyId, body);
+    // Use the new session-derived function for maximum security
+    await updateMyProfile(body);
 
     return NextResponse.json({ 
       success: true, 
@@ -49,7 +51,7 @@ export async function PATCH(request: NextRequest) {
         { status: 400 }
       );
     }
-    
+
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

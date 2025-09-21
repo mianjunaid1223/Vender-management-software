@@ -87,22 +87,17 @@ export async function DELETE(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
-  console.log('GET /api/admin/vendor-portal-access called');
   try {
     const session = await getSession();
-    console.log('Session:', session ? { role: session.role, companyId: session.companyId } : 'No session');
     
     if (!session || (session.role !== 'company_admin' && session.role !== 'admin')) {
-      console.log('Unauthorized access attempt');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const { searchParams } = new URL(request.url);
     const vendorId = searchParams.get('vendorId');
-    console.log('Requested vendorId:', vendorId);
 
     if (!vendorId) {
-      console.log('No vendorId provided');
       return NextResponse.json(
         { error: 'Vendor ID is required' },
         { status: 400 }
@@ -110,7 +105,6 @@ export async function GET(request: NextRequest) {
     }
 
     const db = await getDb();
-    console.log('Connected to database');
 
     // Get the current portal access status from the company document
     const company = await db.collection('companies').findOne(
@@ -118,26 +112,15 @@ export async function GET(request: NextRequest) {
       { projection: { vendorPortalAccess: 1 } }
     );
 
-    console.log('Company found:', !!company);
-    console.log('Company vendorPortalAccess length:', company?.vendorPortalAccess?.length || 0);
-
     if (!company) {
-      console.log('Company not found, returning 404');
       return NextResponse.json({ error: 'Company not found' }, { status: 404 });
     }
 
     // Find the vendor's portal access in the array
     const vendorAccess = company.vendorPortalAccess?.find((access: any) => access.vendorId === vendorId);
 
-    console.log('Vendor access found:', !!vendorAccess);
-    if (vendorAccess) {
-      console.log('Vendor access enabled:', vendorAccess.enabled);
-      console.log('Vendor access features:', Object.keys(vendorAccess.features || {}));
-    }
-
     if (!vendorAccess) {
       // No portal access configured, return default disabled state
-      console.log('No vendor access found, returning default disabled state');
       return NextResponse.json({
         enabled: false,
         features: [],
@@ -151,19 +134,15 @@ export async function GET(request: NextRequest) {
     const enabledFeatures: string[] = [];
     const features = vendorAccess.features || {};
 
-    console.log('Processing features:', features);
-
     // Map database feature flags to frontend feature IDs
     if (features.viewInvoices || features.canViewInvoices) enabledFeatures.push('view_invoices');
     if (features.downloadInvoices || features.canDownloadInvoices) enabledFeatures.push('download_invoices');
-    if (features.uploadDocuments || features.canUploadInvoices) enabledFeatures.push('upload_invoices');
-    if (features.profileManagement || features.canEditProfile) enabledFeatures.push('edit_profile');
+    if (features.uploadInvoices || features.canUploadInvoices) enabledFeatures.push('upload_invoices');
+    if (features.editProfile || features.canEditProfile || features.profileManagement) enabledFeatures.push('edit_profile');
     if (features.viewContracts || features.canViewContracts) enabledFeatures.push('view_contracts');
-    if (features.canSignContracts || features.canCreateContracts) enabledFeatures.push('create_contracts');
-    if (features.manageVendors) enabledFeatures.push('manage_vendors');
+    if (features.signContracts || features.canSignContracts) enabledFeatures.push('sign_contracts');
     if (features.uploadDocuments || features.documentUpload) enabledFeatures.push('upload_documents');
-
-    console.log('Enabled features:', enabledFeatures);
+    if (features.manageVendors) enabledFeatures.push('manage_vendors');
 
     // Check if access has expired
     const isExpired = vendorAccess.expiresAt && new Date() > new Date(vendorAccess.expiresAt);
@@ -178,18 +157,15 @@ export async function GET(request: NextRequest) {
       lastLogin: vendorAccess.lastLoginAt || null
     };
 
-    console.log('Returning response:', response);
     return NextResponse.json(response);
 
   } catch (error) {
     console.error('Error checking vendor portal status:', error);
-    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
     return NextResponse.json(
       { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   } finally {
     // Database connection is handled by the getDb() function
-    console.log('Database operation completed');
   }
 }

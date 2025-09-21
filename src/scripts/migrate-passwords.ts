@@ -1,5 +1,7 @@
 import { getDb } from '@/lib/data';
 import bcrypt from 'bcryptjs';
+import { fileURLToPath } from 'url';
+import { basename } from 'path';
 
 // Script to migrate plain text passwords to hashed passwords
 async function migratePasswords() {
@@ -48,7 +50,16 @@ async function migratePasswords() {
 }
 
 // Run the migration
-if (require.main === module) {
+const isDirectRun = (() => {
+  try {
+    const thisFile = basename(fileURLToPath(import.meta.url));
+    const invoked = basename(process.argv[1] || '');
+    return thisFile === invoked;
+  } catch {
+    return false;
+  }
+})();
+if (isDirectRun) {
   migratePasswords()
     .then(() => {
       console.log('Migration completed');

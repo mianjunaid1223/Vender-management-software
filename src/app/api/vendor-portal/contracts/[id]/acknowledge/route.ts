@@ -23,7 +23,7 @@ export async function POST(
       acknowledged,
       acknowledgedAt: new Date().toISOString(),
       acknowledgedBy: session.id,
-      notes: notes || ''
+      notes: typeof notes === 'string' ? notes.slice(0, 2000) : ''
     };
 
     await acknowledgeContract(

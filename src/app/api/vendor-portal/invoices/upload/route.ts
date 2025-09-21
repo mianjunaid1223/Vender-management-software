@@ -32,6 +32,12 @@ export async function POST(request: NextRequest) {
     const file = formData.get('file') as File;
     const description = formData.get('description') as string;
     const amount = parseFloat(formData.get('amount') as string);
+    if (isNaN(amount) || amount <= 0) {
+      return NextResponse.json(
+        { error: 'Invalid amount. Amount must be a positive number' },
+        { status: 400 }
+      );
+    }
     const dueDate = formData.get('dueDate') as string;
 
     if (!file || !description || !amount || !dueDate) {
@@ -58,15 +64,37 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create unique filename
+    // Create unique filename with secure extension
     const timestamp = Date.now();
-    const fileExtension = file.name.split('.').pop();
-    const fileName = `invoice_${session.vendorId}_${timestamp}.${fileExtension}`;
+    
+    // Map MIME type to safe extension
+    const mimeToExtension: { [key: string]: string } = {
+      'application/pdf': 'pdf',
+      'image/jpeg': 'jpg',
+      'image/jpg': 'jpg',
+      'image/png': 'png'
+    };
+    const safeExtension = mimeToExtension[file.type];
+    if (!safeExtension) {
+      return NextResponse.json(
+        { error: 'Invalid file type extension' },
+        { status: 400 }
+      );
+    }
+    const fileName = `invoice_${session.vendorId}_${timestamp}.${safeExtension}`;
     
     // Ensure uploads directory exists
     const uploadsDir = join(process.cwd(), 'public', 'uploads', 'invoices');
-    if (!existsSync(uploadsDir)) {
-      await mkdir(uploadsDir, { recursive: true });
+    try {
+      if (!existsSync(uploadsDir)) {
+        await mkdir(uploadsDir, { recursive: true });
+      }
+    } catch (error) {
+      console.error('Failed to create upload directory:', error);
+      return NextResponse.json(
+        { error: 'Server configuration error. Please contact support.' },
+        { status: 500 }
+      );
     }
     
     const filePath = join(uploadsDir, fileName);
@@ -79,7 +107,7 @@ export async function POST(request: NextRequest) {
 
     // Save invoice to database
     const invoice = {
-      invoiceNumber: `INV-${timestamp.toString().slice(-8)}`,
+      invoiceNumber: `INV-${session.vendorId}-${timestamp}`,
       vendorId: session.vendorId,
       companyId: session.companyId,
       description,

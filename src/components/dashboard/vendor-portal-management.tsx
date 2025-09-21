@@ -559,7 +559,7 @@ export function VendorPortalManagement({ vendor, open, onOpenChange, onUpdate }:
               <CardContent>
                 <div className="space-y-4">
                   <div className="space-y-2 text-sm">
-                    <p><strong>Portal URL:</strong> {window.location.origin}/vendor-portal</p>
+                    <p><strong>Portal URL:</strong> {(typeof window !== 'undefined' ? window.location.origin : '')}/vendor-portal</p>
                     <p><strong>Login:</strong> Vendor will receive email and password via email</p>
                   </div>
                   

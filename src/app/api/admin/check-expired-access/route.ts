@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { ObjectId } from 'mongodb';
 import { getDb } from '@/lib/data';
 import { createAuditLog } from '@/lib/audit';
 
@@ -6,26 +7,45 @@ export async function POST(request: NextRequest) {
   try {
     const db = await getDb();
     
-    // Find all expired vendor portal access
-    const expiredAccess = await db.collection('vendorPortalAccess').find({
-      portalAccess: true,
-      expiresAt: { $lt: new Date() }
+    // Load all companies that have vendorPortalAccess entries
+    const companies = await db.collection('companies').find({
+      vendorPortalAccess: { $exists: true }
     }).toArray();
+
+    // Flatten and filter each company's access array for expired entries
+    const expiredAccess: Array<any> = [];
+    for (const company of companies) {
+      const companyExpired = (company.vendorPortalAccess || [])
+        .filter((access: any) =>
+          access.enabled &&
+          access.expiresAt &&
+          new Date(access.expiresAt) < new Date()
+        )
+        .map((access: any) => ({
+          ...access,
+          companyId: company._id.toString(),
+          company: company
+        }));
+      expiredAccess.push(...companyExpired);
+    }
 
     const revokedCount = expiredAccess.length;
     const results = [];
 
     for (const access of expiredAccess) {
       try {
-        // Revoke access
-        await db.collection('vendorPortalAccess').updateOne(
-          { _id: access._id },
-          { 
-            $set: { 
-              portalAccess: false,
-              accessRevokedAt: new Date(),
-              revokeReason: 'Access expired automatically',
-              updatedAt: new Date()
+        // Revoke access using positional operator for atomic update
+        await db.collection('companies').updateOne(
+          {
+            _id: access.company._id,
+            'vendorPortalAccess.vendorId': access.vendorId
+          },
+          {
+            $set: {
+              'vendorPortalAccess.$.enabled': false,
+              'vendorPortalAccess.$.accessRevokedAt': new Date(),
+              'vendorPortalAccess.$.revokeReason': 'Access expired automatically',
+              'vendorPortalAccess.$.updatedAt': new Date()
             }
           }
         );
@@ -50,7 +70,7 @@ export async function POST(request: NextRequest) {
           action: 'delete',
           resource: 'vendor_portal_access',
           resourceId: access.vendorId,
-          newValues: { portalAccess: false, reason: 'Access expired automatically' },
+          newValues: { enabled: false, reason: 'Access expired automatically' },
           ipAddress: 'system',
           userAgent: 'system_cron',
           sessionId: 'system_' + Date.now(),
@@ -100,36 +120,72 @@ export async function GET(request: NextRequest) {
   try {
     const db = await getDb();
     
+    const now = new Date();
+    const sevenDaysFromNow = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    
     // Check for access expiring soon (within 7 days)
-    const soonToExpire = await db.collection('vendorPortalAccess').find({
-      portalAccess: true,
-      expiresAt: { 
-        $gte: new Date(),
-        $lte: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+    const companiesWithSoonToExpire = await db.collection('companies').find({
+      'vendorPortalAccess': {
+        $elemMatch: {
+          enabled: true,
+          expiresAt: { 
+            $gte: now,
+            $lte: sevenDaysFromNow
+          }
+        }
       }
     }).toArray();
 
     // Check already expired
-    const expired = await db.collection('vendorPortalAccess').find({
-      portalAccess: true,
-      expiresAt: { $lt: new Date() }
+    const companiesWithExpired = await db.collection('companies').find({
+      'vendorPortalAccess': {
+        $elemMatch: {
+          enabled: true,
+          expiresAt: { $lt: now }
+        }
+      }
     }).toArray();
+
+    // Extract and count the actual access entries
+    const soonToExpireEntries = [];
+    const expiredEntries = [];
+
+    for (const company of companiesWithSoonToExpire) {
+      const soonToExpireAccess = company.vendorPortalAccess?.filter((access: any) => 
+        access.enabled === true && 
+        access.expiresAt && 
+        new Date(access.expiresAt) >= now && 
+        new Date(access.expiresAt) <= sevenDaysFromNow
+      ) || [];
+
+      soonToExpireEntries.push(...soonToExpireAccess.map((access: any) => ({
+        vendorId: access.vendorId,
+        companyId: company._id.toString(),
+        expiresAt: access.expiresAt
+      })));
+    }
+
+    for (const company of companiesWithExpired) {
+      const expiredAccess = company.vendorPortalAccess?.filter((access: any) => 
+        access.enabled === true && 
+        access.expiresAt && 
+        new Date(access.expiresAt) < now
+      ) || [];
+
+      expiredEntries.push(...expiredAccess.map((access: any) => ({
+        vendorId: access.vendorId,
+        companyId: company._id.toString(),
+        expiresAt: access.expiresAt
+      })));
+    }
 
     return NextResponse.json({
       success: true,
-      soonToExpire: soonToExpire.length,
-      expired: expired.length,
+      soonToExpire: soonToExpireEntries.length,
+      expired: expiredEntries.length,
       details: {
-        soonToExpire: soonToExpire.map(a => ({
-          vendorId: a.vendorId,
-          companyId: a.companyId,
-          expiresAt: a.expiresAt
-        })),
-        expired: expired.map(a => ({
-          vendorId: a.vendorId,
-          companyId: a.companyId,
-          expiresAt: a.expiresAt
-        }))
+        soonToExpire: soonToExpireEntries,
+        expired: expiredEntries
       }
     });
 

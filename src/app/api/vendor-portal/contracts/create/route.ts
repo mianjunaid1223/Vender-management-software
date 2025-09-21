@@ -1,14 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/data';
 import { createAuditLog } from '@/lib/audit';
+import { getVendorSession } from '@/lib/auth/vendor-auth';
+import { ObjectId } from 'mongodb';
 
 export async function POST(request: NextRequest) {
   try {
+    const session = await getVendorSession();
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    
     const body = await request.json();
-    const { title, type, description, value, startDate, endDate } = body;
-
-    // Get company ID from session/auth
-    const companyId = request.headers.get('x-company-id') || 'comp_001'; // Fallback for demo
+    const { title, type, description, value, startDate, endDate } = body as Record<string, any>;
+    const companyId = session.companyId;
+    const vendorId = session.vendorId;
 
     if (!title || !type || !value || !startDate || !endDate) {
       return NextResponse.json(
@@ -17,16 +23,33 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const valueNum = Number(value);
+    if (!Number.isFinite(valueNum) || valueNum < 0) {
+      return NextResponse.json({ error: 'Invalid value' }, { status: 400 });
+    }
+    
+    if (new Date(endDate) < new Date(startDate)) {
+      return NextResponse.json({ error: 'endDate must be >= startDate' }, { status: 400 });
+    }
+
     const db = await getDb();
+    
+    // Check if vendor has permission to create contracts
+    const company = await db.collection('companies').findOne({ _id: new ObjectId(companyId) });
+    const access = company?.vendorPortalAccess?.find((a: any) => a.vendorId === vendorId && a.enabled);
+    if (!access?.features?.createContracts) {
+      return NextResponse.json({ error: 'Permission denied' }, { status: 403 });
+    }
     
     // Create new contract
     const contract = {
       contractId: `contract_${Date.now()}`,
       companyId,
+      vendorId,
       title,
       type,
       description,
-      value: parseFloat(value),
+      value: valueNum,
       startDate: new Date(startDate),
       endDate: new Date(endDate),
       status: 'draft',
@@ -38,17 +61,18 @@ export async function POST(request: NextRequest) {
 
     // Log the creation
     await createAuditLog({
-      userId: companyId,
-      userRole: 'vendor_admin',
+      userId: session.id,
+      userRole: (session.role as any) || 'vendor_user',
       companyId,
+      vendorId,
       action: 'create',
       resource: 'contract',
       resourceId: contract.contractId,
       newValues: contract,
       ipAddress: request.headers.get('x-forwarded-for') || 'unknown',
       userAgent: request.headers.get('user-agent') || 'unknown',
-      sessionId: 'session_' + Date.now(),
-      metadata: { contractType: type, value }
+      sessionId: 'vendor_' + session.id,
+      metadata: { contractType: type, value: valueNum }
     });
 
     return NextResponse.json({

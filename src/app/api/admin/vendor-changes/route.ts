@@ -68,6 +68,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (!ObjectId.isValid(changeId)) {
+      return NextResponse.json(
+        { error: 'Invalid changeId' },
+        { status: 400 }
+      );
+    }
+
     const db = await getDb();
 
     // Get the pending change
@@ -93,9 +100,9 @@ export async function POST(request: NextRequest) {
     const now = new Date();
     const newStatus = action === 'approve' ? 'approved' : 'rejected';
 
-    // Update the pending change status
-    await db.collection('vendor_pending_changes').updateOne(
-      { _id: new ObjectId(changeId) },
+    // Update the pending change status - conditional update to prevent race conditions
+    const reviewRes = await db.collection('vendor_pending_changes').updateOne(
+      { _id: new ObjectId(changeId), status: 'pending' },
       {
         $set: {
           status: newStatus,
@@ -107,6 +114,13 @@ export async function POST(request: NextRequest) {
       }
     );
 
+    if (reviewRes.modifiedCount === 0) {
+      return NextResponse.json(
+        { error: 'Change has already been processed' },
+        { status: 409 }
+      );
+    }
+
     // If approved, apply the changes to the main collection
     if (action === 'approve') {
       const { category, changeData, resourceId } = pendingChange;
@@ -117,6 +131,7 @@ export async function POST(request: NextRequest) {
             if (pendingChange.changeType === 'create') {
               await db.collection('invoices').insertOne({
                 ...changeData,
+                companyId: session.companyId,
                 createdBy: pendingChange.vendorId,
                 createdAt: now,
                 status: 'pending',
@@ -124,7 +139,7 @@ export async function POST(request: NextRequest) {
                 approvedAt: now
               });
             } else if (pendingChange.changeType === 'edit') {
-              await db.collection('invoices').updateOne(
+              const updateResult = await db.collection('invoices').updateOne(
                 { _id: new ObjectId(resourceId) },
                 { 
                   $set: {
@@ -136,6 +151,9 @@ export async function POST(request: NextRequest) {
                   }
                 }
               );
+              if (updateResult.matchedCount === 0) {
+                throw new Error('Invoice to edit not found');
+              }
             }
             break;
 
@@ -143,6 +161,7 @@ export async function POST(request: NextRequest) {
             if (pendingChange.changeType === 'create') {
               await db.collection('contracts').insertOne({
                 ...changeData,
+                companyId: session.companyId,
                 createdBy: pendingChange.vendorId,
                 createdAt: now,
                 status: 'draft',
@@ -153,7 +172,7 @@ export async function POST(request: NextRequest) {
             break;
 
           case 'profile':
-            await db.collection('vendors').updateOne(
+            const profileUpdateResult = await db.collection('vendors').updateOne(
               { vendorId: pendingChange.vendorId },
               {
                 $set: {
@@ -165,12 +184,16 @@ export async function POST(request: NextRequest) {
                 }
               }
             );
+            if (profileUpdateResult.matchedCount === 0) {
+              throw new Error('Vendor profile not found');
+            }
             break;
 
           case 'vendor':
             if (pendingChange.changeType === 'create') {
               await db.collection('vendors').insertOne({
                 ...changeData,
+                companyId: session.companyId,
                 createdBy: pendingChange.vendorId,
                 createdAt: now,
                 approvedBy: session.id,
@@ -178,6 +201,15 @@ export async function POST(request: NextRequest) {
               });
             }
             break;
+
+          default:
+            console.error(`Unsupported category: ${category}`, {
+              changeId,
+              category,
+              changeType: pendingChange.changeType,
+              vendorId: pendingChange.vendorId
+            });
+            throw new Error(`Unsupported change category: ${category}`);
         }
 
         console.log(`Applied ${category} ${pendingChange.changeType} change for vendor ${pendingChange.vendorId}`);
@@ -187,10 +219,8 @@ export async function POST(request: NextRequest) {
         await db.collection('vendor_pending_changes').updateOne(
           { _id: new ObjectId(changeId) },
           {
-            $set: {
-              status: 'pending',
-              $unset: { reviewedBy: 1, reviewedAt: 1, reviewComments: 1 }
-            }
+            $set: { status: 'pending' },
+            $unset: { reviewedBy: 1, reviewedAt: 1, reviewComments: 1 }
           }
         );
         return NextResponse.json(
@@ -203,7 +233,7 @@ export async function POST(request: NextRequest) {
     // Create audit log
     await createAuditLog({
       userId: session.id,
-      userRole: session.role,
+      userRole: session.role as any, // Type assertion for role compatibility
       companyId: session.companyId,
       vendorId: pendingChange.vendorId,
       action: action === 'approve' ? 'approve' : 'reject',

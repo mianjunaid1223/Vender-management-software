@@ -40,10 +40,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // For edit operations, resourceId is required
-    if (changeType === 'edit' && !resourceId) {
+    // For edit operations, resourceId is required and must be valid
+    if (changeType === 'edit' && (!resourceId || !ObjectId.isValid(resourceId))) {
       return NextResponse.json(
-        { error: 'Resource ID is required for edit operations' },
+        { error: 'Valid resourceId is required for edit operations' },
         { status: 400 }
       );
     }
@@ -52,12 +52,10 @@ export async function POST(request: NextRequest) {
     const now = new Date();
 
     // Check if vendor has permission for this type of change
-    const portalAccess = await db.collection('vendorPortalAccess').findOne({
-      vendorId: session.vendorId,
-      companyId: session.companyId,
-      portalAccess: true
-    });
-
+    const company = await db.collection('companies').findOne({ _id: new ObjectId(session.companyId) });
+    const portalAccess = company?.vendorPortalAccess?.find(
+      (a: any) => a.vendorId === session.vendorId && a.enabled === true
+    );
     if (!portalAccess) {
       return NextResponse.json(
         { error: 'Portal access not found or disabled' },
@@ -66,7 +64,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check specific feature permissions
-    const hasPermission = checkFeaturePermission(category, changeType, portalAccess.features);
+    const hasPermission = checkFeaturePermission(category, changeType, portalAccess.features || {});
     if (!hasPermission) {
       return NextResponse.json(
         { error: 'You do not have permission for this type of change' },
@@ -81,7 +79,9 @@ export async function POST(request: NextRequest) {
       category,
       changeType,
       changeData,
-      resourceId: resourceId ? new ObjectId(resourceId) : null,
+      resourceId: resourceId
+        ? (ObjectId.isValid(resourceId) ? new ObjectId(resourceId) : null)
+        : null,
       description: description || `${changeType} ${category}`,
       status: 'pending',
       submittedBy: session.id,
@@ -98,7 +98,7 @@ export async function POST(request: NextRequest) {
       userRole: 'vendor_user',
       companyId: session.companyId,
       vendorId: session.vendorId,
-      action: 'submit',
+      action: 'create',
       resource: 'vendor_pending_change',
       resourceId: result.insertedId.toString(),
       newValues: { category, changeType, status: 'pending' },

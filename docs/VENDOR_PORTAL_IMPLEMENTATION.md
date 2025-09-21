@@ -37,15 +37,14 @@ Run the schema enhancement script to create new collections and indexes:
 npm run schema:enhance
 ```
 
-This script creates:
-- `vendor_portal_access` - Portal access management
+This script creates/updates:
+- `companies.vendorPortalAccess` (embedded) - Portal access management
 - `vendor_users` - Vendor user accounts
 - `vendor_sessions` - Vendor authentication sessions
 - `audit_logs` - Immutable audit trail
 - `data_sync_queue` - Bidirectional data synchronization
 - `compliance_documents` - Document management
 - `portal_notifications` - Vendor notifications
-
 ### 4. Update Package.json Scripts
 
 Add this script to your `package.json`:
@@ -53,7 +52,7 @@ Add this script to your `package.json`:
 ```json
 {
   "scripts": {
-    "schema:enhance": "tsx src/scripts/enhance-vendor-portal-schema.ts"
+    "schema:enhance": "tsx src/scripts/vendor-portal-schema.ts"
   }
 }
 ```

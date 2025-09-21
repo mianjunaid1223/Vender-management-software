@@ -1,6 +1,8 @@
 // Enhanced types for vendor portal functionality
 // Extends existing types in src/lib/types.ts
 
+import type { Vendor } from '@/lib/types';
+
 // === VENDOR PORTAL TYPES ===
 
 export type VendorPortalAccess = {

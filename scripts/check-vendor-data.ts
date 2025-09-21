@@ -1,7 +1,6 @@
-import { MongoClient, ObjectId } from 'mongodb';
+import { ObjectId } from 'mongodb';
 import bcrypt from 'bcryptjs';
-
-const client = new MongoClient(process.env.MONGODB_URI!);
+import { getDb } from '../src/lib/data';
 
 async function checkVendorData() {
   try {
@@ -39,7 +38,7 @@ async function checkVendorData() {
   } catch (error) {
     console.error('Error:', error);
   } finally {
-    await client.close();
+    // Connection is managed by getDb()/clientPromise
   }
 }
 
@@ -123,11 +122,17 @@ async function createTestData(db: any) {
   );
 
   console.log('Added portal access for vendor');
-  console.log('');
-  console.log('=== Test Credentials ===');
-  console.log('Email: vendor@test.com');
-  console.log('Password: password123');
-  console.log('=========================');
+  
+  // Only show test credentials in non-production environments for security
+  // This prevents credentials from being exposed in production logs
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('=== Test Credentials (DEV) ===');
+    console.log('Email: vendor@test.com');
+    console.log('Password: password123');
+    console.log('==============================');
+  } else {
+    console.log('Test credentials created (not printed in production).');
+  }
 }
 
 checkVendorData();

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { ObjectId } from 'mongodb';
 import { getDb } from '@/lib/data';
 import { createAuditLog } from '@/lib/audit';
 
@@ -14,56 +15,92 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Validate companyId format
+    if (!ObjectId.isValid(companyId)) {
+      return NextResponse.json(
+        { error: 'Invalid Company ID format' },
+        { status: 400 }
+      );
+    }
+
+    // Validate vendorId format
+    if (typeof vendorId !== 'string' || !vendorId.trim()) {
+      return NextResponse.json(
+        { error: 'Invalid Vendor ID format' },
+        { status: 400 }
+      );
+    }
+
     const db = await getDb();
+    const reasonToUse = (reason ?? '').trim() || 'Admin revoked access';
+    const revokedAt = new Date();
     
-    // Revoke portal access
-    const updateResult = await db.collection('vendorPortalAccess').updateOne(
-      { 
-        companyId, 
-        vendorId 
+    // Update the companies collection's vendorPortalAccess array
+    const updateResult = await db.collection('companies').updateOne(
+      {
+        _id: new ObjectId(companyId),
+        'vendorPortalAccess.vendorId': vendorId,
+        'vendorPortalAccess.enabled': true // Only update if currently enabled
       },
-      { 
-        $set: { 
-          portalAccess: false,
-          accessRevokedAt: new Date(),
-          revokeReason: reason || 'Access expired',
-          updatedAt: new Date()
+      {
+        $set: {
+          'vendorPortalAccess.$.enabled': false,
+          'vendorPortalAccess.$.accessRevokedAt': revokedAt,
+          'vendorPortalAccess.$.revokeReason': reasonToUse,
+          'vendorPortalAccess.$.updatedAt': revokedAt
         }
       }
     );
 
     if (updateResult.matchedCount === 0) {
-      return NextResponse.json(
-        { error: 'Vendor portal access not found' },
-        { status: 404 }
-      );
+      // Check if the vendor access exists but is already disabled
+      const company = await db.collection('companies').findOne({
+        _id: new ObjectId(companyId),
+        'vendorPortalAccess.vendorId': vendorId
+      });
+
+      if (!company) {
+        return NextResponse.json(
+          { error: 'Vendor portal access not found' },
+          { status: 404 }
+        );
+      } else {
+        // Access exists but already disabled - treat as success (idempotent)
+        return NextResponse.json({
+          success: true,
+          message: 'Vendor portal access was already revoked'
+        });
+      }
     }
 
     // Create notification for company
     await db.collection('notifications').insertOne({
       notificationId: `notif_${Date.now()}`,
-      companyId,
+      companyId: companyId,
       type: 'vendor_access_revoked',
       title: 'Vendor Access Revoked',
-      message: `Portal access for vendor ${vendorId} has been revoked due to: ${reason || 'Access expired'}`,
+      message: `Portal access for vendor ${vendorId} has been revoked due to: ${reasonToUse}`,
       read: false,
-      createdAt: new Date()
+      createdAt: revokedAt
     });
 
     // Log the access revocation
     await createAuditLog({
-      userId: 'system',
+      userId: 'system', // TODO: Replace with actual admin user ID when auth is implemented
       userRole: 'company_admin',
-      companyId,
+      companyId: companyId,
       vendorId,
       action: 'delete',
       resource: 'vendor_portal_access',
       resourceId: vendorId,
-      newValues: { portalAccess: false, reason: reason || 'Access expired' },
+      newValues: { enabled: false, reason: reasonToUse },
       ipAddress: request.headers.get('x-forwarded-for') || 'system',
-      userAgent: 'system',
-      sessionId: 'system_' + Date.now(),
-      metadata: { reason: reason || 'Access expired' }
+      userAgent: request.headers.get('user-agent') || 'system',
+      sessionId: 'system_' + Date.now(), // TODO: Replace with actual session ID when auth is implemented
+      metadata: { 
+        reason: reasonToUse,
+        revokedAt: revokedAt.toISOString()
+      }
     });
 
     // TODO: Send email notifications here

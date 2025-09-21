@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getVendorSession } from '@/lib/auth/vendor-auth';
+import { getMyInvoices } from '@/lib/data/vendor-data';
 import { getDb } from '@/lib/data';
 import { ObjectId } from 'mongodb';
 
@@ -41,24 +42,19 @@ export async function GET(request: NextRequest) {
       }, { status: 403 });
     }
 
-    const db = await getDb();
-    
-    // Get invoices for this vendor
-    const invoices = await db.collection('invoices').find({
-      vendorId: session.vendorId,
-      companyId: session.companyId
-    }).sort({ createdAt: -1 }).toArray();
+    // Use the new session-derived function for maximum security
+    const invoices = await getMyInvoices();
 
     return NextResponse.json({
       invoices: invoices.map(invoice => ({
-        id: invoice._id.toString(),
-        number: invoice.invoiceNumber || invoice.number,
-        amount: invoice.amount || 0,
+        id: invoice.id,
+        number: invoice.invoiceNumber,
+        amount: invoice.totalAmount || invoice.invoiceAmount || 0,
         status: invoice.status || 'pending',
-        dueDate: invoice.dueDate,
-        uploadDate: invoice.createdAt || invoice.uploadDate,
-        description: invoice.description || invoice.subject,
-        documentUrl: invoice.documentUrl
+        dueDate: invoice.invoiceDueDate,
+        uploadDate: invoice.createdAt,
+        description: invoice.notes || '',
+        vendorName: invoice.vendorName
       }))
     });
 
@@ -89,9 +85,18 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { invoiceNumber, amount, dueDate, description, documentUrl } = body;
 
-    if (!invoiceNumber || !amount || !dueDate) {
+    const parsedAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
+    const due = new Date(dueDate);
+    if (
+      typeof invoiceNumber !== 'string' ||
+      !invoiceNumber.trim() ||
+      !Number.isFinite(parsedAmount) ||
+      parsedAmount <= 0 ||
+      !dueDate ||
+      Number.isNaN(due.getTime())
+    ) {
       return NextResponse.json(
-        { error: 'Invoice number, amount, and due date are required' },
+        { error: 'Invalid invoice number, amount, or due date' },
         { status: 400 }
       );
     }
@@ -101,8 +106,8 @@ export async function POST(request: NextRequest) {
     // Create new invoice
     const invoice = {
       invoiceNumber,
-      amount: parseFloat(amount),
-      dueDate: new Date(dueDate),
+      amount: parsedAmount,
+      dueDate: due,
       description: description || '',
       documentUrl: documentUrl || '',
       status: 'pending', // All vendor-submitted invoices require company approval
@@ -128,7 +133,7 @@ export async function POST(request: NextRequest) {
       metadata: {
         invoiceId: result.insertedId.toString(),
         vendorId: session.vendorId,
-        amount: amount
+        amount: parsedAmount
       }
     });
 

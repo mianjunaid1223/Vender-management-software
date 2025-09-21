@@ -44,6 +44,10 @@ export async function createAuditLog(params: {
     
   } catch (error) {
     console.error('Failed to create audit log:', error);
+    
+    // CRITICAL: Implement fallback logging to prevent silent failures
+    await handleAuditLogFailure(params, error);
+    
     // Don't throw - audit logging should not break the main operation
   }
 }
@@ -249,4 +253,175 @@ export async function getAuditSummary(params: {
     resourceAccess: resourceCounts,
     riskEvents: result.riskEvents
   };
+}
+
+// === FALLBACK LOGGING FOR AUDIT FAILURES ===
+
+async function handleAuditLogFailure(
+  params: Parameters<typeof createAuditLog>[0],
+  error: unknown
+): Promise<void> {
+  const timestamp = new Date().toISOString();
+  const errorMessage = error instanceof Error ? error.message : String(error);
+  
+  try {
+    // Strategy 1: Try to log to a dedicated audit_failures collection
+    const db = await getDb();
+    await db.collection('audit_failures').insertOne({
+      originalAuditParams: params,
+      failureReason: errorMessage,
+      failureTimestamp: timestamp,
+      retryAttempts: 0,
+      resolved: false,
+      severity: 'critical'
+    });
+    
+    console.warn(`Audit log failure stored in fallback collection: ${errorMessage}`);
+    
+  } catch (fallbackError) {
+    // Strategy 2: If database is completely down, log to file system
+    await logToFileSystem({
+      type: 'AUDIT_FAILURE',
+      timestamp,
+      originalAction: params.action,
+      userId: params.userId,
+      companyId: params.companyId,
+      resource: params.resource,
+      primaryError: errorMessage,
+      fallbackError: fallbackError instanceof Error ? fallbackError.message : String(fallbackError)
+    });
+    
+    // Strategy 3: Send critical alert (if monitoring service is configured)
+    await sendAuditFailureAlert(params, errorMessage);
+  }
+}
+
+async function logToFileSystem(logData: Record<string, any>): Promise<void> {
+  try {
+    // In production, this could write to a dedicated log file or external logging service
+    console.error('CRITICAL AUDIT FAILURE - Database unavailable:', JSON.stringify(logData, null, 2));
+    
+    // TODO: Implement file system logging for production
+    // const fs = await import('fs/promises');
+    // const logPath = process.env.AUDIT_FAILURE_LOG_PATH || '/var/log/audit-failures.log';
+    // await fs.appendFile(logPath, JSON.stringify(logData) + '\n');
+    
+  } catch (fsError) {
+    // Last resort - at least log to stderr
+    console.error('CRITICAL: All audit logging mechanisms failed:', logData, 'FS Error:', fsError);
+  }
+}
+
+async function sendAuditFailureAlert(
+  params: Parameters<typeof createAuditLog>[0],
+  error: string
+): Promise<void> {
+  try {
+    // TODO: Integrate with monitoring/alerting service (e.g., PagerDuty, Slack, email)
+    const alertData = {
+      severity: 'critical',
+      title: 'Audit Log System Failure',
+      description: `Failed to record audit log for ${params.action} on ${params.resource}`,
+      details: {
+        userId: params.userId,
+        companyId: params.companyId,
+        action: params.action,
+        resource: params.resource,
+        error: error,
+        timestamp: new Date().toISOString()
+      }
+    };
+    
+    console.error('AUDIT ALERT:', alertData);
+    
+    // Example integrations (uncomment and configure as needed):
+    // await sendSlackAlert(alertData);
+    // await sendEmailAlert(alertData);
+    // await triggerPagerDutyIncident(alertData);
+    
+  } catch (alertError) {
+    console.error('Failed to send audit failure alert:', alertError);
+  }
+}
+
+// === AUDIT RECOVERY UTILITIES ===
+
+export async function getAuditFailures(
+  companyId?: string,
+  resolved: boolean = false
+): Promise<any[]> {
+  try {
+    const db = await getDb();
+    const filter: any = { resolved };
+    
+    if (companyId) {
+      filter['originalAuditParams.companyId'] = companyId;
+    }
+    
+    return await db.collection('audit_failures')
+      .find(filter)
+      .sort({ failureTimestamp: -1 })
+      .limit(100)
+      .toArray();
+      
+  } catch (error) {
+    console.error('Failed to retrieve audit failures:', error);
+    return [];
+  }
+}
+
+export async function retryFailedAudits(maxRetries: number = 3): Promise<{
+  attempted: number;
+  successful: number;
+  failed: number;
+}> {
+  const db = await getDb();
+  const stats = { attempted: 0, successful: 0, failed: 0 };
+  
+  try {
+    const failures = await db.collection('audit_failures')
+      .find({ resolved: false, retryAttempts: { $lt: maxRetries } })
+      .toArray();
+    
+    for (const failure of failures) {
+      stats.attempted++;
+      
+      try {
+        // Retry the original audit log
+        await createAuditLog(failure.originalAuditParams);
+        
+        // Mark as resolved
+        await db.collection('audit_failures').updateOne(
+          { _id: failure._id },
+          { 
+            $set: { 
+              resolved: true, 
+              resolvedAt: new Date().toISOString(),
+              retryAttempts: failure.retryAttempts + 1
+            }
+          }
+        );
+        
+        stats.successful++;
+        
+      } catch (retryError) {
+        // Update retry count
+        await db.collection('audit_failures').updateOne(
+          { _id: failure._id },
+          { 
+            $inc: { retryAttempts: 1 },
+            $set: { lastRetryAt: new Date().toISOString() }
+          }
+        );
+        
+        stats.failed++;
+        console.error(`Retry failed for audit ${failure._id}:`, retryError);
+      }
+    }
+    
+  } catch (error) {
+    console.error('Failed to retry audit logs:', error);
+  }
+  
+  return stats;
 }

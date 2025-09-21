@@ -1,14 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/data';
 import { createAuditLog } from '@/lib/audit';
+import { getVendorSession } from '@/lib/auth/vendor-auth';
 
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
     const { name, email, phone, address } = body;
 
-    // Get company ID from session/auth
-    const companyId = request.headers.get('x-company-id') || 'comp_001'; // Fallback for demo
+    // Require authenticated vendor session
+    const session = await getVendorSession();
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const companyId = session.companyId;
 
     if (!name || !email) {
       return NextResponse.json(
@@ -45,16 +50,17 @@ export async function PUT(request: NextRequest) {
 
     // Log the update
     await createAuditLog({
-      userId: companyId,
+      userId: session.id,
       userRole: 'vendor_admin',
-      companyId,
+      vendorId: session.vendorId,
+      companyId: session.companyId,
       action: 'update',
       resource: 'company_profile',
       resourceId: companyId,
       newValues: updateData,
       ipAddress: request.headers.get('x-forwarded-for') || 'unknown',
       userAgent: request.headers.get('user-agent') || 'unknown',
-      sessionId: 'session_' + Date.now(),
+      sessionId: session.id,
       metadata: { updatedFields: Object.keys(updateData) }
     });
 
