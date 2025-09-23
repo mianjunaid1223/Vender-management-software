@@ -9,7 +9,6 @@ import { DollarSign, Receipt, Users, CreditCard, FileClock, AlertCircle } from "
 import { fetchCardData, fetchInvoices, fetchExpiringContracts } from "@/lib/data";
 import { updateInvoiceStatuses } from "@/lib/invoice-status-manager";
 import clientPromise from "@/lib/mongodb";
-import { DbConfigWarning } from "@/components/db-config-warning";
 import { RecentInvoices } from "@/components/dashboard/recent-invoices";
 import { DashboardAlertsWrapper } from "@/components/dashboard/dashboard-alerts-wrapper";
 import { Button } from "@/components/ui/button";
@@ -34,25 +33,7 @@ export default async function DashboardPage() {
     
     const isDbConfigured = clientPromise !== null;
 
-    if (!isDbConfigured) {
-      return (
-        <div className="flex flex-col gap-6 animate-fade-in">
-          <DbConfigWarning />
-          <div className="text-center py-12">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">Database Connection Required</h2>
-            <p className="text-gray-600 mb-6">
-              Please configure your MongoDB connection string in the .env.local file to use the application.
-            </p>
-            <div className="bg-gray-100 p-4 rounded-lg text-left max-w-2xl mx-auto">
-              <p className="text-sm font-medium mb-2">Add this to your .env.local file:</p>
-              <code className="text-sm bg-gray-800 text-green-400 p-2 rounded block">
-                MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/database?retryWrites=true&w=majority
-              </code>
-            </div>
-          </div>
-        </div>
-      );
-    }
+   
 
     const { invoices, cardData, alerts, expiringContracts } = await (async () => {
         try {
@@ -127,7 +108,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="flex flex-col gap-6 animate-fade-in">
-      {!isDbConfigured && <DbConfigWarning />}
+      {!isDbConfigured}
       
       {/* Alerts Section */}
       {hasAlerts && (
