@@ -1,5 +1,5 @@
-import { PageHeader } from "@/components/page-header";
-import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/shared/components/page-header";
+import { Button } from "@/shared/components/ui/button";
 import {
   Card,
   CardContent,
@@ -7,23 +7,23 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
+} from "@/shared/components/ui/card";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@/shared/components/ui/select";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
-import { Label } from "@/components/ui/label";
+} from "@/shared/components/ui/popover";
+import { Calendar } from "@/shared/components/ui/calendar";
+import { Label } from "@/shared/components/ui/label";
 import { Calendar as CalendarIcon, Download } from "lucide-react";
-import { fetchVendors } from "@/lib/data";
+import { fetchVendors } from "@/shared/lib/data";
 
 export default async function ReportsPage() {
   const vendors = await fetchVendors();

@@ -4,20 +4,16 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
+} from "@/shared/components/ui/card";
 import { DollarSign, Receipt, Users, CreditCard, FileClock, AlertCircle } from "lucide-react";
-import { fetchCardData, fetchInvoices, fetchExpiringContracts } from "@/lib/data";
-import { updateInvoiceStatuses } from "@/lib/invoice-status-manager";
-import clientPromise from "@/lib/mongodb";
-import { RecentInvoices } from "@/components/dashboard/recent-invoices";
-import { DashboardAlertsWrapper } from "@/components/dashboard/dashboard-alerts-wrapper";
-import { Button } from "@/components/ui/button";
-import Link from "next/link";
-import { format } from "date-fns";
-import { Contract } from "@/lib/types";
-import { DashboardAlerts } from "@/components/dashboard/dashboard-alerts";
-import { calculateDaysDifference, formatDaysDifference } from "@/lib/date-utils";
-import { getSession } from "@/lib/auth";
+import { fetchCardData, fetchInvoices, fetchExpiringContracts } from "@/shared/lib/data";
+import { updateInvoiceStatuses } from "@/features/invoices/lib/invoice-status-manager";
+import clientPromise from "@/core/database/mongodb";
+import { RecentInvoices } from "@/features/dashboard/components/recent-invoices";
+import { DashboardAlertsWrapper } from "@/features/dashboard/components/dashboard-alerts-wrapper";
+
+import { calculateDaysDifference, formatDaysDifference } from "@/core/utils/date-utils";
+import { getSession } from "@/core/auth/auth";
 import { redirect } from "next/navigation";
 
 export default async function DashboardPage() {
@@ -108,7 +104,17 @@ export default async function DashboardPage() {
 
   return (
     <div className="flex flex-col gap-6 animate-fade-in">
-      {!isDbConfigured}
+      {!isDbConfigured && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4">
+          <div className="flex">
+            <AlertCircle className="h-5 w-5 text-yellow-400" />
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-yellow-800">Database Configuration Required</h3>
+              <p className="mt-1 text-sm text-yellow-700">Please configure your MongoDB connection to continue.</p>
+            </div>
+          </div>
+        </div>
+      )}
       
       {/* Alerts Section */}
       {hasAlerts && (

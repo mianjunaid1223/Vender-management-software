@@ -1,8 +1,8 @@
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/shared/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import Link from "next/link";
-import { Logo } from "@/components/logo";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { Logo } from "@/shared/components/logo";
+import { ThemeToggle } from "@/shared/components/theme-toggle";
 import { siteConfig } from "@/config/site";
 
 export default function Home() {

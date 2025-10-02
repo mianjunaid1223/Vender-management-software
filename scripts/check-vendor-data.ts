@@ -1,6 +1,6 @@
 import { ObjectId } from 'mongodb';
 import bcrypt from 'bcryptjs';
-import { getDb } from '../src/lib/data';
+import { getDb } from '../src/shared/lib/data';
 
 async function checkVendorData() {
   try {

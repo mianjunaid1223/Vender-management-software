@@ -3,15 +3,15 @@ import { type ReactNode } from "react";
 import { PanelLeft } from "lucide-react";
 import { redirect } from "next/navigation";
 
-import { Button } from "@/components/ui/button";
-import { Sheet, SheetTrigger, SheetContent, SheetTitle } from "@/components/ui/sheet";
-import { UserNav } from "@/components/user-nav";
-import { Logo } from "@/components/logo";
-import { ThemeToggle } from "@/components/theme-toggle";
-import { fetchInvoices, fetchVendors, processAndFetchContracts, fetchCompany } from "@/lib/data";
-import { DashboardNav } from "@/components/dashboard-nav";
-import { Spotlight } from "@/components/spotlight";
-import { getSession } from "@/lib/auth";
+import { Button } from "@/shared/components/ui/button";
+import { Sheet, SheetTrigger, SheetContent, SheetTitle } from "@/shared/components/ui/sheet";
+import { UserNav } from "@/features/dashboard/components/user-nav";
+import { Logo } from "@/shared/components/logo";
+import { ThemeToggle } from "@/shared/components/theme-toggle";
+import { fetchInvoices, fetchVendors, processAndFetchContracts, fetchCompany } from "@/shared/lib/data";
+import { DashboardNav } from "@/features/dashboard/components/dashboard-nav";
+import { Spotlight } from "@/shared/components/spotlight";
+import { getSession } from "@/core/auth/auth";
 
 export default async function DashboardLayout({ children }: { children: ReactNode }) {
     // Middleware ensures only authenticated users reach this page

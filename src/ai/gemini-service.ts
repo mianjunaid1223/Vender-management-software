@@ -54,7 +54,8 @@ class GeminiSpotlightService {
         suggestions: this.extractSuggestions(text, data.query)
       };
     } catch (error) {
-      console.error('Gemini AI Error:', error);
+      // TODO: Replace with proper structured logging service
+      console.error('Gemini AI Error - Service:', this.constructor.name, 'Error:', error);
       throw new Error('Failed to get AI response from Gemini');
     }
   }

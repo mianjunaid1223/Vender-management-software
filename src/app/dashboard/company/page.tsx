@@ -1,11 +1,11 @@
 import { Suspense } from "react";
-import { PageHeader } from "@/components/page-header";
-import { CompanyRegistrationForm } from "@/components/dashboard/company-registration-form";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "@/shared/components/page-header";
+import { CompanyRegistrationForm } from "@/features/dashboard/components/company-registration-form";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/components/ui/card";
+import { Badge } from "@/shared/components/ui/badge";
 import { Building, MapPin, Phone, Mail, Globe, Users } from "lucide-react";
-import { fetchCompany } from "@/lib/data";
-import { Skeleton } from "@/components/ui/skeleton";
+import { fetchCompany } from "@/shared/lib/data";
+import { Skeleton } from "@/shared/components/ui/skeleton";
 
 export default async function CompanyPage() {
   return (

@@ -1,9 +1,14 @@
-import { PageHeader } from "@/components/page-header";
-import { getUser } from "@/lib/data";
-import { ProfileForm } from "@/components/dashboard/profile-form";
+import { PageHeader } from "@/shared/components/page-header";
+import { getUser } from "@/shared/lib/data";
+import { ProfileForm } from "@/features/dashboard/components/profile-form";
+import { redirect } from "next/navigation";
 
 export default async function ProfilePage() {
   const user = await getUser();
+  
+  if (!user) {
+    redirect('/login');
+  }
 
   return (
     <div>

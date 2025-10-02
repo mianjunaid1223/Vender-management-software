@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { enableVendorPortalAccess, disableVendorPortalAccess } from '@/lib/auth/vendor-auth';
-import { getSession } from '@/lib/auth';
+import { enableVendorPortalAccess, disableVendorPortalAccess } from '@/core/auth/vendor-auth';
+import { getSession } from '@/core/auth/auth';
 import { ObjectId } from 'mongodb';
-import { getDb } from '@/lib/data';
-import type { VendorPortalAccess } from '@/lib/types/vendor-portal';
+import { getDb } from '@/shared/lib/data';
+import type { VendorPortalAccess } from '@/shared/types/vendor-portal';
 
 export async function POST(request: NextRequest) {
   try {

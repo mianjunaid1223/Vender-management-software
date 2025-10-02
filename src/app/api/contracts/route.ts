@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createContract, fetchContracts } from '@/lib/data';
+import { createContract, fetchContracts } from '@/shared/lib/data';
 
 export async function GET() {
   try {
@@ -7,7 +7,7 @@ export async function GET() {
     // Ensure each contract has a unique 'id' from '_id' before sending to client
     const serializedContracts = contracts.map(contract => ({
       ...contract,
-      id: contract.id || contract._id.toString(),
+      id: contract.id || (contract as any)._id?.toString() || '',
     }));
     return NextResponse.json(serializedContracts);
   } catch (error) {

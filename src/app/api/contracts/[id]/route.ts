@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { updateContract, deleteContract } from '@/lib/data';
+import { updateContract, deleteContract } from '@/shared/lib/data';
 
 export async function PUT(
   request: NextRequest,

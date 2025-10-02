@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getVendorSession } from '@/lib/auth/vendor-auth';
-import { getMyContracts } from '@/lib/data/vendor-data';
-import { getDb } from '@/lib/data';
+import { getVendorSession } from '@/core/auth/vendor-auth';
+import { getMyContracts } from '@/features/vendor-portal/lib/vendor-data';
+import { getDb } from '@/shared/lib/data';
 import { ObjectId } from 'mongodb';
 
 // Check if vendor has permission for a specific action
@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
     const contracts = await getMyContracts();
 
     return NextResponse.json({
-      contracts: contracts.map(contract => ({
+      contracts: contracts.map((contract: any) => ({
         id: contract.id,
         title: contract.title,
         type: contract.type || 'service',

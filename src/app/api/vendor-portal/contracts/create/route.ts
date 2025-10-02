@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDb } from '@/lib/data';
-import { createAuditLog } from '@/lib/audit';
-import { getVendorSession } from '@/lib/auth/vendor-auth';
+import { getDb } from '@/shared/lib/data';
+import { createAuditLog } from '@/core/services/audit';
+import { getVendorSession } from '@/core/auth/vendor-auth';
 import { ObjectId } from 'mongodb';
 
 export async function POST(request: NextRequest) {

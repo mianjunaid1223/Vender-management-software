@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getVendorInvoice, updateVendorInvoiceStatus } from '@/lib/data/vendor-data';
-import { getVendorSession } from '@/lib/auth/vendor-auth';
+import { getVendorInvoice, updateVendorInvoiceStatus } from '@/features/vendor-portal/lib/vendor-data';
+import { getVendorSession } from '@/core/auth/vendor-auth';
 
 export async function GET(
   request: NextRequest,

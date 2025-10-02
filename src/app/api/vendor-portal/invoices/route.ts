@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getVendorSession } from '@/lib/auth/vendor-auth';
-import { getMyInvoices } from '@/lib/data/vendor-data';
-import { getDb } from '@/lib/data';
+import { getVendorSession } from '@/core/auth/vendor-auth';
+import { getMyInvoices } from '@/features/vendor-portal/lib/vendor-data';
+import { getDb } from '@/shared/lib/data';
 import { ObjectId } from 'mongodb';
-import type { VendorUser, VendorPortalAccess } from '@/lib/types/vendor-portal';
+import type { VendorUser, VendorPortalAccess } from '@/shared/types/vendor-portal';
 import { VALIDATION } from '@/config/constants';
 
 // Check if vendor has permission for a specific action
@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
     const invoices = await getMyInvoices();
 
     return NextResponse.json({
-      invoices: invoices.map(invoice => ({
+      invoices: invoices.map((invoice: any) => ({
         id: invoice.id,
         number: invoice.invoiceNumber,
         amount: invoice.totalAmount || invoice.invoiceAmount || 0,

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getVendorSession } from '@/lib/auth/vendor-auth';
-import { getDb } from '@/lib/data';
-import type { AuditLog } from '@/lib/types/vendor-portal';
+import { getVendorSession } from '@/core/auth/vendor-auth';
+import { getDb } from '@/shared/lib/data';
+import type { AuditLog } from '@/shared/types/vendor-portal';
 import { PAGINATION } from '@/config/constants';
 
 export async function GET(request: NextRequest) {
@@ -98,7 +98,7 @@ function getActivityType(action: string): string {
   if (action.includes('invoice')) return 'invoice';
   if (action.includes('contract')) return 'contract';
   if (action.includes('payment')) return 'payment';
-  if (action.includes('profile') || action.includes('update')) return 'profile';
+  if (action.includes('profile')) return 'profile';
   
   switch (action) {
     case 'login':

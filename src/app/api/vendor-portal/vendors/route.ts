@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDb } from '@/lib/data';
-import { getVendorSession } from '@/lib/auth/vendor-auth';
+import { getDb } from '@/shared/lib/data';
+import { getVendorSession } from '@/core/auth/vendor-auth';
+import { v4 as uuidv4 } from 'uuid';
+
+const VALID_VENDOR_TYPES = ['supplier', 'partner', 'contractor', 'service_provider', 'consultant'] as const;
+type VendorType = typeof VALID_VENDOR_TYPES[number];
 
 export async function GET(request: NextRequest) {
   try {
@@ -34,49 +38,13 @@ export async function GET(request: NextRequest) {
     // Get vendors for this company
     const vendors = await db.collection('vendors').find(query).toArray();
 
-    // Sample vendors if none exist
+    // Return real empty response when no vendors found
     if (vendors.length === 0) {
-      const sampleVendors = [
-        {
-          vendorId: 'vendor_001',
-          companyId,
-          name: 'TechCorp Solutions',
-          type: 'Technology',
-          status: 'active',
-          contractValue: 150000,
-          contactEmail: 'contact@techcorp.com',
-          createdAt: new Date('2024-01-15'),
-          lastContact: new Date('2024-12-01')
-        },
-        {
-          vendorId: 'vendor_002',
-          companyId,
-          name: 'Green Energy Inc',
-          type: 'Energy',
-          status: 'active',
-          contractValue: 75000,
-          contactEmail: 'info@greenenergy.com',
-          createdAt: new Date('2024-02-20'),
-          lastContact: new Date('2024-11-28')
-        },
-        {
-          vendorId: 'vendor_003',
-          companyId,
-          name: 'Office Supplies Ltd',
-          type: 'Supplies',
-          status: 'pending',
-          contractValue: 25000,
-          contactEmail: 'sales@officesupplies.com',
-          createdAt: new Date('2024-11-15'),
-          lastContact: new Date('2024-11-29')
-        }
-      ];
-      
       return NextResponse.json({
         success: true,
-        vendors: sampleVendors,
-        total: sampleVendors.length,
-        message: 'Sample vendor data'
+        vendors: [],
+        total: 0,
+        message: 'No vendors found'
       });
     }
 
@@ -114,8 +82,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate type enum
-    const validTypes = ['supplier', 'partner', 'contractor', 'service_provider', 'consultant'];
-    if (!validTypes.includes(type.toLowerCase())) {
+    if (!VALID_VENDOR_TYPES.includes(type.toLowerCase() as VendorType)) {
       return NextResponse.json({ error: 'Invalid vendor type' }, { status: 400 });
     }
 
@@ -131,7 +98,7 @@ export async function POST(request: NextRequest) {
     
     // Create new vendor
     const vendor = {
-      vendorId: `vendor_${Date.now()}`,
+      vendorId: `vendor_${uuidv4()}`,
       companyId,
       name: name.trim(),
       type: type.toLowerCase(),

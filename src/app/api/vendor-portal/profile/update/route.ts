@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDb } from '@/lib/data';
-import { createAuditLog } from '@/lib/audit';
-import { getVendorSession } from '@/lib/auth/vendor-auth';
+import { getDb } from '@/shared/lib/data';
+import { createAuditLog } from '@/core/services/audit';
+import { getVendorSession } from '@/core/auth/vendor-auth';
+import { ObjectId } from 'mongodb';
 
 export async function PUT(request: NextRequest) {
   try {
@@ -33,8 +34,18 @@ export async function PUT(request: NextRequest) {
       updatedAt: new Date()
     };
 
+    // Validate companyId as ObjectId
+    if (!ObjectId.isValid(companyId)) {
+      return NextResponse.json(
+        { error: 'Invalid Company ID format' },
+        { status: 400 }
+      );
+    }
+
+    const companyObjectId = new ObjectId(companyId);
+
     const result = await db.collection('companies').updateOne(
-      { companyId },
+      { _id: companyObjectId },
       { $set: updateData }
     );
 
@@ -46,7 +57,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // Get updated company info
-    const updatedCompany = await db.collection('companies').findOne({ companyId });
+    const updatedCompany = await db.collection('companies').findOne({ _id: companyObjectId });
 
     // Log the update
     await createAuditLog({

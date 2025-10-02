@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { revokeVendorSession } from '@/lib/auth/vendor-auth';
+import { revokeVendorSession } from '@/core/auth/vendor-auth';
 import { cookies } from 'next/headers';
 
 export async function GET(request: NextRequest) {

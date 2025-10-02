@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getVendorSession } from '@/lib/auth/vendor-auth';
-import { getDb } from '@/lib/data';
+import { getVendorSession } from '@/core/auth/vendor-auth';
+import { getDb } from '@/shared/lib/data';
 import { ObjectId } from 'mongodb';
-import { createAuditLog } from '@/lib/audit';
+import { createAuditLog } from '@/core/services/audit';
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,7 +11,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const body = await request.json();
+    let body;
+    try {
+      body = await request.json();
+    } catch (error) {
+      return NextResponse.json(
+        { error: 'Invalid JSON body' },
+        { status: 400 }
+      );
+    }
+    
     const { category, changeType, changeData, resourceId, description } = body;
 
     // Validate required fields
@@ -90,43 +99,55 @@ export async function POST(request: NextRequest) {
       updatedAt: now
     };
 
-    const result = await db.collection('vendor_pending_changes').insertOne(pendingChange);
+    // Get MongoDB client from connection
+    const { getClient } = await import('@/shared/lib/data');
+    const mongoClient = await getClient();
+    const session_db = mongoClient.startSession();
+    
+    let result: any;
+    try {
+      await session_db.withTransaction(async () => {
+        result = await db.collection('vendor_pending_changes').insertOne(pendingChange, { session: session_db });
 
-    // Create audit log
-    await createAuditLog({
-      userId: session.id,
-      userRole: 'vendor_user',
-      companyId: session.companyId,
-      vendorId: session.vendorId,
-      action: 'create',
-      resource: 'vendor_pending_change',
-      resourceId: result.insertedId.toString(),
-      newValues: { category, changeType, status: 'pending' },
-      ipAddress: request.headers.get('x-forwarded-for') || 'unknown',
-      userAgent: request.headers.get('user-agent') || 'unknown',
-      sessionId: 'vendor_' + Date.now(),
-      metadata: {
-        description,
-        requiresApproval: true
-      }
-    });
+        // Create audit log
+        await createAuditLog({
+          userId: session.id,
+          userRole: 'vendor_user',
+          companyId: session.companyId,
+          vendorId: session.vendorId,
+          action: 'create',
+          resource: 'vendor_pending_change',
+          resourceId: result.insertedId.toString(),
+          newValues: { category, changeType, status: 'pending' },
+          ipAddress: request.headers.get('x-forwarded-for') || 'unknown',
+          userAgent: request.headers.get('user-agent') || 'unknown',
+          sessionId: 'vendor_' + Date.now(),
+          metadata: {
+            description,
+            requiresApproval: true
+          }
+        });
 
-    // Create notification for company admins
-    await db.collection('notifications').insertOne({
-      notificationId: `notif_${Date.now()}_${session.vendorId}`,
-      companyId: session.companyId,
-      type: 'vendor_change_submitted',
-      title: 'Vendor Change Submitted',
-      message: `${session.name || 'Vendor'} submitted a ${changeType} request for ${category}`,
-      data: {
-        changeId: result.insertedId.toString(),
-        vendorId: session.vendorId,
-        category,
-        changeType
-      },
-      read: false,
-      createdAt: now
-    });
+        // Create notification for company admins
+        await db.collection('notifications').insertOne({
+          notificationId: `notif_${Date.now()}_${session.vendorId}`,
+          companyId: session.companyId,
+          type: 'vendor_change_submitted',
+          title: 'Vendor Change Submitted',
+          message: `${session.name || 'Vendor'} submitted a ${changeType} request for ${category}`,
+          data: {
+            changeId: result.insertedId.toString(),
+            vendorId: session.vendorId,
+            category,
+            changeType
+          },
+          read: false,
+          createdAt: now
+        }, { session: session_db });
+      });
+    } finally {
+      await session_db.endSession();
+    }
 
     return NextResponse.json({
       success: true,

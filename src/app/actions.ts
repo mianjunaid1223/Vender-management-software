@@ -4,12 +4,12 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { getDb, getClient, createInvoice, updateInvoice, deleteInvoice, updateInvoiceStatus, updateCompany, createOrUpdateCompany } from "@/lib/data";
-import { sendPaymentConfirmation } from '@/lib/email-notifications';
+import { getDb, getClient, createInvoice, updateInvoice, deleteInvoice, updateInvoiceStatus, updateCompany, createOrUpdateCompany } from "@/shared/lib/data";
+import { sendPaymentConfirmation } from '@/core/services/email-notifications';
 import { ObjectId } from 'mongodb';
-import { Invoice, Company } from "@/lib/types";
-import { createSession, deleteSession } from "@/lib/session"; 
-import { getSession } from "@/lib/auth";
+import { Invoice, Company } from "@/shared/types/types";
+import { createSession, deleteSession } from "@/core/database/session"; 
+import { getSession } from "@/core/auth/auth";
 import bcrypt from 'bcryptjs';
 
 // --- Form Schemas ---
@@ -512,7 +512,7 @@ export async function bulkUpdateInvoiceStatusAction(
 
 export async function refreshInvoiceStatusesAction(): Promise<{ success: boolean; message: string }> {
   try {
-    const { updateInvoiceStatuses } = await import('@/lib/invoice-status-manager');
+    const { updateInvoiceStatuses } = await import('@/features/invoices/lib/invoice-status-manager');
     const result = await updateInvoiceStatuses();
     
     revalidatePath('/dashboard');

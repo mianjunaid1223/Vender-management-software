@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getVendorSession } from '@/lib/auth/vendor-auth';
-import { getDb } from '@/lib/data';
+import { getVendorSession } from '@/core/auth/vendor-auth';
+import { getDb } from '@/shared/lib/data';
 import { ObjectId } from 'mongodb';
 
 export async function GET(request: NextRequest) {

@@ -2,18 +2,18 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { PageHeader } from "@/components/page-header";
-import { ContractOnboardingDialog } from "@/components/dashboard/contract-onboarding-dialog";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { useToast } from "@/hooks/use-toast";
+import { PageHeader } from "@/shared/components/page-header";
+import { ContractOnboardingDialog } from "@/features/dashboard/components/contract-onboarding-dialog";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/shared/components/ui/card";
+import { Badge } from "@/shared/components/ui/badge";
+import { Button } from "@/shared/components/ui/button";
+import { Input } from "@/shared/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/components/ui/tabs";
+import { Skeleton } from "@/shared/components/ui/skeleton";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/shared/components/ui/dialog";
+import { Label } from "@/shared/components/ui/label";
+import { Textarea } from "@/shared/components/ui/textarea";
+import { useToast } from "@/shared/hooks/use-toast";
 import { 
   AlertCircle, 
   CheckCircle, 
@@ -37,9 +37,9 @@ import {
   FileClock,
   RefreshCw,
 } from "lucide-react";
-import { processAndFetchContracts, deleteContract, fetchInvoicesByContract, fetchVendors, fetchCompany, updateContract } from "@/lib/data";
-import { Contract, Invoice, ContractStatus, Vendor, Company, ContractParty, ContractType } from "@/lib/types";
-import { downloadContractPDF, previewContractPDF } from "@/lib/pdf-utils";
+import { processAndFetchContracts, deleteContract, fetchInvoicesByContract, fetchVendors, fetchCompany, updateContract } from "@/shared/lib/data";
+import { Contract, Invoice, ContractStatus, Vendor, Company, ContractParty, ContractType } from "@/shared/types/types";
+import { downloadContractPDF, previewContractPDF } from "@/core/utils/pdf-utils";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -50,7 +50,7 @@ import {
   DropdownMenuSub,
   DropdownMenuSubTrigger,
   DropdownMenuSubContent
-} from "@/components/ui/dropdown-menu";
+} from "@/shared/components/ui/dropdown-menu";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -60,10 +60,10 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
+} from "@/shared/components/ui/alert-dialog";
+import { ScrollArea } from "@/shared/components/ui/scroll-area";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/components/ui/select";
+import { cn } from "@/core/utils/utils";
 import { format, formatDistanceToNow } from "date-fns";
 
 
@@ -106,7 +106,7 @@ export default function ContractsPage() {
   const handleContractAddedOrUpdated = (updatedContract: Contract) => {
     const contractWithId = {
       ...updatedContract,
-      id: updatedContract.id || updatedContract._id?.toString()
+      id: updatedContract.id || (updatedContract as any)._id?.toString() || ''
     };
   
     setContracts(prev => {

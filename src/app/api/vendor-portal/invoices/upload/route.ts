@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getVendorSession } from '@/lib/auth/vendor-auth';
+import { getVendorSession } from '@/core/auth/vendor-auth';
 import { ObjectId } from 'mongodb';
-import { getDb } from '@/lib/data';
+import { getDb } from '@/shared/lib/data';
 import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 import { existsSync } from 'fs';
-import type { VendorPortalAccess } from '@/lib/types/vendor-portal';
+import type { VendorPortalAccess } from '@/shared/types/vendor-portal';
 import { FILE_UPLOAD, VALIDATION } from '@/config/constants';
-import { handleAPIError, ValidationErrors } from '@/lib/error-handling';
+import { handleAPIError, ValidationErrors } from '@/core/utils/error-handling';
 
 export async function POST(request: NextRequest) {
   let session: any = null;
@@ -92,46 +92,69 @@ export async function POST(request: NextRequest) {
     const safeExtension = allowedExtensions[0]; // Use first allowed extension
     const fileName = `invoice_${session.vendorId}_${timestamp}.${safeExtension}`;
     
-    // Ensure uploads directory exists
-    const uploadsDir = join(process.cwd(), FILE_UPLOAD.UPLOAD_DIR, 'invoices');
-    try {
-      if (!existsSync(uploadsDir)) {
-        await mkdir(uploadsDir, { recursive: true });
-      }
-    } catch (error) {
-      console.error('Failed to create upload directory:', error);
-      return NextResponse.json(
-        { error: 'Server configuration error. Please contact support.' },
-        { status: 500 }
-      );
-    }
-    
-    const filePath = join(uploadsDir, fileName);
-    const publicPath = `/uploads/invoices/${fileName}`;
-
-    // Save file with additional security checks
+    // Get file buffer for cloud upload
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
     
-    // Basic content validation - check file signature/magic bytes
-    const magicBytes = buffer.slice(0, 4);
-    const isPDF = magicBytes.toString() === '%PDF';
-    const isJPEG = magicBytes[0] === 0xFF && magicBytes[1] === 0xD8;
-    const isPNG = magicBytes[0] === 0x89 && magicBytes[1] === 0x50 && 
-                  magicBytes[2] === 0x4E && magicBytes[3] === 0x47;
-    
-    const validContent = (file.type === 'application/pdf' && isPDF) ||
-                        ((file.type === 'image/jpeg' || file.type === 'image/jpg') && isJPEG) ||
-                        (file.type === 'image/png' && isPNG);
-    
-    if (!validContent) {
+    // Upload to cloud storage (S3 example - replace with your configured cloud storage)
+    try {
+      // @ts-ignore - AWS SDK is optional dependency
+      const { S3Client, PutObjectCommand } = await import('@aws-sdk/client-s3');
+      
+      if (!process.env.AWS_REGION || !process.env.AWS_S3_BUCKET) {
+        throw new Error('Cloud storage not configured');
+      }
+      
+      const s3Client = new S3Client({
+        region: process.env.AWS_REGION,
+        credentials: {
+          accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+          secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!
+        }
+      });
+      
+      const key = `invoices/${fileName}`;
+      
+      const command = new PutObjectCommand({
+        Bucket: process.env.AWS_S3_BUCKET,
+        Key: key,
+        Body: buffer,
+        ContentType: file.type,
+        ACL: 'private' // Secure by default
+      });
+      
+      await s3Client.send(command);
+      
+      // Basic content validation - check file signature/magic bytes before upload
+      const magicBytes = buffer.slice(0, 4);
+      const isPDF = magicBytes.toString() === '%PDF';
+      const isJPEG = magicBytes[0] === 0xFF && magicBytes[1] === 0xD8;
+      const isPNG = magicBytes[0] === 0x89 && magicBytes[1] === 0x50 && 
+                    magicBytes[2] === 0x4E && magicBytes[3] === 0x47;
+      
+      const validContent = (file.type === 'application/pdf' && isPDF) ||
+                          ((file.type === 'image/jpeg' || file.type === 'image/jpg') && isJPEG) ||
+                          (file.type === 'image/png' && isPNG);
+      
+      if (!validContent) {
+        return NextResponse.json(
+          { error: 'File content does not match declared type' },
+          { status: 400 }
+        );
+      }
+      
+      await s3Client.send(command);
+      
+      // Generate signed URL for access (or use the key)
+      var publicPath = `https://${process.env.AWS_S3_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
+      
+    } catch (error) {
+      console.error('Failed to upload to cloud storage:', error);
       return NextResponse.json(
-        { error: 'File content does not match declared type' },
-        { status: 400 }
+        { error: 'File upload failed. Please try again.' },
+        { status: 500 }
       );
     }
-    
-    await writeFile(filePath, buffer);
 
     // Save invoice to database
     const invoice = {

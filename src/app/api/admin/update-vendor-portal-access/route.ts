@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ObjectId } from 'mongodb';
-import { getDb } from '@/lib/data';
-import { getSession } from '@/lib/auth';
-import { createAuditLog } from '@/lib/audit';
-import type { VendorPortalAccess } from '@/lib/types/vendor-portal';
+import { getDb } from '@/shared/lib/data';
+import { getSession } from '@/core/auth/auth';
+import { createAuditLog } from '@/core/services/audit';
+import type { VendorPortalAccess } from '@/shared/types/vendor-portal';
 
 export async function POST(request: NextRequest) {
   try {
@@ -20,10 +20,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Company ID and Vendor ID are required' }, { status: 400 });
     }
 
-    // Validate ObjectIds
-    if (!ObjectId.isValid(companyId) || !ObjectId.isValid(vendorId)) {
+    // Validate ObjectId for companyId and string format for vendorId
+    if (!ObjectId.isValid(companyId)) {
       return NextResponse.json(
-        { error: 'Invalid Company ID or Vendor ID format' },
+        { error: 'Invalid Company ID format' },
+        { status: 400 }
+      );
+    }
+    
+    if (!vendorId || typeof vendorId !== 'string' || !vendorId.trim()) {
+      return NextResponse.json(
+        { error: 'Invalid Vendor ID format' },
         { status: 400 }
       );
     }

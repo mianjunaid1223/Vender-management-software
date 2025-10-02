@@ -1,5 +1,5 @@
-import { ThemeProvider } from "@/components/theme-provider";
-import { Toaster } from "@/components/ui/toaster";
+import { ThemeProvider } from "@/shared/components/theme-provider";
+import { Toaster } from "@/shared/components/ui/toaster";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {

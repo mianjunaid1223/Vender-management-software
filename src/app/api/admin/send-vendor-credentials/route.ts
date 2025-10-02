@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSession } from '@/lib/auth';
-import { getDb } from '@/lib/data';
-import { emailService } from '@/lib/email-service';
+import { getSession } from '@/core/auth/auth';
+import { getDb } from '@/shared/lib/data';
+import { emailService } from '@/core/services/email';
+import { emailTemplates } from '@/core/services/email-templates';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
-import { createAuditLog } from '@/lib/audit';
+import { createAuditLog } from '@/core/services/audit';
 import { ObjectId } from 'mongodb';
 
 export async function POST(request: NextRequest) {
@@ -64,9 +65,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check for existing email
+    // Check for existing email within the same vendor and company scope
     const existingUser = await db.collection('vendor_users').findOne({
-      email: vendorEmail
+      email: vendorEmail,
+      vendorId,
+      companyId: session.companyId
     });
 
     if (existingUser) {
@@ -121,46 +124,46 @@ export async function POST(request: NextRequest) {
     }
 
     // Send email with secure setup link instead of plaintext password
-    const portalUrl = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/vendor-portal`;
-    const setupUrl = `${portalUrl}/auth/set-password?token=${setupToken}&email=${encodeURIComponent(vendorEmail)}`;
-    
-    const emailHtml = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #333;">Vendor Portal Access</h2>
-        
-        <p>Hello ${vendorName},</p>
-        
-        <p>You have been granted access to our vendor portal. Click the link below to set up your account:</p>
-        
-        <div style="background: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
-          <p><strong>Portal URL:</strong> <a href="${portalUrl}">${portalUrl}</a></p>
-          <p><strong>Email:</strong> ${vendorEmail}</p>
-          <p><strong>Setup Link:</strong> <a href="${setupUrl}" style="background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px; display: inline-block;">Set Up Your Password</a></p>
-        </div>
-        
-        <p style="color: #d73027;"><strong>Important:</strong> This setup link expires in 30 minutes for security reasons. If it expires, please contact your administrator for a new link.</p>
-        
-        <p>Through the vendor portal, you can:</p>
-        <ul>
-          <li>View and manage invoices</li>
-          <li>Update your profile information</li>
-          <li>View contracts and agreements</li>
-          <li>Upload required documents</li>
-        </ul>
-        
-        <p>If you have any questions or need assistance, please contact our support team.</p>
-        
-        <p>Best regards,<br>Vendor Management Team</p>
-      </div>
-    `;
+    let baseUrl: string;
+    if (process.env.NEXTAUTH_URL) {
+      baseUrl = process.env.NEXTAUTH_URL;
+    } else {
+      // Derive from request origin as fallback
+      const url = new URL(request.url);
+      baseUrl = `${url.protocol}//${url.host}`;
+    }
+    const portalUrl = `${process.env.NEXT_PUBLIC_BASE_URL || baseUrl}/vendor-portal/login`;
+    const setupUrl = `${process.env.NEXT_PUBLIC_BASE_URL || baseUrl}/vendor-portal/setup?token=${setupToken}`;
 
-    await emailService.sendEmail({
-      to: vendorEmail,
-      subject: 'Vendor Portal Account Setup',
-      html: emailHtml,
+    // Get company info for email
+    const company = await db.collection('companies').findOne({
+      _id: new ObjectId(session.companyId)
     });
 
-    // Log the action
+    // Generate temporary password for display (will be set during setup)
+    const tempPassword = 'Click setup link to create password';
+
+    // Use centralized email template
+    const emailContent = emailTemplates.vendorPortalAccess({
+      vendorName,
+      companyName: company?.name || 'Your Business Partner',
+      email: vendorEmail,
+      temporaryPassword: tempPassword,
+      loginUrl: setupUrl, // Send setup URL instead of login URL
+    });
+
+    // Send email using centralized service
+    const emailResult = await emailService.sendEmail({
+      to: vendorEmail,
+      subject: emailContent.subject,
+      html: emailContent.html,
+    });
+
+    // Check if email failed
+    if (!emailResult.success) {
+      console.error('Failed to send vendor credentials email:', emailResult.error);
+      // Continue anyway - credentials are saved in database
+    }    // Log the action
     await createAuditLog({
       userId: session.id,
       userRole: (session.role as any) || 'admin',

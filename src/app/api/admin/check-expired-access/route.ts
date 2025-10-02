@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ObjectId } from 'mongodb';
-import { getDb } from '@/lib/data';
-import { createAuditLog } from '@/lib/audit';
+import { getDb } from '@/shared/lib/data';
+import { createAuditLog } from '@/core/services/audit';
 
 export async function POST(request: NextRequest) {
   try {

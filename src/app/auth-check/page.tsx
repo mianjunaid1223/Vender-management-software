@@ -1,6 +1,6 @@
-import { getSession } from '@/lib/auth'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
+import { getSession } from '@/core/auth/auth'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card'
+import { Badge } from '@/shared/components/ui/badge'
 
 export default async function AuthCheck() {
   const session = await getSession()

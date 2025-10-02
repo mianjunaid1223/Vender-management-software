@@ -1,156 +1,308 @@
-# Vendor Management Platform (VMP)
+# Vendor Management Platform (VMP)# Vendor Management Platform (VMP)
 
-**Enterprise-grade Multi-tenant Vendor Management System with AI Integration**
 
-## 🏗️ Platform Architecture Overview
 
-The Vendor Management Platform is a comprehensive enterprise solution built on Next.js 14 with TypeScript, featuring a multi-tenant architecture, secure vendor portal, AI-powered insights, and robust audit logging.
+**Simple, Powerful Vendor Management for Small Businesses & Freelancers****Enterprise-grade Multi-tenant Vendor Management System with AI Integration**
 
-### 🎯 Core Purpose
+
+
+A modern, affordable vendor management solution built for freelancers and small-to-medium businesses. Manage vendors, track invoices, and organize contracts - all in one place.## 🏗️ Platform Architecture Overview
+
+
+
+---The Vendor Management Platform is a comprehensive enterprise solution built on Next.js 14 with TypeScript, featuring a multi-tenant architecture, secure vendor portal, AI-powered insights, and robust audit logging.
+
+
+
+## 💡 What is VMP?### 🎯 Core Purpose
+
 - **Primary**: Streamline vendor relationship management for enterprises
-- **Secondary**: Enable secure vendor self-service through dedicated portals
-- **Tertiary**: Provide AI-driven insights and automation for vendor operations
 
----
+VMP is a subscription-based platform ($20-$65/month) that helps small businesses and freelancers:- **Secondary**: Enable secure vendor self-service through dedicated portals
 
-## 📋 Table of Contents
+- ✅ **Track vendors** - Keep all vendor info organized in one place- **Tertiary**: Provide AI-driven insights and automation for vendor operations
 
-1. [System Architecture](#-system-architecture)
+- ✅ **Manage invoices** - Create, send, and track invoices easily
+
+- ✅ **Handle contracts** - Store and manage vendor contracts---
+
+- ✅ **Vendor portal** - Give vendors secure access to their invoices and contracts
+
+- ✅ **Stay organized** - Never lose track of vendor relationships again## 📋 Table of Contents
+
+
+
+---1. [System Architecture](#-system-architecture)
+
 2. [Security Framework](#-security-framework)
-3. [Multi-Tenant Design](#-multi-tenant-design)
+
+## 🎯 Perfect For3. [Multi-Tenant Design](#-multi-tenant-design)
+
 4. [API Standards](#-api-standards)
-5. [Database Schema](#-database-schema)
-6. [Authentication & Authorization](#-authentication--authorization)
-7. [Vendor Portal System](#-vendor-portal-system)
-8. [AI Integration](#-ai-integration)
-9. [Development Standards](#-development-standards)
+
+- **Freelancers** managing multiple clients and subcontractors5. [Database Schema](#-database-schema)
+
+- **Small businesses** (1-50 employees) with vendor relationships6. [Authentication & Authorization](#-authentication--authorization)
+
+- **Consultants** tracking project vendors and expenses7. [Vendor Portal System](#-vendor-portal-system)
+
+- **Agencies** managing creative and service providers8. [AI Integration](#-ai-integration)
+
+- **Contractors** coordinating with suppliers9. [Development Standards](#-development-standards)
+
 10. [Deployment & Operations](#-deployment--operations)
-11. [Future AI Agent Guidelines](#-future-ai-agent-guidelines)
 
----
+---11. [Future AI Agent Guidelines](#-future-ai-agent-guidelines)
 
-## 🏛️ System Architecture
 
-### Technology Stack
-```
-Frontend:           Next.js 14 (App Router), React 18, TypeScript
+
+## 💰 Pricing Tiers---
+
+
+
+### Starter ($20/month)## 🏛️ System Architecture
+
+- Up to 10 vendors
+
+- 50 invoices/month### Technology Stack
+
+- Basic vendor portal```
+
+- Email supportFrontend:           Next.js 14 (App Router), React 18, TypeScript
+
 Styling:           Tailwind CSS, Shadcn/ui Components
-Backend:           Next.js API Routes (Server Actions)
-Database:          MongoDB (Primary), MongoDB Atlas (Cloud)
-Authentication:    Custom JWT + bcrypt (Multi-tenant aware)
-AI/ML:             Google Genkit, Custom AI Flows
-File Storage:      Local/Cloud Storage (Configurable)
-Deployment:        Docker, Cloud Platforms
-```
 
-### 📁 Project Structure
-```
-src/
-├── app/                          # Next.js 14 App Router
-│   ├── (auth)/                  # Authentication routes
-│   ├── dashboard/               # Company admin interface
-│   ├── vendor-portal/           # Vendor self-service portal
-│   ├── api/                     # API endpoints
+### Professional ($45/month)Backend:           Next.js API Routes (Server Actions)
+
+- Up to 50 vendorsDatabase:          MongoDB (Primary), MongoDB Atlas (Cloud)
+
+- 200 invoices/monthAuthentication:    Custom JWT + bcrypt (Multi-tenant aware)
+
+- Full vendor portal with custom brandingAI/ML:             Google Genkit, Custom AI Flows
+
+- Priority supportFile Storage:      Local/Cloud Storage (Configurable)
+
+- Contract managementDeployment:        Docker, Cloud Platforms
+
+- Basic analytics```
+
+
+
+### Business ($65/month)### 📁 Project Structure
+
+- Unlimited vendors```
+
+- Unlimited invoicessrc/
+
+- Advanced vendor portal├── app/                          # Next.js 14 App Router
+
+- Dedicated support│   ├── (auth)/                  # Authentication routes
+
+- Advanced analytics│   ├── dashboard/               # Company admin interface
+
+- Multi-user access (up to 5 users)│   ├── vendor-portal/           # Vendor self-service portal
+
+- API access│   ├── api/                     # API endpoints
+
 │   │   ├── admin/              # Admin operations
-│   │   ├── vendor-portal/      # Vendor portal APIs
-│   │   └── vendors/            # Vendor management APIs
-│   └── globals.css
-├── components/                   # Reusable UI components
-│   ├── ui/                     # Base UI components (Shadcn)
-│   ├── dashboard/              # Company dashboard components
-│   └── vendor-portal/          # Vendor portal components
-├── lib/                         # Core business logic
-│   ├── auth/                   # Authentication system
-│   ├── data/                   # Data access layer
-│   ├── types/                  # TypeScript definitions
-│   └── utils.ts                # Utility functions
-├── ai/                          # AI integration layer
-│   ├── flows/                  # AI workflow definitions
-│   └── genkit.ts               # AI configuration
-└── scripts/                     # Database migrations & utilities
-```
 
----
+---│   │   ├── vendor-portal/      # Vendor portal APIs
+
+│   │   └── vendors/            # Vendor management APIs
+
+## 🚀 Quick Start│   └── globals.css
+
+├── components/                   # Reusable UI components
+
+```bash│   ├── ui/                     # Base UI components (Shadcn)
+
+# 1. Install dependencies│   ├── dashboard/              # Company dashboard components
+
+npm install│   └── vendor-portal/          # Vendor portal components
+
+├── lib/                         # Core business logic
+
+# 2. Set up environment│   ├── auth/                   # Authentication system
+
+cp .env.example .env.local│   ├── data/                   # Data access layer
+
+# Edit .env.local with your MongoDB URL│   ├── types/                  # TypeScript definitions
+
+│   └── utils.ts                # Utility functions
+
+# 3. Run development server├── ai/                          # AI integration layer
+
+npm run dev│   ├── flows/                  # AI workflow definitions
+
+# Open http://localhost:3000│   └── genkit.ts               # AI configuration
+
+└── scripts/                     # Database migrations & utilities
+
+# 4. Build for production```
+
+npm run build
+
+npm start---
+
+```
 
 ## 🔒 Security Framework
 
+---
+
 ### Security Principles
-1. **Zero Trust Architecture**: Every request validated
+
+## 📁 Project Structure1. **Zero Trust Architecture**: Every request validated
+
 2. **Defense in Depth**: Multiple security layers
-3. **Least Privilege**: Minimal access rights
-4. **Audit Everything**: Comprehensive logging
 
-### Security Implementations
+```3. **Least Privilege**: Minimal access rights
 
-#### 1. IDOR Protection
-```typescript
-// ✅ Secure: Session-derived data access
-export async function getMyInvoices(): Promise<Invoice[]> {
-  const session = await getVendorSession();
-  return getVendorScopedData('invoices', session.vendorId, session.companyId);
-}
+vmp/4. **Audit Everything**: Comprehensive logging
 
-// ❌ Vulnerable: Caller-supplied parameters
+├── src/
+
+│   ├── app/              # Next.js pages & API routes### Security Implementations
+
+│   ├── core/             # Core logic (auth, database)
+
+│   ├── features/         # Feature modules (vendors, invoices)#### 1. IDOR Protection
+
+│   ├── shared/           # Shared components & utilities```typescript
+
+│   └── config/           # Configuration files// ✅ Secure: Session-derived data access
+
+├── docs/                 # Documentationexport async function getMyInvoices(): Promise<Invoice[]> {
+
+├── scripts/              # Database scripts  const session = await getVendorSession();
+
+└── public/               # Static assets  return getVendorScopedData('invoices', session.vendorId, session.companyId);
+
+```}
+
+
+
+---// ❌ Vulnerable: Caller-supplied parameters
+
 export function getVendorInvoices(vendorId: string, companyId: string) {
-  // Potential IDOR vulnerability
-}
-```
 
-#### 2. Input Validation
+## 🎨 Key Features  // Potential IDOR vulnerability
+
+}
+
+### For Business Owners```
+
+- 📊 **Dashboard** - See everything at a glance
+
+- 👥 **Vendor Management** - Add, edit, search vendors#### 2. Input Validation
+
+- 📄 **Invoice Creation** - Professional invoice templates```typescript
+
+- 📧 **Email Invoices** - Send directly from platform// ObjectId validation pattern
+
+- 💰 **Payment Tracking** - Track paid/pending/overdueif (!ObjectId.isValid(invoiceId)) {
+
+- 📑 **Contract Storage** - Keep contracts organized  throw new Error('Invalid invoice ID');
+
+}
+
+### For Vendors (Portal)
+
+- 🔐 **Secure Login** - Protected access to their data// Scope assertion pattern
+
+- 👁️ **View Invoices** - See all their invoicesfunction assertVendorScope(session: VendorUser, vendorId: string, companyId: string) {
+
+- 📥 **Download PDFs** - Get invoices as PDFs  if (session.vendorId !== vendorId || session.companyId !== companyId) {
+
+- ✏️ **Update Profile** - Keep info current    throw new Error('Forbidden: Access denied');
+
+- 💬 **Messages** - Communicate with business  }
+
+}
+
+---```
+
+
+
+## 🛠️ Tech Stack#### 3. JWT Security
+
 ```typescript
-// ObjectId validation pattern
-if (!ObjectId.isValid(invoiceId)) {
-  throw new Error('Invalid invoice ID');
-}
 
-// Scope assertion pattern
-function assertVendorScope(session: VendorUser, vendorId: string, companyId: string) {
-  if (session.vendorId !== vendorId || session.companyId !== companyId) {
-    throw new Error('Forbidden: Access denied');
-  }
-}
-```
+```// Algorithm constraint (prevents algorithm confusion attacks)
 
-#### 3. JWT Security
-```typescript
-// Algorithm constraint (prevents algorithm confusion attacks)
-const payload = await jwtVerify(token, secretKey, {
-  algorithms: ['HS256']
-});
+Frontend:     Next.js 14, React, TypeScript, Tailwind CSSconst payload = await jwtVerify(token, secretKey, {
 
-// Secret validation
-if (!vendorSecretKey) {
+Backend:      Next.js API Routes  algorithms: ['HS256']
+
+Database:     MongoDB});
+
+Auth:         JWT + bcrypt
+
+Deployment:   Vercel, Railway, Docker// Secret validation
+
+```if (!vendorSecretKey) {
+
   throw new Error('VENDOR_AUTH_SECRET or AUTH_SECRET is required');
-}
+
+---}
+
 ```
+
+## 📚 Documentation
 
 #### 4. Audit Logging
-```typescript
-// Security-conscious audit logging (no sensitive data)
-await createAuditLog({
-  userId: session.id,
+
+- [User Guide](./docs/USER_GUIDE.md) - How to use VMP```typescript
+
+- [API Docs](./docs/API.md) - API reference// Security-conscious audit logging (no sensitive data)
+
+- [Database Schema](./docs/DATABASE_SCHEMA_DESIGN.md) - DB structureawait createAuditLog({
+
+- [Development Guide](./docs/DEVELOPMENT.md) - For developers  userId: session.id,
+
   action: 'login',
-  resource: 'session',
+
+---  resource: 'session',
+
   resourceId: insertedId.toString(), // DB ID, not JWT token
-  ipAddress,
+
+## 🤝 Contributing  ipAddress,
+
   userAgent,
-  sessionId: insertedId.toString()
-});
-```
+
+1. Fork the repo  sessionId: insertedId.toString()
+
+2. Create a feature branch});
+
+3. Make your changes```
+
+4. Test thoroughly
+
+5. Submit a pull request---
+
+
+
+---## 🏢 Multi-Tenant Design
+
+
+
+## 📄 License### Tenant Isolation Strategy
+
+- **Database Level**: Single database with tenant-scoped queries
+
+MIT License - See LICENSE file- **Application Level**: Tenant context in every request
+
+- **Security Level**: Cross-tenant access prevention
 
 ---
 
-## 🏢 Multi-Tenant Design
-
-### Tenant Isolation Strategy
-- **Database Level**: Single database with tenant-scoped queries
-- **Application Level**: Tenant context in every request
-- **Security Level**: Cross-tenant access prevention
-
 ### Tenant Context Flow
-```typescript
+
+**Built with ❤️ for small businesses**```typescript
+
 User Request → Authentication → Tenant Context → Data Scoping → Response
-```
+
+*Simple tools for serious business*```
 
 ### Multi-Tenant Data Patterns
 ```typescript

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createVendorSession, getVendorSession } from '@/lib/auth/vendor-auth';
-import { getDb } from '@/lib/data';
+import { createVendorSession, getVendorSession } from '@/core/auth/vendor-auth';
+import { getDb } from '@/shared/lib/data';
 import bcrypt from 'bcryptjs';
 import { cookies } from 'next/headers';
 import { ObjectId } from 'mongodb';

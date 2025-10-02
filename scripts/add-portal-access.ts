@@ -1,5 +1,5 @@
 import { ObjectId } from 'mongodb';
-import { getDb } from '../src/lib/data';
+import { getDb } from '../src/shared/lib/data';
 
 // Type definitions
 interface VendorPortalAccess {

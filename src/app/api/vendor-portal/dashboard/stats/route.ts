@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getVendorSession } from '@/lib/auth/vendor-auth';
-import { getDb } from '@/lib/data';
+import { getVendorSession } from '@/core/auth/vendor-auth';
+import { getDb } from '@/shared/lib/data';
 import { ObjectId } from 'mongodb';
 
 export async function GET(request: NextRequest) {
@@ -60,16 +60,40 @@ export async function GET(request: NextRequest) {
 
     // Only fetch stats for features the vendor has access to
     if (allowedFeatures.viewInvoices) {
-      // Get invoice statistics
-      const invoices = await db.collection('invoices').find({
-        vendorId: vendorSession.vendorId,
-        companyId: vendorSession.companyId
-      }).toArray();
+      // Get invoice statistics using aggregation
+      const invoiceStats = await db.collection('invoices').aggregate([
+        {
+          $match: {
+            vendorId: vendorSession.vendorId,
+            companyId: vendorSession.companyId
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            totalInvoices: { $sum: 1 },
+            pendingInvoices: {
+              $sum: { $cond: [{ $eq: ['$status', 'pending'] }, 1, 0] }
+            },
+            paidInvoices: {
+              $sum: { $cond: [{ $eq: ['$status', 'paid'] }, 1, 0] }
+            },
+            totalAmount: { $sum: { $ifNull: ['$amount', 0] } }
+          }
+        }
+      ]).toArray();
 
-      stats.totalInvoices = invoices.length;
-      stats.pendingInvoices = invoices.filter(inv => inv.status === 'pending').length;
-      stats.paidInvoices = invoices.filter(inv => inv.status === 'paid').length;
-      stats.totalAmount = invoices.reduce((sum, inv) => sum + (inv.amount || 0), 0);
+      const invoiceData = invoiceStats[0] || {
+        totalInvoices: 0,
+        pendingInvoices: 0,
+        paidInvoices: 0,
+        totalAmount: 0
+      };
+
+      stats.totalInvoices = invoiceData.totalInvoices;
+      stats.pendingInvoices = invoiceData.pendingInvoices;
+      stats.paidInvoices = invoiceData.paidInvoices;
+      stats.totalAmount = invoiceData.totalAmount;
     }
 
     if (allowedFeatures.viewContracts) {

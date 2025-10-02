@@ -1,9 +1,9 @@
-import { Button } from "@/components/ui/button";
-import { PageHeader } from "@/components/page-header";
-import { VendorsTable } from "@/components/dashboard/vendors-table";
-import { VendorOnboardingDialog } from "@/components/dashboard/vendor-onboarding-dialog";
+import { Button } from "@/shared/components/ui/button";
+import { PageHeader } from "@/shared/components/page-header";
+import { VendorsTable } from "@/features/dashboard/components/vendors-table";
+import { VendorOnboardingDialog } from "@/features/dashboard/components/vendor-onboarding-dialog";
 import { PlusCircle } from "lucide-react";
-import { fetchVendors } from "@/lib/data";
+import { fetchVendors } from "@/shared/lib/data";
 
 
 export default async function VendorsPage() {

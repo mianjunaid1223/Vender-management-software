@@ -6,14 +6,14 @@ import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import { Loader2, Building, MapPin, User as UserIcon } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Datalist } from "@/components/ui/datalist";
-import { Separator } from "@/components/ui/separator";
-import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/shared/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/components/ui/card";
+import { Input } from "@/shared/components/ui/input";
+import { Datalist } from "@/shared/components/ui/datalist";
+import { Separator } from "@/shared/components/ui/separator";
+import { Textarea } from "@/shared/components/ui/textarea";
 import { registerCompany } from "@/app/actions";
-import { Label } from "@/components/ui/label";
+import { Label } from "@/shared/components/ui/label";
 
 
 

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getVendorSession } from '@/lib/auth/vendor-auth';
+import { getVendorSession } from '@/core/auth/vendor-auth';
 
 export async function GET(request: NextRequest) {
   try {

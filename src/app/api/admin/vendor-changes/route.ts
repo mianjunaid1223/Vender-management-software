@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSession } from '@/lib/auth';
-import { getDb } from '@/lib/data';
+import { getSession } from '@/core/auth/auth';
+import { getDb } from '@/shared/lib/data';
 import { ObjectId } from 'mongodb';
-import { createAuditLog } from '@/lib/audit';
+import { createAuditLog } from '@/core/services/audit';
 
 export async function GET(request: NextRequest) {
   try {

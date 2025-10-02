@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuditLogs, getAuditSummary } from '@/lib/audit';
-import { getSession } from '@/lib/auth';
-import type { AuditAction } from '@/lib/types/vendor-portal';
+import { getAuditLogs, getAuditSummary } from '@/core/services/audit';
+import { getSession } from '@/core/auth/auth';
+import type { AuditAction } from '@/shared/types/vendor-portal';
 import { PAGINATION } from '@/config/constants';
 
 export async function GET(request: NextRequest) {

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSession } from '@/lib/auth';
+import { getSession } from '@/core/auth/auth';
 import { ObjectId } from 'mongodb';
-import { getDb } from '@/lib/data';
+import { getDb } from '@/shared/lib/data';
 
 export async function GET(request: NextRequest) {
   try {
@@ -50,20 +50,21 @@ export async function GET(request: NextRequest) {
     const enabledFeatures: string[] = [];
     const features = vendorAccess.features || {};
 
-    // Map database feature flags to frontend feature IDs
-    if (features.viewInvoices || features.canViewInvoices) enabledFeatures.push('view_invoices');
-    if (features.downloadInvoices || features.canDownloadInvoices) enabledFeatures.push('download_invoices');
-    if (features.uploadDocuments || features.canUploadInvoices) enabledFeatures.push('upload_invoices');
-    if (features.profileManagement || features.canEditProfile) enabledFeatures.push('edit_profile');
-    if (features.viewContracts || features.canViewContracts) enabledFeatures.push('view_contracts');
-    if (features.canSignContracts) enabledFeatures.push('sign_contracts');
-    if (features.viewComplianceRequirements || features.canUploadCompliance) enabledFeatures.push('upload_compliance');
-    if (features.paymentStatus || features.canViewPayments) enabledFeatures.push('view_payments');
-    if (features.updatePaymentInfo || features.canUpdatePaymentInfo) enabledFeatures.push('update_payment_info');
-    if (features.communicationTools || features.communicateWithBuyer || features.canCommunicate) enabledFeatures.push('communication');
-    if (features.communicateWithBuyer || features.canCommunicate) enabledFeatures.push('communicate_with_buyer');
-    if (features.uploadDocuments || features.documentUpload) enabledFeatures.push('upload_documents');
-    if (features.viewComplianceRequirements || features.canViewCompliance) enabledFeatures.push('view_compliance_requirements');
+    // Map database feature flags to frontend feature IDs (deduplicated)
+    const enabledFeaturesSet = new Set<string>();
+    
+    if (features.viewInvoices || features.canViewInvoices) enabledFeaturesSet.add('view_invoices');
+    if (features.downloadInvoices || features.canDownloadInvoices) enabledFeaturesSet.add('download_invoices');
+    if (features.uploadDocuments || features.canUploadInvoices) enabledFeaturesSet.add('upload_documents');
+    if (features.profileManagement || features.canEditProfile) enabledFeaturesSet.add('edit_profile');
+    if (features.viewContracts || features.canViewContracts) enabledFeaturesSet.add('view_contracts');
+    if (features.canSignContracts) enabledFeaturesSet.add('sign_contracts');
+    if (features.viewComplianceRequirements || features.canUploadCompliance) enabledFeaturesSet.add('view_compliance_requirements');
+    if (features.paymentStatus || features.canViewPayments) enabledFeaturesSet.add('view_payments');
+    if (features.updatePaymentInfo || features.canUpdatePaymentInfo) enabledFeaturesSet.add('update_payment_info');
+    if (features.communicationTools || features.communicateWithBuyer || features.canCommunicate) enabledFeaturesSet.add('communication');
+    
+    enabledFeatures.push(...Array.from(enabledFeaturesSet));
 
     return NextResponse.json({
       enabled: vendorAccess.enabled || false,

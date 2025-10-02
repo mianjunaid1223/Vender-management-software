@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { updateVendor, deleteVendor } from '@/lib/data';
-import { Vendor } from '@/lib/types';
+import { updateVendor, deleteVendor } from '@/shared/lib/data';
+import { Vendor } from '@/shared/types/types';
 
 export async function PUT(
   request: NextRequest,

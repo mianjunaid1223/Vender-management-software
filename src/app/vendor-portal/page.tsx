@@ -4,14 +4,14 @@ import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Building2, Shield, Eye, EyeOff, ArrowLeft } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { useToast } from '@/hooks/use-toast';
-import { ThemeToggle } from '@/components/theme-toggle';
-import { Logo } from '@/components/logo';
+import { Button } from '@/shared/components/ui/button';
+import { Input } from '@/shared/components/ui/input';
+import { Label } from '@/shared/components/ui/label';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card';
+import { Alert, AlertDescription } from '@/shared/components/ui/alert';
+import { useToast } from '@/shared/hooks/use-toast';
+import { ThemeToggle } from '@/shared/components/theme-toggle';
+import { Logo } from '@/shared/components/logo';
 
 function VendorPortalContent() {
   const [email, setEmail] = useState('');

@@ -1,12 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ObjectId } from 'mongodb';
-import { getDb } from '@/lib/data';
-import { createAuditLog } from '@/lib/audit';
+import { getDb } from '@/shared/lib/data';
+import { createAuditLog } from '@/core/services/audit';
+import { getSession } from '@/core/auth/auth';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { companyId, vendorId, expiresAt, features } = body;
+
+    // Authentication and authorization check
+    const session = await getSession();
+    if (!session || (session.role !== 'admin' && session.role !== 'company_admin')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     if (!companyId || !vendorId) {
       return NextResponse.json(

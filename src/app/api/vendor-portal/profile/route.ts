@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getVendorProfile, updateVendorProfile, getMyProfile, updateMyProfile } from '@/lib/data/vendor-data';
-import { getVendorSession } from '@/lib/auth/vendor-auth';
+import { getVendorProfile, updateVendorProfile, getMyProfile, updateMyProfile } from '@/features/vendor-portal/lib/vendor-data';
+import { getVendorSession } from '@/core/auth/vendor-auth';
 
 export async function GET(request: NextRequest) {
   try {
@@ -35,8 +35,29 @@ export async function PATCH(request: NextRequest) {
 
     const body = await request.json();
     
+    // Sanitize input by whitelisting allowed fields
+    const allowedFields = ['name', 'email', 'phone', 'address', 'contactPerson'];
+    const sanitizedBody: any = {};
+    
+    for (const [key, value] of Object.entries(body)) {
+      if (allowedFields.includes(key)) {
+        sanitizedBody[key] = value;
+      }
+    }
+    
+    // Validate email format if provided
+    if (sanitizedBody.email && typeof sanitizedBody.email === 'string') {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(sanitizedBody.email)) {
+        return NextResponse.json(
+          { error: 'Invalid email format' },
+          { status: 400 }
+        );
+      }
+    }
+    
     // Use the new session-derived function for maximum security
-    await updateMyProfile(body);
+    await updateMyProfile(sanitizedBody);
 
     return NextResponse.json({ 
       success: true, 

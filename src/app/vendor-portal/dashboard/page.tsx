@@ -1,5 +1,5 @@
-import { requireVendorAuth } from '@/lib/auth/vendor-auth';
-import { EnhancedVendorDashboard } from '@/components/vendor-portal/vendor-dashboard';
+import { requireVendorAuth } from '@/core/auth/vendor-auth';
+import { EnhancedVendorDashboard } from '@/features/vendor-portal/components/vendor-dashboard';
 
 export default async function VendorPortalPage() {
   const session = await requireVendorAuth('/vendor-portal/login');
