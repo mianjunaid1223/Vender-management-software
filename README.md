@@ -1,133 +1,54 @@
-# 🏢 Vendor Management Software
+# Vendor Management System
 
-A comprehensive **Next.js 15 Full-Stack Application** for managing vendors, invoices, contracts, and business relationships. Built with modern technologies and following industry best practices.
+Enterprise procurement, contractor lifecycle tracking, and invoice reconciliation platform engineered with full-stack web architectures, automated verification routines, and contract auditing workflows.
 
-## ✨ Features
-
-- **🔐 Authentication & Authorization** - Secure user and vendor authentication
-- **📊 Dashboard Analytics** - Real-time business insights and metrics
-- **📄 Invoice Management** - Create, track, and manage invoices
-- **👥 Vendor Portal** - Dedicated portal for vendor interactions
-- **📋 Contract Management** - Handle vendor contracts and agreements
-- **🤖 AI Integration** - AI-powered invoice processing and assistance
-- **📧 Email Notifications** - Automated email communication
-- **📱 Responsive Design** - Works on all devices
-
-## 🚀 Quick Start
-
-1. **Clone & Install**
-   ```bash
-   git clone https://github.com/mianjunaid1223/Vender-management-software.git
-   cd vendor-management-software
-   npm install
-   ```
-
-2. **Environment Setup**
-   ```bash
-   cp .env.example .env.local
-   # Edit .env.local with your MongoDB URI and other configs
-   ```
-
-3. **Run Development Server**
-   ```bash
-   npm run dev
-   ```
-   Visit [http://localhost:9002](http://localhost:9002)
-
-4. **Seed Database** (Optional)
-   ```bash
-   npm run seed
-   ```
-
-## 🏗️ Architecture
-
-### **Tech Stack**
-- **Frontend**: Next.js 15 (App Router), React 18, TypeScript, Tailwind CSS
-- **Backend**: Next.js API Routes, MongoDB
-- **Authentication**: Custom JWT implementation
-- **Email**: Nodemailer
-- **AI**: Google AI/Genkit integration
-- **UI Components**: Radix UI + Custom components
-
-### **Project Structure**
 ```
-src/
-├── app/                    # Next.js App Router (Pages & API)
-├── components/             # Reusable UI Components
-│   ├── ui/                # Base UI components
-│   ├── layout/            # Layout components
-│   ├── dashboard/         # Dashboard-specific components
-│   └── vendor-portal/     # Vendor portal components
-├── lib/                   # Business Logic & Utilities
-│   ├── auth/              # Authentication
-│   ├── database/          # Database operations
-│   ├── email/             # Email services
-│   ├── ai/                # AI integration
-│   ├── utils/             # Utility functions
-│   └── types/             # TypeScript definitions
-├── config/                # Configuration files
-├── hooks/                 # Custom React hooks
-└── middleware.ts          # Next.js middleware
++-----------------------------------------------------------------------------------------+
+|                                   Management Portal                                     |
+|                                                                                         |
+|   +---------------------------------------------------------------------------------+   |
+|   | Responsive Web Interface: Vendor Directory, Contracts, Invoices, Ratings        |   |
+|   +----------------------------------------|----------------------------------------+   |
++--------------------------------------------|--------------------------------------------+
+                                             |
+                                             v
++-----------------------------------------------------------------------------------------+
+|                                Application Business Logic                               |
+|                                                                                         |
+|   +--------------------+  +---------------------+  +--------------------------------+   |
+|   | Vendor Lifecycle   |  | Contract Compliance |  | Invoice Reconciliation         |   |
+|   | Onboarding, KYC,   |  | Service Level Agrmts|  | Purchase orders, approvals,    |   |
+|   | performance scores |  | expiration alerts   |  | payment status tracking        |   |
+|   +--------------------+  +---------------------+  +--------------------------------+   |
+|                                            |                                            |
+|                                            v                                            |
+|   +---------------------------------------------------------------------------------+   |
+|   | Automated Test Suite & Auditing Pipeline (test_*.py / test-cases)               |   |
+|   +---------------------------------------------------------------------------------+   |
++-----------------------------------------------------------------------------------------+
 ```
 
-## 📜 Available Scripts
+## System Architecture
 
-- `npm run dev` - Start development server with Turbopack
-- `npm run build` - Build for production
-- `npm run start` - Start production server
-- `npm run lint` - Run ESLint
-- `npm run typecheck` - Run TypeScript type checking
-- `npm run seed` - Seed database with sample data
-- `npm run test-email` - Test email configuration
+The platform addresses vendor qualification, contract management, and accounts payable validation for growing enterprises. By standardizing vendor profiles and monitoring contract terms, the system reduces procurement friction and prevents SLA lapses.
 
-## 🔧 Environment Variables
+### Subsystem Capabilities
 
-Required environment variables (see `.env.example`):
+1. Vendor Onboarding and Directory: Centralized database tracking vendor registration credentials, tax identifiers, points of contact, and category classifications.
 
-- `MONGODB_URI` - MongoDB connection string
-- `JWT_SECRET` - JWT secret key
-- `EMAIL_HOST` - SMTP host (optional)
-- `EMAIL_USER` - Email username (optional)
-- `EMAIL_PASSWORD` - Email password (optional)
-- `GOOGLE_AI_API_KEY` - Google AI API key (optional)
+2. Contract and SLA Monitoring: Maintains contract documents, renewal windows, pricing tiers, and automated expiration warnings.
 
-## 📚 Documentation
+3. Purchase Orders and Invoicing: Reconciles incoming invoices against open purchase orders, recording approval states and payment histories.
 
-Comprehensive documentation is available in the [`docs/`](./docs/) directory:
+4. Performance Scorecarding: Calculates dynamic vendor performance ratings based on delivery velocity, product quality, and pricing adherence.
 
-- [Setup Guide](./docs/EMAIL_SETUP.md)
-- [Implementation Details](./docs/IMPLEMENTATION_SUMMARY.md)
-- [Architecture Overview](./docs/README.md)
+## Local Installation
 
-## 🚀 Deployment
-
-This application can be deployed on:
-
-- **Vercel** (Recommended for Next.js)
-- **Netlify**
-- **Docker** containers
-- Any **Node.js** hosting platform
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Run tests and linting
-5. Submit a pull request
-
-## 📄 License
-
-This project is proprietary software. All rights reserved.
-
-## 🆘 Support
-
-For support and questions:
-- Check the [documentation](./docs/)
-- Create an issue in the repository
-- Contact the development team
-
----
-
-**Built with ❤️ using Next.js 15 and modern web technologies**
-
+```bash
+git clone https://github.com/mianjunaid1223/Vender-management-software.git
+cd Vender-management-software
+python -m venv venv
+source venv/bin/activate  # On Windows: .\venv\Scripts\activate
+pip install -r requirements.txt
+python app.py
+```
