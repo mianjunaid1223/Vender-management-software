@@ -1,5 +1,8 @@
 # Vendor Management System
 
+[![Year Built](https://img.shields.io/badge/Year%20Built-2025-blue.svg)](#)
+
+
 Enterprise procurement, contractor lifecycle tracking, and invoice reconciliation platform engineered with full-stack web architectures, automated verification routines, and contract auditing workflows.
 
 ```
