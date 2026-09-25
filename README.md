@@ -17,7 +17,7 @@ A comprehensive **Next.js 15 Full-Stack Application** for managing vendors, invo
 
 1. **Clone & Install**
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/mianjunaid1223/Vender-management-software.git
    cd vendor-management-software
    npm install
    ```
@@ -130,3 +130,4 @@ For support and questions:
 ---
 
 **Built with ❤️ using Next.js 15 and modern web technologies**
+
